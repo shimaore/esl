@@ -1,0 +1,89 @@
+
+See
+http://wiki.freeswitch.org/wiki/Mod_event_socket
+http://wiki.freeswitch.org/wiki/Event_Socket_Outbound
+http://wiki.freeswitch.org/wiki/Event_List
+http://lists.freeswitch.org/pipermail/freeswitch-users/2010-October/063801.html
+http://www.mail-archive.com/freeswitch-users@lists.freeswitch.org/msg09185.html
+
+
+** (Receiving) Socket response types:
+
+* Authentication request
+
+Content-Type: auth/request
+
+(reply with "auth <password>")
+
+* Replies to an esl command:
+
+Content-Type: command/reply
+Reply-Text: +OK accepted
+
+or:
+
+Content-Type: command/reply
+Reply-Text: -ERR invalid session id [yyguihgytguhj]
+
+* Asynchronous Events:
+
+for example using the command "event json ALL" one would get:
+
+Content-Length: 734
+Content-Type: text/event-json
+(empty line)
+{ ... }  <- 734 bytes of JSON-encoded event data
+
+
+Note: the commands for event selection are "event", "nixevent", and "noevents".
+
+* Log data:
+
+Content-Type: log/data
+Content-Length: 139
+Log-Level: 7
+Text-Channel: 3
+Log-File: mod_sofia.c
+Log-Func: sofia_on_destroy
+Log-Line: 362
+User-Data: 1-4898@2001:910:107f:1:227:eff:fe12:5396
+
+... <- 139 bytes of log data
+
+
+Note: commands are  "log", "nolog" ("log <level>").
+
+* (Outbound Socket) Disconnect notice (will linger)
+
+Content-Type: text/disconnect-notice
+Controlled-Session-UUID: 1-5376@2001:910:107f:1:227:eff:fe12:5396
+Content-Disposition: linger
+Content-Length: 127
+
+... <- 127 bytes of text saying it will linger
+
+
+** (Sending) Commands
+
+* Commands:
+
+All commands followed by empty line (same as separator between header and body of responses).
+
+Basically there are:
+- socket session management commands (auth, exit)
+- event selector commands (event, nixevent, noevents, myevents, divert_events, filter, filter delete)
+- log commands (log, nolog)
+- system commands (api, bgapi, sendmsg+call-command)
+- event generation (sendevent)
+
+
+In outbound socket mode, there is also the "connect" command which will not follow the standard format and instead will return a list of "key: url-encoded-value" lines. (So these are supposed to essentially work like a bunch of header lines, even though they look like a text/event-plain body. But of course the Reply-Text header is _also_ url-encoded (while it normally isn't), and therefor looks like Reply-Text: %2BOK%0A which is plain dumb. I guess one can collect the headers as usual, then make a decision (based on the format of Reply-Text) as to which encoding was used for the headers.) The last few lines of the "connect" response look like this:
+Content-Type: command/reply
+Reply-Text: %2BOK%0A
+Socket-Mode: async
+Control: full
+
+
+Probably a good idea to issue "linger" and "myevents json" right after connect.
+
+

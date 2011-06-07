@@ -1,0 +1,13 @@
+{
+  "name": "esl",
+  "version": "0.0.1",
+  "description": "Client and Server for FreeSwitch Event System",
+  "keywords": "freeswitch event",
+  "author": { "name": "Stephane Alnet", "email": "stephane@shimaore.net" },
+  "files": ["./lib/"],
+  "main": "lib/esl.js",
+  "dependencies": { "request": ">=1.9.5" },
+  "scripts": { "preinstall": "coffee -c ./lib/esl.coffee" },
+  "engines": { "node": ">=0.4.7" },
+  "ok": true
+}
