@@ -86,4 +86,8 @@ Control: full
 
 Probably a good idea to issue "linger" and "myevents json" right after connect.
 
+** Examples
 
+There is a short example of a client in esl.coffee.
+
+For a working example of a server, see ../../applications/prepaid/node/esl_server.coffe
