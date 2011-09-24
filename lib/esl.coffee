@@ -103,7 +103,7 @@ class eslResponse
       # Make sure we are the only one receiving command replies
       @socket.removeAllListeners('esl_command_reply')
       if cb?
-        @on 'esl_command_reply', (req,res) ->
+        @socket.on 'esl_command_reply', (req,res) ->
           cb(req,res)
 
       @socket.write "#{command}\n"
@@ -122,7 +122,7 @@ class eslResponse
     @send "api #{command}", null, cb
 
   bgapi: (command,cb) ->
-    @send "api #{command}", null, (req,res) ->
+    @send "bgapi #{command}", null, (req,res) ->
       if cb?
         r = res.header['Reply-Text']?.match /\+OK Job-UUID: (.+)$/
         cb r[1]
@@ -253,7 +253,7 @@ connectionListener= (socket) ->
     res = new eslResponse socket
     socket.emit event, req, res
   # Get things started
-  @emit 'esl_connect', new eslResponse socket
+  @emit 'esl_connect', new eslResponse socket if @emit?
 
 class eslServer extends net.Server
   constructor: (requestListener) ->
@@ -264,20 +264,20 @@ class eslServer extends net.Server
 exports.createServer = (requestListener) -> return new eslServer(requestListener)
 
 class eslClient extends net.Socket
-  constructor: (host,port) ->
-    @on 'connect', connectionListener
-    super port, host
+  constructor: () ->
+    @on 'connect', () -> connectionListener(this)
+    super()
 
-exports.createClient = (host,port) -> return new eslClient(host,port)
+exports.createClient = () -> return new eslClient()
 
 
 # Examples:
 ###
 
-client =  createClient(host,port)
+client =  createClient()
 client.on 'esl_auth_request', (req,res) ->
-    res.send "auth #{auth}", () ->
+    res.auth "ClueCon", () ->
       res.send 'event json HEARTBEAT'
-
+client.connect(8021, '127.0.0.1')
 ###
 
