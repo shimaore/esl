@@ -102,8 +102,11 @@ class eslResponse
   send: (command,args,cb) ->
       # Make sure we are the only one receiving command replies
       @socket.removeAllListeners('esl_command_reply')
+      @socket.removeAllListeners('esl_api_response')
       if cb?
         @socket.on 'esl_command_reply', (req,res) ->
+          cb(req,res)
+        @socket.on 'esl_api_response', (req,res) ->
           cb(req,res)
 
       @socket.write "#{command}\n"
@@ -247,6 +250,8 @@ connectionListener= (socket) ->
         event = 'esl_log_data'
       when 'text/disconnect-notice'
         event = 'esl_disconnect_notice'
+      when 'api/response'
+        event = 'esl_api_response'
       else
         event = headers['Content-Type']
     req = new eslRequest headers,body

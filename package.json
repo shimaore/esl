@@ -1,6 +1,6 @@
 {
   "name": "esl",
-  "version": "0.0.5",
+  "version": "0.0.6",
   "description": "Client and Server for FreeSwitch Event System",
   "keywords": "freeswitch event",
   "author": { "name": "Stéphane Alnet", "email": "stephane@shimaore.net" },
