@@ -410,6 +410,8 @@ exports.CallServer = class CallServer extends require('events').EventEmitter
 
   constructor: (port) ->
 
+    super()
+
     Unique_ID = 'Unique-ID'
 
     server = new eslServer (res) ->
