@@ -1,9 +1,14 @@
 {
   "name": "esl",
-  "version": "0.0.6",
+  "version": "0.1.0-alpha",
   "description": "Client and Server for FreeSwitch Event System",
   "keywords": "freeswitch event",
   "author": { "name": "Stéphane Alnet", "email": "stephane@shimaore.net" },
+  "homepage": "http://blog.shimaore.net/2011/11/nodejs-esl.html",
+  "repository": {
+    "type": "git"
+  , "url": "http://stephane.shimaore.net/git/?p=ccnq3.git;a=tree;f=lib/esl"
+  }
   "contributors": [
     { "name": "Paweł Pierścionek", "email": "pawel@voiceworks.pl" }
   ],
