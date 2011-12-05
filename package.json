@@ -16,7 +16,7 @@
   "dependencies": { "request": ">=1.9.5" },
   "scripts": {
     "install": "coffee -c lib/esl.coffee"
-    "prepublish": "docco lib/esl.coffee"
+  , "prepublish": "docco lib/esl.coffee"
   },
   "engines": {
     "node": ">=0.4.7"
