@@ -14,7 +14,10 @@
   ],
   "main": "lib/esl.js",
   "dependencies": { "request": ">=1.9.5" },
-  "scripts": { "install": "coffee -c lib/esl.coffee" },
+  "scripts": {
+    "install": "coffee -c lib/esl.coffee"
+    "prepublish": "docco lib/esl.coffee"
+  },
   "engines": {
     "node": ">=0.4.7"
   , "coffee": ">=1.1.1"
