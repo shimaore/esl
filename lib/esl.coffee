@@ -41,6 +41,51 @@ assert      = require 'assert'
 
 exports.debug = false
 
+#### Client Example
+# The following code does the equivalent of "fs_cli -x".
+#
+#     esl = require 'esl'
+#
+#     # Open connection, send arbitrary API command, disconnect.
+#     fs_command = (cmd,cb) ->
+#       client = esl.createClient()
+#       client.on 'esl_auth_request', (req,res) ->
+#         res.auth 'ClueCon', (req,res) ->
+#           res.api cmd, (req,res) ->
+#             res.exit ->
+#               client.end()
+#       if cb?
+#         client.on 'close', cb
+#       client.connect(8021, '127.0.0.1')
+#
+#     # Example
+#     fs_command "reloadxml"
+#
+#  Note: Use
+#
+#     res.event_json 'HEARTBEAT'
+#
+#  to start receiving event notifications.
+
+#### CallServer Example
+#
+#     server = new esl.CallServer()
+#
+#     server.on 'CONNECT', (req,res) ->
+#       # Start processing the call
+#       # Channel data is available as req.channel_data
+#       # For example:
+#       uri = req.channel_data.variable_sip_req_uri
+#
+#     # Other FreeSwitch channel events are available as well:
+#     server.on 'CHANNEL_ANSWER', (req,res) ->
+#       util.log 'Call was answered'
+#     server.on 'CHANNEL_HANGUP_COMPLETE', (req,res) ->
+#       # Call was disconnected.
+#
+#     server.listen port
+#
+
 #### Headers parser
 # ESL framing contains headers and a body.
 # The header must be decoded first to learn
@@ -374,32 +419,6 @@ class eslClient extends net.Socket
 
 exports.createClient = () -> return new eslClient()
 
-#### Client Example
-# The following code does the equivalent of "fs_cli -x".
-#
-#     esl = require 'esl'
-#
-#     # Open connection, send arbitrary API command, disconnect.
-#     fs_command = (cmd,cb) ->
-#       client = esl.createClient()
-#       client.on 'esl_auth_request', (req,res) ->
-#         res.auth 'ClueCon', (req,res) ->
-#           res.api cmd, (req,res) ->
-#             res.exit ->
-#               client.end()
-#       if cb?
-#         client.on 'close', cb
-#       client.connect(8021, '127.0.0.1')
-#
-#     # Example
-#     fs_command "reloadxml"
-#
-#  Note: Use
-#
-#     res.event_json 'HEARTBEAT'
-#
-#  to start receiving event notifications.
-
 #### CallServer: a higher-level interface
 #
 # This interface is based on my
@@ -408,13 +427,13 @@ exports.createClient = () -> return new eslClient()
 
 exports.CallServer = class CallServer extends require('events').EventEmitter
 
-  constructor: (port) ->
+  constructor: ->
 
     super()
 
     Unique_ID = 'Unique-ID'
 
-    server = new eslServer (res) ->
+    @server = new eslServer (res) =>
       res.connect (req,res) =>
         # Channel data
         channel_data = req.body
@@ -437,33 +456,16 @@ exports.CallServer = class CallServer extends require('events').EventEmitter
         res.on 'esl_event', (req,res) =>
           req.channel_data = channel_data
           req.unique_id = unique_id
-          server.emit req.body['Event-Name'], req, res
+          @emit req.body['Event-Name'], req, res
 
         # Handle the incoming connection
-        res.linger (req,res) ->
-          res.filter Unique_ID, unique_id, (req,res) ->
-            res.event_json 'ALL', (req,res) ->
+        res.linger (req,res) =>
+          res.filter Unique_ID, unique_id, (req,res) =>
+            res.event_json 'ALL', (req,res) =>
               req.channel_data = channel_data
               req.unique_id = unique_id
-              server.emit 'CONNECT', req, res
+              @emit 'CONNECT', req, res
 
-    # Start the server.
-    server.listen port
-    return server
+    return @
 
-#### Usage:
-#
-#     server = new esl.CallServer (port)
-#
-#     server.on 'CONNECT', (req,res) ->
-#       # Start processing the call
-#       # Channel data is available as req.channel_data
-#       # For example:
-#       uri = req.channel_data.variable_sip_req_uri
-#
-#     # Other FreeSwitch channel events are available as well:
-#     server.on 'CHANNEL_ANSWER', (req,res) ->
-#       util.log 'Call was answered'
-#     server.on 'CHANNEL_HANGUP_COMPLETE', (req,res) ->
-#       # Call was disconnected.
-#
+  listen: -> @server.listen arguments...
