@@ -242,7 +242,7 @@ fs_command "reloadxml"
 <a href="http://stephane.shimaore.net/git/?p=ccnq3.git;a=blob;f=applications/prepaid/">prepaid code</a>
 and handles the nitty-gritty of setting up the server properly.</p>             </td>             <td class="code">               <div class="highlight"><pre><span class="nv">exports.CallServer = </span><span class="k">class</span> <span class="nx">CallServer</span> <span class="k">extends</span> <span class="nx">require</span><span class="p">(</span><span class="s1">&#39;events&#39;</span><span class="p">).</span><span class="nx">EventEmitter</span>
 
-  <span class="nv">constructor: </span><span class="p">(</span><span class="nx">port</span><span class="p">)</span><span class="o">:</span> <span class="o">-&gt;</span>
+  <span class="nv">constructor: </span><span class="nf">(port) -&gt;</span>
 
     <span class="nv">Unique_ID = </span><span class="s1">&#39;Unique-ID&#39;</span>
 
