@@ -400,3 +400,68 @@ exports.createClient = () -> return new eslClient()
 #
 #  to start receiving event notifications.
 
+#### CallServer: a higher-level interface
+#
+# This interface is based on my
+# [prepaid code](http://stephane.shimaore.net/git/?p=ccnq3.git;a=blob;f=applications/prepaid/)
+# and handles the nitty-gritty of setting up the server properly.
+
+exports.CallServer = class CallServer extends require('events').EventEmitter
+
+  constructor: (port): ->
+
+    Unique_ID = 'Unique-ID'
+
+    server = new eslServer (res) ->
+      res.connect (req,res) =>
+        # Channel data
+        channel_data = req.body
+        # UUID
+        unique_id = channel_data[Unique_ID]
+
+        # Clean-up at the end of the connection.
+        res.on 'esl_disconnect_notice', (req,res) =>
+           util.log "Receiving disconnection"
+           switch req.headers['Content-Disposition']
+             when 'linger'      then res.exit()
+             when 'disconnect'  then res.end()
+
+        # Use this from your code to force a disconnection.
+        server.force_disconnect = (res) ->
+          util.log 'Hangup call'
+          res.bgapi "uuid_kill #{unique_id}"
+
+        # Translate channel events into server events.
+        res.on 'esl_event', (req,res) =>
+          req.channel_data = channel_data
+          req.unique_id = unique_id
+          server.emit req.body['Event-Name'], req, res
+
+        # Handle the incoming connection
+        res.linger (req,res) ->
+          res.filter Unique_ID, unique_id, (req,res) ->
+            res.event_json 'ALL', (req,res) ->
+              req.channel_data = channel_data
+              req.unique_id = unique_id
+              server.emit 'CONNECT', req, res
+
+    # Start the server.
+    server.listen port
+    return server
+
+#### Usage:
+#
+#     server = new esl.CallServer (port)
+#
+#     server.on 'CONNECT', (req,res) ->
+#       # Start processing the call
+#       # Channel data is available as req.channel_data
+#       # For example:
+#       uri = req.channel_data.variable_sip_req_uri
+#
+#     # Other FreeSwitch channel events are available as well:
+#     server.on 'CHANNEL_ANSWER', (req,res) ->
+#       util.log 'Call was answered'
+#     server.on 'CHANNEL_HANGUP_COMPLETE', (req,res) ->
+#       # Call was disconnected.
+#
