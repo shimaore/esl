@@ -69,7 +69,7 @@ exports.debug = false
 
 #### CallServer Example
 #
-#     server = new esl.CallServer()
+#     server = esl.createCallServer()
 #
 #     server.on 'CONNECT', (req,res) ->
 #       # Start processing the call
@@ -83,7 +83,7 @@ exports.debug = false
 #     server.on 'CHANNEL_HANGUP_COMPLETE', (req,res) ->
 #       # Call was disconnected.
 #
-#     server.listen port
+#     server.listen 7000
 #
 
 #### Headers parser
@@ -439,47 +439,51 @@ exports.createClient = -> return new eslClient()
 # [prepaid code](http://stephane.shimaore.net/git/?p=ccnq3.git;a=blob;f=applications/prepaid/)
 # and handles the nitty-gritty of setting up the server properly.
 
-exports.CallServer = class CallServer extends require('events').EventEmitter
-
-  constructor: ->
-
-    super()
+exports.createCallServer = ->
 
     Unique_ID = 'Unique-ID'
 
-    @server = new eslServer (res) =>
+    server = new eslServer (res) ->
+      if exports.debug
+        util.log "Incoming connection"
+        util.log util.inspect res
+
       res.connect (req,res) =>
+
         # Channel data
         channel_data = req.body
         # UUID
         unique_id = channel_data[Unique_ID]
 
+        if exports.debug
+          util.log "Incoming call UUID = #{unique_id}"
+
         # Clean-up at the end of the connection.
-        res.on 'esl_disconnect_notice', (req,res) =>
-           util.log "Receiving disconnection"
-           switch req.headers['Content-Disposition']
-             when 'linger'      then res.exit()
-             when 'disconnect'  then res.end()
+        res.on 'esl_disconnect_notice', (req,res) ->
+          if exports.debug
+            util.log "Received ESL disconnection notice"
+          switch req.headers['Content-Disposition']
+            when 'linger'      then res.exit()
+            when 'disconnect'  then res.end()
 
         # Use this from your code to force a disconnection.
-        server.force_disconnect = (res) ->
+        #
+        #     res.emit 'force_disconnect'
+        #
+        res.on 'force_disconnect', ->
           util.log 'Hangup call'
-          res.bgapi "uuid_kill #{unique_id}"
+          @bgapi "uuid_kill #{unique_id}"
 
         # Translate channel events into server events.
-        res.on 'esl_event', (req,res) =>
+        res.on 'esl_event', (req,res) ->
           req.channel_data = channel_data
           req.unique_id = unique_id
-          @emit req.body['Event-Name'], req, res
+          server.emit req.body['Event-Name'], req, res
 
         # Handle the incoming connection
-        res.linger (req,res) =>
-          res.filter Unique_ID, unique_id, (req,res) =>
-            res.event_json 'ALL', (req,res) =>
+        res.linger (req,res) ->
+          res.filter Unique_ID, unique_id, (req,res) ->
+            res.event_json 'ALL', (req,res) ->
               req.channel_data = channel_data
               req.unique_id = unique_id
-              @emit 'CONNECT', req, res
-
-    return @
-
-  listen: -> @server.listen arguments...
+              server.emit 'CONNECT', req, res
