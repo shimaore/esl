@@ -6,5 +6,6 @@ Install:
 
 Documentation:
 
-  http://blog.shimaore.net/2011/11/nodejs-esl.html
-  http://shimaore.github.com/esl/esl.html
+  Overview and examples: http://blog.shimaore.net/2011/11/nodejs-esl.html
+
+  Source (via docco): http://shimaore.github.com/esl/esl.html
