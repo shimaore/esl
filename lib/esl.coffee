@@ -162,10 +162,8 @@ class eslResponse
       @socket.removeAllListeners('esl_api_response')
       # Register the callback for the proper event types.
       if cb?
-        @socket.on 'esl_command_reply', (req,res) ->
-          cb(req,res)
-        @socket.on 'esl_api_response', (req,res) ->
-          cb(req,res)
+        @socket.on 'esl_command_reply', cb
+        @socket.on 'esl_api_response', cb
 
       # Send the command out.
       @socket.write "#{command}\n"
