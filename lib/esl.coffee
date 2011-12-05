@@ -408,7 +408,7 @@ exports.createClient = () -> return new eslClient()
 
 exports.CallServer = class CallServer extends require('events').EventEmitter
 
-  constructor: (port): ->
+  constructor: (port) ->
 
     Unique_ID = 'Unique-ID'
 
