@@ -209,6 +209,9 @@ class eslResponse
   # is normally not used directly.
 
   send: (command,args,cb) ->
+      if exports.debug
+        util.log util.inspect command: command, args: args
+
       # Make sure we are the only one receiving command replies
       @socket.removeAllListeners('esl_command_reply')
       @socket.removeAllListeners('esl_api_response')
@@ -403,16 +406,19 @@ connectionListener= (socket) ->
     # Build request and response and send them out.
     req = new eslRequest headers,body
     res = new eslResponse socket
+    if exports.debug
+      util.log util.inspect event:event, req:req, res:res
     socket.emit event, req, res
   # Get things started
-  @emit 'esl_connect', new eslResponse socket if @emit?
+  socket.emit 'esl_connect', new eslResponse socket
 
 #### ESL Server
 
 class eslServer extends net.Server
   constructor: (requestListener) ->
-    @on 'esl_connect', requestListener
-    @on 'connection', connectionListener
+    @on 'connection', (socket) ->
+      socket.on 'esl_connect', requestListener
+      connectionListener socket
     super()
 
 # You can use createServer(callback) from your code.
@@ -420,11 +426,12 @@ exports.createServer = (requestListener) -> return new eslServer(requestListener
 
 #### ESL client
 class eslClient extends net.Socket
-  constructor: () ->
-    @on 'connect', () -> connectionListener(this)
+  constructor: ->
+    @on 'connect', ->
+      connectionListener @
     super()
 
-exports.createClient = () -> return new eslClient()
+exports.createClient = -> return new eslClient()
 
 #### CallServer: a higher-level interface
 #
