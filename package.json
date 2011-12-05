@@ -1,26 +1,26 @@
 {
-  "name": "esl",
-  "version": "0.1.0-alpha",
-  "description": "Client and Server for FreeSwitch Event System",
-  "keywords": "freeswitch event",
-  "author": { "name": "Stéphane Alnet", "email": "stephane@shimaore.net" },
-  "homepage": "http://blog.shimaore.net/2011/11/nodejs-esl.html",
-  "repository": {
+  "name": "esl"
+, "version": "0.1.0-alpha"
+, "description": "Client and Server for FreeSwitch Event System"
+, "keywords": "freeswitch event"
+, "author": { "name": "Stéphane Alnet", "email": "stephane@shimaore.net" }
+, "homepage": "http://blog.shimaore.net/2011/11/nodejs-esl.html"
+, "repository": {
     "type": "git"
   , "url": "http://stephane.shimaore.net/git/?p=ccnq3.git;a=tree;f=lib/esl"
   }
-  "contributors": [
+, "contributors": [
     { "name": "Paweł Pierścionek", "email": "pawel@voiceworks.pl" }
-  ],
-  "main": "lib/esl.js",
-  "dependencies": { "request": ">=1.9.5" },
-  "scripts": {
+  ]
+, "main": "lib/esl.js"
+, "dependencies": { "request": ">=1.9.5" }
+, "scripts": {
     "install": "coffee -c lib/esl.coffee"
   , "prepublish": "docco lib/esl.coffee"
-  },
-  "engines": {
+  }
+, "engines": {
     "node": ">=0.4.7"
   , "coffee": ">=1.1.1"
-  },
-  "ok": true
+  }
+, "ok": true
 }
