@@ -92,6 +92,9 @@ exports.debug = false
 # the presence and length of the body.
 
 parse_header_text = (header_text) ->
+  if exports.debug
+    util.log "parse_header_text(#{header_text})"
+
   header_lines = header_text.split("\n")
   headers = {}
   for line in header_lines
@@ -114,25 +117,24 @@ parse_header_text = (header_text) ->
 # "socket" application command).
 class eslParser
   constructor: (@socket) ->
-    @body_left = 0
+    @body_length = 0
     @buffer = ""
 
   # When capturing the body, buffer contains the current data
-  # (text), and body_left contains how many bytes are left to
+  # (text), and body_length contains how many bytes are expected to
   # be read in the body.
   capture_body: (data) ->
+    @buffer += data
+
     # As long as the whole body hasn't been received, keep
     # adding the new data into the buffer.
-    if data.length < @body_left
-      @buffer    += data
-      @body_left -= data.length
+    if @buffer.length < @body_length
       return
 
     # Consume the body once it has been fully received.
-    body = @buffer + data.substring(0,@body_left)
-    extra = data.substring(@body_left)
-    @body_left = 0
-    @buffer = ""
+    body = @buffer.substring(0,@body_length)
+    @buffer = @buffer.substring(@body_length)
+    @body_length = 0
 
     # Process the content
     @process @headers, body
@@ -140,45 +142,46 @@ class eslParser
 
     # Re-parse whatever data was left after the body was
     # fully consumed.
-    @capture_headers extra
+    @capture_headers ''
 
   # Capture headers, meaning up to the first blank line.
   capture_headers: (data) ->
-    header_end = data.indexOf("\n\n")
+    @buffer += data
 
     # Wait until we reach the end of the header.
+    header_end = @buffer.indexOf("\n\n")
     if header_end < 0
-      @buffer += data
       return
 
     # Consume the headers
-    header_text = @buffer + data.substring(0,header_end)
-    extra = data.substring(header_end+2)
-    @buffer = ""
+    header_text = @buffer.substring(0,header_end)
+    @buffer = @buffer.substring(header_end+2)
 
     # Parse the header lines
     @headers = parse_header_text(header_text)
 
     # Figure out whether a body is expected
     if @headers["Content-Length"]
-      @body_left = @headers["Content-Length"]
-      # Re-parse (and eventually process)
-      @capture_body extra
+      @body_length = @headers["Content-Length"]
+      # Parse the body (and eventually process)
+      @capture_body ''
 
     else
       # Process the (header-only) content
       @process @headers
       @headers = {}
 
-      # Re-parse whatever data was left after the headers
+      # Re-parse whatever data was left after these headers
       # were fully consumed.
-      @capture_headers extra
+      @capture_headers ''
 
   # Dispatch incoming data into the header or body parsers.
   on_data: (data) ->
+    if exports.debug
+      util.log "on_data(#{data})"
 
     # Capture the body as needed
-    if @body_left > 0
+    if @body_length > 0
       return @capture_body data
     else
       return @capture_headers data
@@ -186,6 +189,10 @@ class eslParser
   # For completeness provide an on_end() method.
   # TODO: it probably should make sure the buffer is empty?
   on_end: () ->
+    if exports.debug
+      util.log "Parser: end of stream"
+      if @buffer.length > 0
+        util.log "Buffer is not empty, left over: #{@buffer}"
 
 #### ESL request
 class eslRequest
