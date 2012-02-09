@@ -74,16 +74,23 @@ exports.debug = false
 #     server.on 'CONNECT', (req,res) ->
 #       # Start processing the call
 #       # Channel data is available as req.channel_data
+#       # Channel UUID is available as req.unique_id
 #       # For example:
 #       uri = req.channel_data.variable_sip_req_uri
 #
 #     # Other FreeSwitch channel events are available as well:
 #     server.on 'CHANNEL_ANSWER', (req,res) ->
 #       util.log 'Call was answered'
+#       # You can force a disconnect (call hangup) using:
+#       server.force_disconnect()
 #     server.on 'CHANNEL_HANGUP_COMPLETE', (req,res) ->
-#       # Call was disconnected.
+#       util.log 'Call was disconnected'
 #
+#     # Start the ESL server on port 7000.
 #     server.listen 7000
+#     # From the dialplan, use
+#     #   <action application="socket" data="127.0.0.1:7000 async full"/>
+#     # to hand the call over to this ESL server.
 #
 
 #### Headers parser
