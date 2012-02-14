@@ -13,6 +13,7 @@
     { "name": "Paweł Pierścionek", "email": "pawel@voiceworks.pl" }
   ]
 , "main": "lib/esl.js"
+, "files": ["lib/esl.js"]
 , "dependencies": { "request": ">=1.9.5" }
 , "scripts": {
     "prepublish": "docco lib/esl.coffee; coffee -c lib/esl.coffee"
