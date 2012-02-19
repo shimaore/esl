@@ -380,13 +380,13 @@ verbose_events_command_handler = (socket,command,args,cb) ->
   # Make sure we are the only one receiving command replies
   socket.removeAllListeners('esl_command_reply')
   socket.removeAllListeners('esl_api_response')
-  socket.removeAllListeners('CHANNEL_EXECUTE')
+  socket.removeAllListeners('CHANNEL_EXECUTE_COMPLETE')
   socket.removeAllListeners('esl_channel_data')
   if cb?
     socket.on 'esl_api_response', cb
     socket.on 'esl_channel_data', cb
     if command is 'sendmsg' and args['call-command'] is 'execute'
-      socket.on 'CHANNEL_EXECUTE', cb
+      socket.on 'CHANNEL_EXECUTE_COMPLETE', cb
     else
       socket.on 'esl_command_reply', cb
 
