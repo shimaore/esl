@@ -366,17 +366,21 @@ default_command_handler = (socket,cb) ->
   # Make sure we are the only one receiving command replies
   socket.removeAllListeners('esl_command_reply')
   socket.removeAllListeners('esl_api_response')
+  socket.removeAllListeners('esl_channel_data')
   if cb?
     socket.on 'esl_command_reply', cb
     socket.on 'esl_api_response', cb
+    socket.on 'esl_channel_data', cb
 
 verbose_events_command_handler = (socket,cb) ->
   # Make sure we are the only one receiving command replies
   socket.removeAllListeners('esl_command_reply')
   socket.removeAllListeners('esl_api_response')
   socket.removeAllListeners('CHANNEL_EXECUTE')
+  socket.removeAllListeners('esl_channel_data')
   if cb?
     socket.on 'CHANNEL_EXECUTE', cb
+    socket.on 'esl_channel_data', cb
 
 connectionListener= (socket,command_handler) ->
 
@@ -398,14 +402,16 @@ connectionListener= (socket,command_handler) ->
       when 'auth/request'
         event = 'esl_auth_request'
       when 'command/reply'
-        event = 'esl_command_reply'
         # Apparently a bug in the response to "connect"
         if headers['Event-Name'] is 'CHANNEL_DATA'
+          event = 'esl_channel_data'
           body = headers
           headers = {}
           for n in ['Content-Type','Reply-Text','Socket-Mode','Control']
             headers[n] = body[n]
             delete body[n]
+        else
+          event = 'esl_command_reply'
       when 'text/event-json'
         try
           body = JSON.parse(body)
