@@ -398,13 +398,9 @@ class eslResponse
 #### Connection Listener (socket events handler)
 # This is modelled after Node.js' http.js
 
-connectionListener= (socket,intercept_response) ->
+connectionListener= (socket,response) ->
 
-  new_response = ->
-    res = new eslResponse socket
-    if intercept_response?
-      res.intercept_response = intercept_response
-    return res
+  response ?= eslResponse
 
   socket.setEncoding('ascii')
   parser = new eslParser socket
@@ -450,22 +446,20 @@ connectionListener= (socket,intercept_response) ->
         event = headers['Content-Type']
     # Build request and response and send them out.
     req = new eslRequest headers,body
-    res = new_response()
-    if intercept_response?
-      res.intercept_response = intercept_response
+    res = new response socket
     if exports.debug
       util.log util.inspect event:event, req:req, res:res
     socket.emit event, req, res
   # Get things started
-  socket.emit 'esl_connect', new_response()
+  socket.emit 'esl_connect', new response socket
 
 #### ESL Server
 
 class eslServer extends net.Server
-  constructor: (requestListener,intercept_response) ->
+  constructor: (requestListener,response) ->
     @on 'connection', (socket) ->
       socket.on 'esl_connect', requestListener
-      connectionListener socket, intercept_response
+      connectionListener socket, response
     super()
 
 # You can use createServer(callback) from your code.
@@ -473,9 +467,9 @@ exports.createServer = (requestListener) -> return new eslServer(requestListener
 
 #### ESL client
 class eslClient extends net.Socket
-  constructor: (intercept_response) ->
+  constructor: (response) ->
     @on 'connect', ->
-      connectionListener @, intercept_response
+      connectionListener @, response
     super()
 
 exports.createClient = -> return new eslClient()
@@ -486,22 +480,23 @@ exports.createClient = -> return new eslClient()
 # [prepaid code](http://stephane.shimaore.net/git/?p=ccnq3.git;a=blob;f=applications/prepaid/)
 # and handles the nitty-gritty of setting up the server properly.
 
-synchronous_intercept_response = (command,args,cb) ->
-  if command is 'sendmsg' and args['call-command'] is 'execute'
-    @socket.on 'CHANNEL_EXECUTE_COMPLETE', cb
-  else
-    # Make sure we are the only one receiving command replies
-    @socket.removeAllListeners('esl_command_reply')
-    @socket.removeAllListeners('esl_api_response')
-    # Register the callback for the proper event types.
-    @socket.on 'esl_command_reply', cb
-    @socket.on 'esl_api_response', cb
+class synchronousResponse extends eslResponse
+  intercept_response: (command,args,cb) ->
+    if command is 'sendmsg' and args['call-command'] is 'execute'
+      @socket.on 'CHANNEL_EXECUTE_COMPLETE', cb
+    else
+      # Make sure we are the only one receiving command replies
+      @socket.removeAllListeners('esl_command_reply')
+      @socket.removeAllListeners('esl_api_response')
+      # Register the callback for the proper event types.
+      @socket.on 'esl_command_reply', cb
+      @socket.on 'esl_api_response', cb
 
 exports.createCallServer = (synchronous) ->
 
-    intercept_response = null
+    response = null
     if synchronous
-      intercept_response = synchronous_intercept_response
+      response = synchronousResponse
 
     Unique_ID = 'Unique-ID'
 
@@ -550,4 +545,4 @@ exports.createCallServer = (synchronous) ->
               req.unique_id = unique_id
               server.emit 'CONNECT', req, res
 
-    server = new eslServer listener, intercept_response
+    server = new eslServer listener, response
