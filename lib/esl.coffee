@@ -217,7 +217,7 @@ class eslResponse
 
   send: (command,args,cb) ->
       if exports.debug
-        util.log util.inspect command: command, args: args
+        util.log util.inspect command: command, args: args, cb: cb
 
       # Register the callback for the proper event types.
       command_handler? @socket, cb
@@ -363,6 +363,8 @@ class eslResponse
 # This is modelled after Node.js' http.js
 
 default_command_handler = (socket,cb) ->
+  if exports.debug
+    util.log "default_command_handler"
   # Make sure we are the only one receiving command replies
   socket.removeAllListeners('esl_command_reply')
   socket.removeAllListeners('esl_api_response')
@@ -373,6 +375,8 @@ default_command_handler = (socket,cb) ->
     socket.on 'esl_channel_data', cb
 
 verbose_events_command_handler = (socket,cb) ->
+  if exports.debug
+    util.log "verbose_events_comamnd_handler"
   # Make sure we are the only one receiving command replies
   socket.removeAllListeners('esl_command_reply')
   socket.removeAllListeners('esl_api_response')
@@ -392,11 +396,13 @@ connectionListener= (socket,command_handler) ->
   socket.on 'end',  ()     ->  parser.on_end()
   parser.process = (headers,body) ->
     if exports.debug
-      util.log util.inspect headers: headers, body: body
+      util.log "parser.process: " + util.inspect headers: headers, body: body
 
     # Rewrite headers as needed to work around some weirdnesses in
     # the protocol;
     # and assign unified event IDs to the ESL Content-Types.
+
+    event = null
 
     switch headers['Content-Type']
       when 'auth/request'
@@ -430,11 +436,12 @@ connectionListener= (socket,command_handler) ->
         event = 'esl_api_response'
       else
         event = headers['Content-Type']
+
     # Build request and response and send them out.
     req = new eslRequest headers,body
     res = new eslResponse socket, command_handler
     if exports.debug
-      util.log util.inspect event:event, req:req, res:res
+      util.log "socket.emit: " + util.inspect event:event, req:req, res:res
     socket.emit event, req, res
 
   # Get things started
