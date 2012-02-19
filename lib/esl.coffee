@@ -486,7 +486,7 @@ exports.createClient = -> return new eslClient()
 # [prepaid code](http://stephane.shimaore.net/git/?p=ccnq3.git;a=blob;f=applications/prepaid/)
 # and handles the nitty-gritty of setting up the server properly.
 
-synchronous_intercept_response: (command,args,cb) ->
+synchronous_intercept_response = (command,args,cb) ->
   if command is 'sendmsg' and args['call-command'] is 'execute'
     @socket.on 'CHANNEL_EXECUTE_COMPLETE', cb
   else
