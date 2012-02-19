@@ -220,7 +220,7 @@ class eslResponse
         util.log util.inspect command: command, args: args, cb: cb
 
       # Register the callback for the proper event types.
-      @command_handler? @socket, cb
+      @command_handler? command, @socket, cb
 
       # Send the command out.
       @socket.write "#{command}\n"
@@ -362,9 +362,9 @@ class eslResponse
 #### Connection Listener (socket events handler)
 # This is modelled after Node.js' http.js
 
-default_command_handler = (socket,cb) ->
+default_command_handler = (command,socket,cb) ->
   if exports.debug
-    util.log "default_command_handler"
+    util.log "default_command_handler #{command}"
   # Make sure we are the only one receiving command replies
   socket.removeAllListeners('esl_command_reply')
   socket.removeAllListeners('esl_api_response')
@@ -374,17 +374,21 @@ default_command_handler = (socket,cb) ->
     socket.on 'esl_api_response', cb
     socket.on 'esl_channel_data', cb
 
-verbose_events_command_handler = (socket,cb) ->
+verbose_events_command_handler = (command,socket,cb) ->
   if exports.debug
-    util.log "verbose_events_comamnd_handler"
+    util.log "verbose_events_command_handler #{command}"
   # Make sure we are the only one receiving command replies
   socket.removeAllListeners('esl_command_reply')
   socket.removeAllListeners('esl_api_response')
   socket.removeAllListeners('CHANNEL_EXECUTE')
   socket.removeAllListeners('esl_channel_data')
   if cb?
-    socket.on 'CHANNEL_EXECUTE', cb
+    socket.on 'esl_api_response', cb
     socket.on 'esl_channel_data', cb
+    if command is 'execute'
+      socket.on 'CHANNEL_EXECUTE', cb
+    else
+      socket.on 'esl_command_reply', cb
 
 connectionListener= (socket,command_handler) ->
 
@@ -521,7 +525,7 @@ exports.createCallServer = ->
             res.event_json 'ALL', (req,res) ->
               req.channel_data = channel_data
               req.unique_id = unique_id
-              res.cmd 'verbose_events', null, (req,res) ->
+              res.execute 'verbose_events', null, (req,res) ->
                 server.emit 'CONNECT', req, res
 
     server = new eslServer listener, verbose_events_command_handler
