@@ -256,7 +256,7 @@ class eslResponse
         util.log util.inspect command: command, args: args
 
       if cb?
-        @intercept_reponse command, args, cb
+        @intercept_response command, args, cb
 
       # Send the command out.
       @socket.write "#{command}\n"
