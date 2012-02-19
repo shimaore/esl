@@ -220,7 +220,7 @@ class eslResponse
         util.log util.inspect command: command, args: args, cb: cb
 
       # Register the callback for the proper event types.
-      @command_handler? command, @socket, cb
+      @command_handler? @socket, command, args, cb
 
       # Send the command out.
       @socket.write "#{command}\n"
@@ -362,7 +362,7 @@ class eslResponse
 #### Connection Listener (socket events handler)
 # This is modelled after Node.js' http.js
 
-default_command_handler = (command,socket,cb) ->
+default_command_handler = (socket,command,args,cb) ->
   if exports.debug
     util.log "default_command_handler #{command}"
   # Make sure we are the only one receiving command replies
@@ -374,7 +374,7 @@ default_command_handler = (command,socket,cb) ->
     socket.on 'esl_api_response', cb
     socket.on 'esl_channel_data', cb
 
-verbose_events_command_handler = (command,socket,cb) ->
+verbose_events_command_handler = (socket,command,args,cb) ->
   if exports.debug
     util.log "verbose_events_command_handler #{command}"
   # Make sure we are the only one receiving command replies
