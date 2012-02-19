@@ -482,10 +482,6 @@ exports.createClient = -> return new eslClient()
 
 exports.createCallServer = (synchronous) ->
 
-    response = null
-    if synchronous
-      response = synchronousResponse
-
     Unique_ID = 'Unique-ID'
 
     listener = (res) ->
@@ -545,5 +541,9 @@ exports.createCallServer = (synchronous) ->
           # Register the callback for the proper event types.
           @socket.on 'esl_command_reply', cb
           @socket.on 'esl_api_response', cb
+
+    response = null
+    if synchronous
+      response = synchronousResponse
 
     server = new eslServer listener, response
