@@ -69,6 +69,33 @@ exports.debug = false
 
 #### CallServer Example
 #
+# From the dialplan, use
+#    <action application="socket" data="127.0.0.1:7000 async full"/>
+# to hand the call over to an ESL server.
+#
+# If you'd like to get realtime channel variables and synchronous commands, do
+#
+#     server = esl.createCallServer true
+#
+#     server.on 'CONNECT', (req,res) ->
+#       res.execute 'verbose_events', null, (req,res) ->
+#         # You may now access realtime variables as
+#         foo = req.body.variable_foo
+#         res.execute 'play-file', 'voicemail/vm-hello', (req,res) ->
+#           # This call with wait for the command to finish
+#           # Your application continues here
+#
+#     server.listen 7000
+#
+# Note that although the socket command was called (in the dialplan above) with
+# the "async" parameter, createCallServer is processing the commands synchronously.
+# Of course you can work synchronously without using verbose_events; you may still
+# obtain realtime values by using the API (lookup the "eval" command).
+# However you cannot use verbose_events asynchronously, unless you capture the
+# CHANNEL_EXECUTE_COMPLETE event.
+#
+# An asynchronous server will look this way:
+#
 #     server = esl.createCallServer()
 #
 #     server.on 'CONNECT', (req,res) ->
@@ -88,9 +115,6 @@ exports.debug = false
 #
 #     # Start the ESL server on port 7000.
 #     server.listen 7000
-#     # From the dialplan, use
-#     #   <action application="socket" data="127.0.0.1:7000 async full"/>
-#     # to hand the call over to this ESL server.
 #
 
 #### Headers parser
@@ -209,6 +233,18 @@ class eslRequest
 class eslResponse
   constructor: (@socket) ->
 
+  # If a callback is provided we attempt to trigger it
+  # when the operation completes.
+  # By default, the trigger is done as soon as the ESL command
+  # finishes.
+  intercept_response: (command,args,cb) ->
+    # Make sure we are the only one receiving command replies
+    @socket.removeAllListeners('esl_command_reply')
+    @socket.removeAllListeners('esl_api_response')
+    # Register the callback for the proper event types.
+    @socket.on 'esl_command_reply', cb
+    @socket.on 'esl_api_response', cb
+
   # A generic way of sending commands back to FreeSwitch.
   #
   #      send (string,hash,function(req,res))
@@ -219,13 +255,8 @@ class eslResponse
       if exports.debug
         util.log util.inspect command: command, args: args
 
-      # Make sure we are the only one receiving command replies
-      @socket.removeAllListeners('esl_command_reply')
-      @socket.removeAllListeners('esl_api_response')
-      # Register the callback for the proper event types.
       if cb?
-        @socket.on 'esl_command_reply', cb
-        @socket.on 'esl_api_response', cb
+        @intercept_reponse command, args, cb
 
       # Send the command out.
       @socket.write "#{command}\n"
@@ -367,7 +398,13 @@ class eslResponse
 #### Connection Listener (socket events handler)
 # This is modelled after Node.js' http.js
 
-connectionListener= (socket) ->
+connectionListener= (socket,intercept_response) ->
+
+  new_response = ->
+    res = new eslResponse socket
+    if intercept_response?
+      res.intercept_response = intercept_response
+
   socket.setEncoding('ascii')
   parser = new eslParser socket
   socket.on 'data', (data) ->  parser.on_data(data)
@@ -412,20 +449,22 @@ connectionListener= (socket) ->
         event = headers['Content-Type']
     # Build request and response and send them out.
     req = new eslRequest headers,body
-    res = new eslResponse socket
+    res = new_response()
+    if intercept_response?
+      res.intercept_response = intercept_response
     if exports.debug
       util.log util.inspect event:event, req:req, res:res
     socket.emit event, req, res
   # Get things started
-  socket.emit 'esl_connect', new eslResponse socket
+  socket.emit 'esl_connect', new_response()
 
 #### ESL Server
 
 class eslServer extends net.Server
-  constructor: (requestListener) ->
+  constructor: (requestListener,intercept_response) ->
     @on 'connection', (socket) ->
       socket.on 'esl_connect', requestListener
-      connectionListener socket
+      connectionListener socket, intercept_response
     super()
 
 # You can use createServer(callback) from your code.
@@ -433,9 +472,9 @@ exports.createServer = (requestListener) -> return new eslServer(requestListener
 
 #### ESL client
 class eslClient extends net.Socket
-  constructor: ->
+  constructor: (intercept_response) ->
     @on 'connect', ->
-      connectionListener @
+      connectionListener @, intercept_response
     super()
 
 exports.createClient = -> return new eslClient()
@@ -446,11 +485,26 @@ exports.createClient = -> return new eslClient()
 # [prepaid code](http://stephane.shimaore.net/git/?p=ccnq3.git;a=blob;f=applications/prepaid/)
 # and handles the nitty-gritty of setting up the server properly.
 
-exports.createCallServer = ->
+synchronous_intercept_response: (command,args,cb) ->
+  if command is 'sendmsg' and args['call-command'] is 'execute'
+    @socket.on 'CHANNEL_EXECUTE_COMPLETE', cb
+  else
+    # Make sure we are the only one receiving command replies
+    @socket.removeAllListeners('esl_command_reply')
+    @socket.removeAllListeners('esl_api_response')
+    # Register the callback for the proper event types.
+    @socket.on 'esl_command_reply', cb
+    @socket.on 'esl_api_response', cb
+
+exports.createCallServer = (synchronous) ->
+
+    intercept_response = null
+    if synchronous
+      intercept_response = synchronous_intercept_response
 
     Unique_ID = 'Unique-ID'
 
-    server = new eslServer (res) ->
+    listener = (res) ->
       if exports.debug
         util.log "Incoming connection"
         util.log util.inspect res
@@ -494,3 +548,5 @@ exports.createCallServer = ->
               req.channel_data = channel_data
               req.unique_id = unique_id
               server.emit 'CONNECT', req, res
+
+    server = new eslServer listener, intercept_response
