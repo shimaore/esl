@@ -207,7 +207,7 @@ class eslRequest
 
 #### ESL response and associated API
 class eslResponse
-  constructor: (@socket,command_handler) ->
+  constructor: (@socket,@command_handler) ->
 
   # A generic way of sending commands back to FreeSwitch.
   #
@@ -220,8 +220,7 @@ class eslResponse
         util.log util.inspect command: command, args: args, cb: cb
 
       # Register the callback for the proper event types.
-      if command_handler?
-        command_handler @socket, cb
+      @command_handler? @socket, cb
 
       # Send the command out.
       @socket.write "#{command}\n"
