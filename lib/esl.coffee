@@ -220,7 +220,8 @@ class eslResponse
         util.log util.inspect command: command, args: args, cb: cb
 
       # Register the callback for the proper event types.
-      command_handler? @socket, cb
+      if command_handler?
+        command_handler @socket, cb
 
       # Send the command out.
       @socket.write "#{command}\n"
