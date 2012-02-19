@@ -445,7 +445,7 @@ connectionListener= (socket,command_handler) ->
     socket.emit event, req, res
 
   # Get things started
-  socket.emit 'esl_connect', new eslResponse socket
+  socket.emit 'esl_connect', new eslResponse socket, command_handler
 
 #### ESL Server
 
