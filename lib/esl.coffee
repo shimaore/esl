@@ -404,6 +404,7 @@ connectionListener= (socket,intercept_response) ->
     res = new eslResponse socket
     if intercept_response?
       res.intercept_response = intercept_response
+    return res
 
   socket.setEncoding('ascii')
   parser = new eslParser socket
