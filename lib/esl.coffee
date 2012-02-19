@@ -480,18 +480,6 @@ exports.createClient = -> return new eslClient()
 # [prepaid code](http://stephane.shimaore.net/git/?p=ccnq3.git;a=blob;f=applications/prepaid/)
 # and handles the nitty-gritty of setting up the server properly.
 
-class synchronousResponse extends eslResponse
-  intercept_response: (command,args,cb) ->
-    if command is 'sendmsg' and args['call-command'] is 'execute'
-      @socket.on 'CHANNEL_EXECUTE_COMPLETE', cb
-    else
-      # Make sure we are the only one receiving command replies
-      @socket.removeAllListeners('esl_command_reply')
-      @socket.removeAllListeners('esl_api_response')
-      # Register the callback for the proper event types.
-      @socket.on 'esl_command_reply', cb
-      @socket.on 'esl_api_response', cb
-
 exports.createCallServer = (synchronous) ->
 
     response = null
@@ -544,5 +532,18 @@ exports.createCallServer = (synchronous) ->
               req.channel_data = channel_data
               req.unique_id = unique_id
               server.emit 'CONNECT', req, res
+
+    class synchronousResponse extends eslResponse
+      intercept_response: (command,args,cb) ->
+        @socket.removeAllListeners('esl_command_reply')
+        @socket.removeAllListeners('esl_api_response')
+        server.removeAllListeners('CHANNEL_EXECUTE_COMPLETE')
+        if command is 'sendmsg' and args['call-command'] is 'execute'
+          server.on 'CHANNEL_EXECUTE_COMPLETE', cb
+        else
+          # Make sure we are the only one receiving command replies
+          # Register the callback for the proper event types.
+          @socket.on 'esl_command_reply', cb
+          @socket.on 'esl_api_response', cb
 
     server = new eslServer listener, response
