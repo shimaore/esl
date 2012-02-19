@@ -207,7 +207,7 @@ class eslRequest
 
 #### ESL response and associated API
 class eslResponse
-  constructor: (@socket) ->
+  constructor: (@socket,command_handler) ->
 
   # A generic way of sending commands back to FreeSwitch.
   #
@@ -219,13 +219,8 @@ class eslResponse
       if exports.debug
         util.log util.inspect command: command, args: args
 
-      # Make sure we are the only one receiving command replies
-      @socket.removeAllListeners('esl_command_reply')
-      @socket.removeAllListeners('esl_api_response')
       # Register the callback for the proper event types.
-      if cb?
-        @socket.on 'esl_command_reply', cb
-        @socket.on 'esl_api_response', cb
+      command_handler? @socket, cb
 
       # Send the command out.
       @socket.write "#{command}\n"
@@ -367,7 +362,26 @@ class eslResponse
 #### Connection Listener (socket events handler)
 # This is modelled after Node.js' http.js
 
-connectionListener= (socket) ->
+default_command_handler = (socket,cb) ->
+  # Make sure we are the only one receiving command replies
+  socket.removeAllListeners('esl_command_reply')
+  socket.removeAllListeners('esl_api_response')
+  if cb?
+    socket.on 'esl_command_reply', cb
+    socket.on 'esl_api_response', cb
+
+verbose_events_command_handler = (socket,cb) ->
+  # Make sure we are the only one receiving command replies
+  socket.removeAllListeners('esl_command_reply')
+  socket.removeAllListeners('esl_api_response')
+  socket.removeAllListeners('CHANNEL_EXECUTE')
+  if cb?
+    socket.on 'CHANNEL_EXECUTE', cb
+
+connectionListener= (socket,command_handler) ->
+
+  command_handler ?= default_command_handler
+
   socket.setEncoding('ascii')
   parser = new eslParser socket
   socket.on 'data', (data) ->  parser.on_data(data)
@@ -412,20 +426,21 @@ connectionListener= (socket) ->
         event = headers['Content-Type']
     # Build request and response and send them out.
     req = new eslRequest headers,body
-    res = new eslResponse socket
+    res = new eslResponse socket, command_handler
     if exports.debug
       util.log util.inspect event:event, req:req, res:res
     socket.emit event, req, res
+
   # Get things started
   socket.emit 'esl_connect', new eslResponse socket
 
 #### ESL Server
 
 class eslServer extends net.Server
-  constructor: (requestListener) ->
+  constructor: (requestListener,command_handler) ->
     @on 'connection', (socket) ->
       socket.on 'esl_connect', requestListener
-      connectionListener socket
+      connectionListener socket, command_handler
     super()
 
 # You can use createServer(callback) from your code.
@@ -433,9 +448,9 @@ exports.createServer = (requestListener) -> return new eslServer(requestListener
 
 #### ESL client
 class eslClient extends net.Socket
-  constructor: ->
+  constructor: (command_handler) ->
     @on 'connect', ->
-      connectionListener @
+      connectionListener @, command_handler
     super()
 
 exports.createClient = -> return new eslClient()
@@ -450,7 +465,7 @@ exports.createCallServer = ->
 
     Unique_ID = 'Unique-ID'
 
-    server = new eslServer (res) ->
+    listener = (res) ->
       if exports.debug
         util.log "Incoming connection"
         util.log util.inspect res
@@ -493,4 +508,7 @@ exports.createCallServer = ->
             res.event_json 'ALL', (req,res) ->
               req.channel_data = channel_data
               req.unique_id = unique_id
-              server.emit 'CONNECT', req, res
+              res.cmd 'verbose_events', null, (req,res) ->
+                server.emit 'CONNECT', req, res
+
+    server = new eslServer listener, verbose_events_command_handler
