@@ -385,7 +385,7 @@ verbose_events_command_handler = (socket,command,args,cb) ->
   if cb?
     socket.on 'esl_api_response', cb
     socket.on 'esl_channel_data', cb
-    if command is 'execute'
+    if command is 'sendmsg' and args['call-command'] is 'execute'
       socket.on 'CHANNEL_EXECUTE', cb
     else
       socket.on 'esl_command_reply', cb
