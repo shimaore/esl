@@ -259,11 +259,15 @@ class eslResponse
         @intercept_response command, args, cb
 
       # Send the command out.
-      @socket.write "#{command}\n"
-      if args?
-        for key, value of args
-          @socket.write "#{key}: #{value}\n"
-      @socket.write "\n"
+      try
+        # write will throw if the socket is closed
+        @socket.write "#{command}\n"
+        if args?
+          for key, value of args
+            @socket.write "#{key}: #{value}\n"
+        @socket.write "\n"
+      catch e
+        cb e
 
   on: (event,listener) -> @socket.on(event,listener)
 
