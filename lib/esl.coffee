@@ -406,13 +406,13 @@ class eslResponse
         when 'disconnect'  then @end()
 
   start_call_server: ->
-    @connect (req,res) ->
+    @connect (req,res) =>
       unique_id = req.body['Unique-ID']
       @auto_cleanup
       # Handle the incoming connection
-      @linger (req,res) ->
-        @filter Unique_ID, unique_id, (req,res) ->
-          @event_json 'ALL', (req,res) ->
+      @linger (req,res) =>
+        @filter Unique_ID, unique_id, (req,res) =>
+          @event_json 'ALL', (req,res) =>
             @emit 'CONNECT', req, res
 
 #### Connection Listener (socket events handler)
