@@ -49,10 +49,10 @@ exports.debug = false
 #     # Open connection, send arbitrary API command, disconnect.
 #     fs_command = (cmd,cb) ->
 #       client = esl.createClient()
-#       client.on 'esl_auth_request', ->
-#         this.auth 'ClueCon', ->
-#           this.api cmd, ->
-#             this.exit ->
+#       client.on 'esl_auth_request', (call) ->
+#         call.auth 'ClueCon', ->
+#           call.api cmd, ->
+#             call.exit ->
 #               client.end()
 #       if cb?
 #         client.on 'close', cb
@@ -63,7 +63,7 @@ exports.debug = false
 #
 #  Note: Use
 #
-#     res.event_json 'HEARTBEAT'
+#     call.event_json 'HEARTBEAT'
 #
 #  to start receiving event notifications.
 
@@ -77,14 +77,13 @@ exports.debug = false
 #
 #     server = esl.createCallServer()
 #
-#     server.on 'CONNECT', ->
+#     server.on 'CONNECT', (call) ->
 #       # "verbose_events" will send us channel data after each "command".
-#       this.command 'verbose_events', ->
+#       call.command 'verbose_events', ->
 #         # You may now access realtime variables from @body
 #         foo = this.body.variable_foo
 #         # Wait for the command to finish.
-#         this.command 'play-file', 'voicemail/vm-hello', ->
-#           # The application continues here
+#         call.command 'play-file', 'voicemail/vm-hello'
 #
 #     server.listen 7000
 #
@@ -94,13 +93,13 @@ exports.debug = false
 #
 #     server = esl.createServer()
 #
-#     server.on 'CONNECT', ->
-#       uri = this.body.variable_sip_req_uri
+#     server.on 'CONNECT', (call) ->
+#       uri = call.body.variable_sip_req_uri
 #
 #       # Other FreeSwitch channel events are available as well:
-#       this.on 'CHANNEL_ANSWER', ->
+#       call.on 'CHANNEL_ANSWER', (call) ->
 #         util.log 'Call was answered'
-#       this.on 'CHANNEL_HANGUP_COMPLETE', ->
+#       call.on 'CHANNEL_HANGUP_COMPLETE', (call) ->
 #         util.log 'Call was disconnected'
 #
 #     # Start the ESL server on port 7000.
@@ -487,14 +486,14 @@ class eslServer extends net.Server
 exports.createServer = (requestListener) -> return new eslServer(requestListener)
 
 exports.createCallServer = ->
-  server = new eslServer ->
+  server = new eslServer (call) ->
     Unique_ID = 'Unique-ID'
-    @connect ->
-      unique_id = @body[Unique_ID]
-      @auto_cleanup()
-      @filter Unique_ID, unique_id, ->
-        @event_json 'ALL', ->
-          server.emit 'CONNECT', @
+    call.connect ->
+      unique_id = call.body[Unique_ID]
+      call.auto_cleanup()
+      call.filter Unique_ID, unique_id, ->
+        call.event_json 'ALL', ->
+          server.emit 'CONNECT', call
   return server
 
 #### ESL client
