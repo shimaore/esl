@@ -79,9 +79,9 @@ exports.debug = false
 #
 #     server.on 'CONNECT', (call) ->
 #       # "verbose_events" will send us channel data after each "command".
-#       call.command 'verbose_events', ->
-#         # You may now access realtime variables from @body
-#         foo = this.body.variable_foo
+#       call.command 'verbose_events', (call) ->
+#         # You may now access realtime variables from call.body
+#         foo = call.body.variable_foo
 #         # Wait for the command to finish.
 #         call.command 'play-file', 'voicemail/vm-hello'
 #
@@ -411,8 +411,8 @@ connectionListener= (socket) ->
 
   # Make the command responses somewhat unique.
   socket.on 'CHANNEL_EXECUTE_COMPLETE', (res) ->
-    application = @body['Application']
-    application_data = @body['Application-Data']
+    application = res.body['Application']
+    application_data = res.body['Application-Data']
     socket.emit "#{event_name} #{application} #{application_data}", res
 
   parser.process = (headers,body) ->
