@@ -406,8 +406,9 @@ class eslResponse
         when 'disconnect'  then @end()
 
   start_call_server: ->
+    Unique_ID = 'Unique-ID'
     @connect (req,res) =>
-      unique_id = req.body['Unique-ID']
+      unique_id = req.body[Unique_ID]
       @auto_cleanup
       # Handle the incoming connection
       @linger (req,res) =>
