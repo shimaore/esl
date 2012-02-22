@@ -485,9 +485,9 @@ class eslServer extends net.Server
 exports.createServer = (requestListener) -> return new eslServer(requestListener)
 
 exports.createCallServer = ->
-  server = new eslServer (call) ->
+  server = new eslServer ->
     Unique_ID = 'Unique-ID'
-    call.connect ->
+    call.connect (call) ->
       unique_id = call.body[Unique_ID]
       call.auto_cleanup()
       call.filter Unique_ID, unique_id, ->
