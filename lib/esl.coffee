@@ -413,7 +413,7 @@ connectionListener= (socket) ->
   socket.on 'CHANNEL_EXECUTE_COMPLETE', (res) ->
     application = res.body['Application']
     application_data = res.body['Application-Data']
-    socket.emit "#{event_name} #{application} #{application_data}", res
+    socket.emit "CHANNEL_EXECUTE_COMPLETE #{application} #{application_data}", res
 
   parser.process = (headers,body) ->
     if exports.debug
