@@ -487,11 +487,11 @@ exports.createServer = (requestListener) -> return new eslServer(requestListener
 exports.createCallServer = ->
   server = new eslServer (call) ->
     Unique_ID = 'Unique-ID'
-    call.connect (call) ->
+    call.connect ->
       unique_id = call.body[Unique_ID]
       call.auto_cleanup()
-      call.filter Unique_ID, unique_id, (call) ->
-        call.event_json 'ALL', (call) ->
+      call.filter Unique_ID, unique_id, ->
+        call.event_json 'ALL', ->
           server.emit 'CONNECT', call
   return server
 
