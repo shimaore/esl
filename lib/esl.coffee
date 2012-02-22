@@ -221,7 +221,7 @@ class eslResponse
   register_callback: (event,cb) ->
     @socket.on event, (res) =>
       @socket.removeAllListeners event
-      cb.apply res
+      cb res
 
   # A generic way of sending commands to FreeSwitch.
   #
@@ -360,8 +360,7 @@ class eslResponse
   # The callback is only called when the command has completed.
   command_uuid: (uuid,app_name,app_arg,cb) ->
     if cb?
-      @socket.on "CHANNEL_EXECUTE_COMPLETE #{app_name} #{app_arg}", (res) ->
-        cb.apply res
+      @socket.on "CHANNEL_EXECUTE_COMPLETE #{app_name} #{app_arg}", cb
     @execute_uuid uuid,app_name,app_arg
 
   # Hangup a call
@@ -411,10 +410,10 @@ connectionListener= (socket) ->
   socket.on 'end',  ()     ->  parser.on_end()
 
   # Make the command responses somewhat unique.
-  socket.on 'CHANNEL_EXECUTE_COMPLETE', ->
+  socket.on 'CHANNEL_EXECUTE_COMPLETE', (res) ->
     application = @body['Application']
     application_data = @body['Application-Data']
-    socket.emit "#{event_name} #{application} #{application_data}", @
+    socket.emit "#{event_name} #{application} #{application_data}", res
 
   parser.process = (headers,body) ->
     if exports.debug
