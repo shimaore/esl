@@ -49,10 +49,10 @@ exports.debug = false
 #     # Open connection, send arbitrary API command, disconnect.
 #     fs_command = (cmd,cb) ->
 #       client = esl.createClient()
-#       client.on 'esl_auth_request', (req,res) ->
-#         res.auth 'ClueCon', (req,res) ->
-#           res.api cmd, (req,res) ->
-#             res.exit ->
+#       client.on 'esl_auth_request', ->
+#         this.auth 'ClueCon', ->
+#           this.api cmd, ->
+#             this.exit ->
 #               client.end()
 #       if cb?
 #         client.on 'close', cb
@@ -77,13 +77,13 @@ exports.debug = false
 #
 #     server = esl.createCallServer()
 #
-#     server.on 'CONNECT', (req,res) ->
+#     server.on 'CONNECT', ->
 #       # "verbose_events" will send us channel data after each "command".
-#       res.command 'verbose_events', null, (req,res) ->
-#         # You may now access realtime variables from req.body
-#         foo = req.body.variable_foo
-#         res.command 'play-file', 'voicemail/vm-hello', (req,res) ->
-#           # Wait for the command to finish.
+#       this.command 'verbose_events', ->
+#         # You may now access realtime variables from @body
+#         foo = this.body.variable_foo
+#         # Wait for the command to finish.
+#         this.command 'play-file', 'voicemail/vm-hello', ->
 #           # The application continues here
 #
 #     server.listen 7000
@@ -92,18 +92,16 @@ exports.debug = false
 #
 # An asynchronous server will look this way:
 #
-#     server = esl.createCallServer()
+#     server = esl.createServer()
 #
-#     server.on 'CONNECT', (req,res) ->
-#       uri = req.body.variable_sip_req_uri
+#     server.on 'CONNECT', ->
+#       uri = this.body.variable_sip_req_uri
 #
-#     # Other FreeSwitch channel events are available as well:
-#     server.on 'CHANNEL_ANSWER', (req,res) ->
-#       util.log 'Call was answered'
-#       # You can force a disconnect (call hangup) using:
-#       server.force_disconnect()
-#     server.on 'CHANNEL_HANGUP_COMPLETE', (req,res) ->
-#       util.log 'Call was disconnected'
+#       # Other FreeSwitch channel events are available as well:
+#       this.on 'CHANNEL_ANSWER', ->
+#         util.log 'Call was answered'
+#       this.on 'CHANNEL_HANGUP_COMPLETE', ->
+#         util.log 'Call was disconnected'
 #
 #     # Start the ESL server on port 7000.
 #     server.listen 7000
@@ -217,22 +215,18 @@ class eslParser
       if @buffer.length > 0
         util.log "Buffer is not empty, left over: #{@buffer}"
 
-#### ESL request
-class eslRequest
-  constructor: (@headers,@body) ->
-
 #### ESL response and associated API
 class eslResponse
-  constructor: (@socket) ->
+  constructor: (@socket,@headers,@body) ->
 
   register_callback: (event,cb) ->
-    @socket.on event, (req,res) =>
+    @socket.on event, (res) =>
       @socket.removeAllListeners event
-      cb req,res
+      cb.apply res
 
   # A generic way of sending commands to FreeSwitch.
   #
-  #      send (string,array,function(req,res){})
+  #      send (string,array,function(){})
   #
   # This is normally not used directly.
   # The array and callback are both optional.
@@ -270,9 +264,9 @@ class eslResponse
     @send "api #{command}"
 
   # Send an API command in the background.
-  # The callback will receive the Job UUID (instead of the usual request/response pair).
+  # The callback will receive the Job UUID (instead of the usual response).
   bgapi: (command,cb) ->
-    @register_callback 'esl_command_reply', (req,res) ->
+    @register_callback 'esl_command_reply', (res) ->
       r = res.header['Reply-Text']?.match /\+OK Job-UUID: (.+)$/
       cb? r[1]
     @send "bgapi #{command}"
@@ -314,8 +308,8 @@ class eslResponse
   # Authenticate, typically used in a client:
   #
   #     client = esl.createClient()
-  #     client.on 'esl_auth_request', (req,res) ->
-  #       res.auth 'ClueCon', (req,res) ->
+  #     client.on 'esl_auth_request', ->
+  #       @auth 'ClueCon', ->
   #         # Start sending other commands here.
   #     client.connect ...
   #
@@ -366,7 +360,9 @@ class eslResponse
   # Execute an application synchronously.
   # The callback is only called when the command has completed.
   command_uuid: (uuid,app_name,app_arg,cb) ->
-    @socket.on "CHANNEL_EXECUTE_COMPLETE #{app_name} #{app_arg}", cb
+    if cb?
+      @socket.on "CHANNEL_EXECUTE_COMPLETE #{app_name} #{app_arg}", (res) ->
+        cb.apply res
     @execute_uuid uuid,app_name,app_arg
 
   # Hangup a call
@@ -398,23 +394,12 @@ class eslResponse
 
   # Clean-up at the end of the connection.
   auto_cleanup: ->
-    @on 'esl_disconnect_notice', (req,res) ->
+    @on 'esl_disconnect_notice', ->
       if exports.debug
         util.log "Received ESL disconnection notice"
-      switch req.headers['Content-Disposition']
+      switch @headers['Content-Disposition']
         when 'linger'      then @exit()
         when 'disconnect'  then @end()
-
-  start_call_server: ->
-    Unique_ID = 'Unique-ID'
-    @connect (req,res) =>
-      unique_id = req.body[Unique_ID]
-      @auto_cleanup
-      # Handle the incoming connection
-      @linger (req,res) =>
-        @filter Unique_ID, unique_id, (req,res) =>
-          @event_json 'ALL', (req,res) =>
-            @emit 'CONNECT', req, res
 
 #### Connection Listener (socket events handler)
 # This is modelled after Node.js' http.js
@@ -428,9 +413,9 @@ connectionListener= (socket) ->
 
   # Make the command responses somewhat unique.
   socket.on 'CHANNEL_EXECUTE_COMPLETE', ->
-    application = req.body['Application']
-    application_data = req.body['Application-Data']
-    socket.emit "#{event_name} #{application} #{application_data}", req, res
+    application = @body['Application']
+    application_data = @body['Application-Data']
+    socket.emit "#{event_name} #{application} #{application_data}", @
 
   parser.process = (headers,body) ->
     if exports.debug
@@ -461,11 +446,11 @@ connectionListener= (socket) ->
         catch error
           util.log "JSON #{error} in #{body}"
           return
-        event = req.body['Event-Name']
+        event = body['Event-Name']
 
       when 'text/event-plain'
         body = parse_header_text(body)
-        event = req.body['Event-Name']
+        event = body['Event-Name']
 
       when 'log/data'
         event = 'esl_log_data'
@@ -479,12 +464,10 @@ connectionListener= (socket) ->
       else
         event = headers['Content-Type']
 
-    # Build request and response and send them out.
-    req = new eslRequest headers,body
-    res = new eslResponse socket
+    res = new eslResponse socket,headers,body
     if exports.debug
-      util.log util.inspect event:event, req:req, res:res
-    socket.emit event, req, res
+      util.log util.inspect event:event, res:res
+    socket.emit event, res
 
   # Get things started
   socket.emit 'esl_connect', new eslResponse socket
@@ -500,11 +483,19 @@ class eslServer extends net.Server
 
     super()
 
-# You can use createServer(callback) from your code.
 # The callback will receive an eslResponse object.
 exports.createServer = (requestListener) -> return new eslServer(requestListener)
 
-exports.createCallServer = -> return new eslServer (res) -> res.start_call_server()
+exports.createCallServer = ->
+  server = new eslServer ->
+    Unique_ID = 'Unique-ID'
+    @connect ->
+      unique_id = @body[Unique_ID]
+      @auto_cleanup()
+      @filter Unique_ID, unique_id, ->
+        @event_json 'ALL', ->
+          server.emit 'CONNECT', @
+  return server
 
 #### ESL client
 class eslClient extends net.Socket
