@@ -361,7 +361,8 @@ class eslResponse
   # The callback is only called when the command has completed.
   command_uuid: (uuid,app_name,app_arg,cb) ->
     if cb?
-      @socket.on "CHANNEL_EXECUTE_COMPLETE #{app_name} #{app_arg}", cb
+      event = "CHANNEL_EXECUTE_COMPLETE #{app_name} #{app_arg}"
+      @register_callback event, cb
     @execute_uuid uuid,app_name,app_arg
 
   # Hangup a call
