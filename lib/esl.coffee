@@ -219,6 +219,7 @@ class eslResponse
   constructor: (@socket,@headers,@body) ->
 
   register_callback: (event,cb) ->
+    @socket.removeAllListeners event
     @socket.on event, (res) =>
       @socket.removeAllListeners event
       cb res
