@@ -5,8 +5,8 @@
 
 #### Overview
 # esl is modelled after Node.js' own httpServer and client.
-# It offers two low-level ESL handlers, createClient() and
-# createServer(), and a higher-level CallServer class.
+# It offers two ESL handlers, createClient() and
+# createCallServer().
 #
 # For more information about ESL consult the FreeSwitch wiki
 # [Event Socket](http://wiki.freeswitch.org/wiki/Event_Socket)
@@ -73,30 +73,29 @@ exports.debug = false
 #    &lt;action application="socket" data="127.0.0.1:7000 async full"/&gt;
 # to hand the call over to an ESL server.
 #
-# If you'd like to get realtime channel variables and synchronous commands, do
+# If you'd like to get realtime channel variables after each command(),
+# execute the "verbose_events" command first:
 #
 #     server = esl.createCallServer()
 #
 #     server.on 'CONNECT', (call) ->
 #       # "verbose_events" will send us channel data after each "command".
 #       call.command 'verbose_events', (call) ->
-#         # You may now access realtime variables from call.body
-#         foo = call.body.variable_foo
-#         # Wait for the command to finish.
-#         call.command 'play-file', 'voicemail/vm-hello'
+#         # command() will wait for the command to finish.
+#         call.command 'play-file', 'voicemail/vm-hello', (call) ->
+#           # You may now access realtime variables from call.body
+#           foo = call.body.variable_foo
 #
 #     server.listen 7000
 #
-# The asynchronous version of "command" is "execute".
+# For some applications you might want to capture channel events instead
+# of using the command() / callback pattern:
 #
-# An asynchronous server will look this way:
-#
-#     server = esl.createServer()
+#     server = esl.createCallServer()
 #
 #     server.on 'CONNECT', (call) ->
 #       uri = call.body.variable_sip_req_uri
 #
-#       # Other FreeSwitch channel events are available as well:
 #       call.on 'CHANNEL_ANSWER', (call) ->
 #         util.log 'Call was answered'
 #       call.on 'CHANNEL_HANGUP_COMPLETE', (call) ->
@@ -308,8 +307,8 @@ class eslResponse
   # Authenticate, typically used in a client:
   #
   #     client = esl.createClient()
-  #     client.on 'esl_auth_request', ->
-  #       @auth 'ClueCon', ->
+  #     client.on 'esl_auth_request', (call) ->
+  #       call.auth 'ClueCon', ->
   #         # Start sending other commands here.
   #     client.connect ...
   #
@@ -484,8 +483,6 @@ class eslServer extends net.Server
     super()
 
 # The callback will receive an eslResponse object.
-exports.createServer = (requestListener) -> return new eslServer(requestListener)
-
 exports.createCallServer = ->
   server = new eslServer (call) ->
     Unique_ID = 'Unique-ID'
