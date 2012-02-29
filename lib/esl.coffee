@@ -70,7 +70,7 @@ exports.debug = false
 #### CallServer Example
 #
 # From the dialplan, use
-#    <action application="socket" data="127.0.0.1:7000 async full"/>
+#    &lt;action application="socket" data="127.0.0.1:7000 async full"/&gt;
 # to hand the call over to an ESL server.
 #
 # If you'd like to get realtime channel variables and synchronous commands, do
