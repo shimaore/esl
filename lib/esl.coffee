@@ -398,7 +398,8 @@ class eslResponse
         util.log "Received ESL disconnection notice"
       switch call.headers['Content-Disposition']
         when 'linger'      then @socket.emit 'esl_linger', call
-        when 'disconnect'  then @end()
+        when 'disconnect'  then @socket.emit 'esl_disconnect', call
+
     #### Linger
     # The default behavior in linger mode is to disconnect the call
     # (which is roughly equivalent to not using linger mode).
@@ -409,6 +410,11 @@ class eslResponse
     # for calling
     #     call.exit()
     # If you do not do it, the calls will leak.
+
+    #### Disconnect
+    # Normal behavior on disconnect is to end the call.
+    # (However you may capture esl_disconnect as well.)
+    @on 'esl_disconnect', => @end()
 
 #### Connection Listener (socket events handler)
 # This is modelled after Node.js' http.js
