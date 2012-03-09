@@ -393,7 +393,7 @@ class eslResponse
 
   # Clean-up at the end of the connection.
   auto_cleanup: ->
-    @on 'esl_disconnect_notice', (call) ->
+    @on 'esl_disconnect_notice', (call) =>
       if exports.debug
         util.log "Received ESL disconnection notice"
       switch call.headers['Content-Disposition']
