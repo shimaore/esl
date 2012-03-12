@@ -397,8 +397,12 @@ class eslResponse
       if exports.debug
         util.log "Received ESL disconnection notice"
       switch call.headers['Content-Disposition']
-        when 'linger'      then @socket.emit 'esl_linger', call
-        when 'disconnect'  then @socket.emit 'esl_disconnect', call
+        when 'linger'
+          if exports.debug then util.log "Sending esl_linger"
+          @socket.emit 'esl_linger', call
+        when 'disconnect'
+          if exports.debug then util.log "Sending esl_disconnect"
+          @socket.emit 'esl_disconnect', call
 
     #### Linger
     # The default behavior in linger mode is to disconnect the call
