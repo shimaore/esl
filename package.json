@@ -1,6 +1,6 @@
 {
   "name": "esl"
-, "version": "0.2.18"
+, "version": "0.2.19"
 , "description": "Client and Server for FreeSwitch Event System"
 , "keywords": "freeswitch event"
 , "author": { "name": "Stephane Alnet", "email": "stephane@shimaore.net" }
@@ -11,6 +11,7 @@
   }
 , "contributors": [
     { "name": "Paweł Pierścionek", "email": "pawel@voiceworks.pl" }
+  , { "name": "Akash Deep Verma", "email": "akashdeep@flexydial.com" }
   ]
 , "main": "lib/esl.js"
 , "files": ["lib/esl.js"]
