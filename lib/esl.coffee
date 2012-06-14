@@ -259,14 +259,14 @@ class eslResponse
 
   # Send an API command, see [Mod commands](http://wiki.freeswitch.org/wiki/Mod_commands)
   api: (command,cb) ->
-    @register_callback 'esl_api_response', cb
+    if cb? then @register_callback 'esl_api_response', cb
     @send "api #{command}"
 
   # Send an API command in the background.
   # The callback will receive the Job UUID (instead of the usual response).
   bgapi: (command,cb) ->
     @register_callback 'esl_command_reply', (res) ->
-      r = res.header['Reply-Text']?.match /\+OK Job-UUID: (.+)$/
+      r = res.headers['Reply-Text']?.match /\+OK Job-UUID: (.+)$/
       cb? r[1]
     @send "bgapi #{command}"
 
