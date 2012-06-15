@@ -296,9 +296,9 @@ class eslResponse
 
   filter_delete: (header,value,cb) ->
     if value?
-      @send "filter #{header} #{value}", cb
+      @send "filter delete #{header} #{value}", cb
     else
-      @send "filter #{header}", cb
+      @send "filter delete #{header}", cb
 
   # Send an event into the FreeSwitch event queue.
   sendevent: (event_name,args,cb) ->
