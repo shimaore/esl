@@ -1,3 +1,4 @@
+[![build status](https://secure.travis-ci.org/shimaore/esl.png)](http://travis-ci.org/shimaore/esl)
 Node.js client and server for FreeSwitch events socket (ESL)
 
 Install
