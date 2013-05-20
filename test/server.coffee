@@ -4,7 +4,7 @@
 # or by connecting from a real server using the "socket" application.
 port = 7000
 
-esl = require '../lib/esl.coffee'
+esl = require '../lib/esl'
 esl.debug = true
 
 server = esl.createCallServer()

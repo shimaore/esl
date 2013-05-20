@@ -2,9 +2,9 @@
   "name": "esl"
 , "version": "0.2.20"
 , "description": "Client and Server for FreeSwitch Event System"
-, "keywords": "freeswitch event"
-, "author": { "name": "Stephane Alnet", "email": "stephane@shimaore.net" }
-, "homepage": "http://shimaore.github.com/esl/esl.html"
+, "keywords": "freeswitch, event"
+, "author": { "name": "Stéphane Alnet", "email": "stephane@shimaore.net" }
+, "homepage": "https://github.com/shimaore/esl"
 , "repository": {
     "type": "git"
   , "url": "git://github.com/shimaore/esl.git"
@@ -14,20 +14,17 @@
   , { "name": "Akash Deep Verma", "email": "akashdeep@flexydial.com" }
   ]
 , "main": "lib/esl.js"
-, "files": ["lib/esl.js"]
+, "files": [
+    "lib/esl.js"
+  , "lib/parser.js"
+  , "lib/response.js"
+  ]
 , "dependencies": { "request": ">=1.9.5" }
 , "scripts": {
-    "prepublish": "docco lib/esl.coffee; coffee -c lib/esl.coffee"
+    "prepublish": "coffee -c -o lib src/esl.coffee.md && coffee -c -o lib src/parser.coffee.md && coffee -c -o lib src/response.coffee.md"
   }
 , "engines": {
     "node": ">=0.4.7"
-  }
-, "also": {
-    "homepage": "http://blog.shimaore.net/2011/11/nodejs-esl.html"
-  , "repository": {
-      "type": "git"
-    , "url": "http://stephane.shimaore.net/git/?p=esl.git"
-    }
   }
 , "ok": true
 }

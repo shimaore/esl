@@ -1,4 +1,4 @@
-esl = require '../lib/esl.coffee'
+esl = require '../lib/esl'
 esl.debug = true
 
 # Open connection, send arbitrary API command, disconnect.
