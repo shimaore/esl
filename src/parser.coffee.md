@@ -1,6 +1,8 @@
 Event Socket stream parser
 --------------------------
 
+    querystring = require 'querystring'
+
     module.exports = class eslParser
 
 The Event Sokcet parser will parse an incoming ES stream, whether your code is acting as a client (connected to the FreeSwitch ES server) or as a server (called back by FreeSwitch due to the "socket" application command).

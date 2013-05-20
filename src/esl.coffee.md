@@ -1,7 +1,5 @@
     net         = require 'net'
-    querystring = require 'querystring'
     util        = require 'util'
-    assert      = require 'assert'
 
 If you ever need to debug esl, set `esl.debug = true`.
 
