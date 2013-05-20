@@ -5,47 +5,28 @@ Install
 
     npm install esl
 
-Documentation
--------------
-
-  http://shimaore.github.com/esl/esl.html
-
-Examples
---------
-
-* Client example: [send commands](https://github.com/shimaore/ccnq3/blob/master/applications/freeswitch/agents/freeswitch.coffee)
-* Server example: [voicemail application](https://github.com/shimaore/ccnq3/tree/master/applications/voicemail/node/)
-* Also see under examples/ in the source for contributed examples.
-
-Alternative
------------
-
-This module should be more convenient for you if you've already coded for Node.js and are used to its [`http` interface](http://nodejs.org/api/http.html).
-If you are coming from the FreeSwitch side of the world you might be used to the Event Socket Library specification, in which case you might want to try [node-esl](https://github.com/englercj/node-esl).
-
 Overview
 --------
 
 This module is modelled after Node.js' own httpServer and client.
+
 It offers two Event Socket handlers, `createClient()` and `createCallServer()`.
 
-Consult the FreeSwitch wiki for more information about the [Event Socket](http://wiki.freeswitch.org/wiki/Event_Socket).
+Typically a client would be used to trigger calls asynchronously (for example in a click-to-dial application); this mode of operation is called "inbound" (to FreeSwitch) in the [Event Socket](http://wiki.freeswitch.org/wiki/Event_Socket) FreeSwitch documentation.
 
-Typically a client would be used to trigger calls asynchronously (for example in a click-to-dial application); this mode of operation is called "inbound" (to FreeSwitch) in the FreeSwitch documentation.
-
-A server will handle calls sent to it using the "socket" diaplan application (called "outbound" mode in the FreeSwitch documentation).  The server is available at a pre-defined port which the socket application will specify. See [Event Socket Outbound](http://wiki.freeswitch.org/wiki/Event_Socket_Outbound).
+A server will handle calls sent to it using the "socket" diaplan application (called "outbound" mode in the [Event Socket Outbound](http://wiki.freeswitch.org/wiki/Event_Socket_Outbound) FreeSwitch documentation).  The server is available at a pre-defined port which the `socket` dialplan application will specify.
 
 Usage
 -----
 
     esl = require 'esl'
 
-(The library is a plain Node.js module so you can also call it from Javascript. All examples are given using CoffeeScript for simplicity but will work as plain Javascript.)
+The library is a plain Node.js module so you can also call it from Javascript. All examples are given using CoffeeScript for simplicity but will work as plain Javascript.
 
 Client Example
 --------------
 
-The following code does the equivalent of `fs_cli -x`.
+The following code does the equivalent of `fs_cli -x`: it connects to the Event Socket, runs a single command, then disconnects.
 
     esl = require 'esl'
 
@@ -72,7 +53,7 @@ Note: Use `call.event_json 'HEARTBEAT'` to start receiving event notifications.
 CallServer Example
 ------------------
 
-From the FreeSwitch dialplan, use `<action application="socket" data="127.0.0.1:7000 async full"/>` to hand the call over to an ESL server.
+From the FreeSwitch dialplan, use `<action application="socket" data="127.0.0.1:7000 async full"/>` to hand the call over to an Event Socket server.
 
 If you'd like to get realtime channel variables after each `command()`, execute the `verbose_events` command first:
 
@@ -95,6 +76,7 @@ For some applications you might want to capture channel events instead of using 
     server.on 'CONNECT', (call) ->
       uri = call.body.variable_sip_req_uri
 
+      # These are called asynchronously.
       call.on 'CHANNEL_ANSWER', (call) ->
         util.log 'Call was answered'
       call.on 'CHANNEL_HANGUP_COMPLETE', (call) ->
@@ -102,3 +84,16 @@ For some applications you might want to capture channel events instead of using 
 
     # Start the ESL server on port 7000.
     server.listen 7000
+
+More Examples
+-------------
+
+* Client example: [send commands](https://github.com/shimaore/ccnq3/blob/master/applications/freeswitch/agents/freeswitch.coffee)
+* Server example: [voicemail application](https://github.com/shimaore/ccnq3/tree/master/applications/voicemail/node/)
+* Also see under examples/ in the source for contributed examples.
+
+Alternative
+-----------
+
+This module should be more convenient if you've already coded for Node.js and are used to its [`http` interface](http://nodejs.org/api/http.html) and the `EventEmitter` pattern.
+If you are coming from the world of FreeSwitch and are used to the Event Socket Library API, you might want to try [node-esl](https://github.com/englercj/node-esl).
