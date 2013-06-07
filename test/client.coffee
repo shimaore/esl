@@ -1,17 +1,16 @@
-esl = require '../lib/esl'
-esl.debug = true
+# Client example from the README
 
-# Open connection, send arbitrary API command, disconnect.
-fs_command = (cmd,cb) ->
-  client = esl.createClient()
-  client.on 'esl_auth_request', (req,res) ->
-    res.auth 'ClueCon', (req,res) ->
-      res.api cmd, (req,res) ->
-        res.exit ->
-          client.end()
-  if cb?
-    client.on 'close', cb
+FS = require '../lib/fs-q'
+
+fs_command = (cmd) ->
+  client = FS.client()
+
+  client.on 'freeswitch_connect', (pv) ->
+      pv
+      .then FS.api cmd
+      .then FS.exit()
+      .then FS.disconnect()
+
   client.connect(8021, '127.0.0.1')
 
-# Example
 fs_command "reloadxml"
