@@ -1,6 +1,8 @@
 ESL response and associated API
 -------------------------------
 
+    Q = require 'q'
+
     module.exports = class eslResponse
       constructor: (@socket,@headers,@body) ->
 
@@ -26,7 +28,10 @@ The array parameter is optional.
 
 The callabck parameter is optional.
 
-        if cb? then @register_callback 'esl_command_reply', cb
+        deferred = Q.defer()
+        @register_callback 'esl_command_reply', (call) ->
+          deferred.resolve call
+          cb? call
 
 Send the command out.
 
@@ -37,9 +42,17 @@ Send the command out.
               @socket.write "#{key}: #{value}\n"
           @socket.write "\n"
         catch e
+          deferred.reject e
           @socket.emit 'esl_error', error:e
 
-      on: (event,listener) -> @socket.on(event,listener)
+        deferred.promise
+
+      on: (event,listener) ->
+        deferred = Q.defer()
+        @socket.on event, (args...) ->
+          deferred.resolve args...
+          listener? args...
+        deferred.promise
 
       end: () -> @socket.end()
 
