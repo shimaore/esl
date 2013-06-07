@@ -16,6 +16,12 @@ Typically a client would be used to trigger calls asynchronously (for example in
 
 A server will handle calls sent to it using the "socket" diaplan application (called "outbound" mode in the [Event Socket Outbound](http://wiki.freeswitch.org/wiki/Event_Socket_Outbound) FreeSwitch documentation).  The server is available at a pre-defined port which the `socket` dialplan application will specify.
 
+Support
+-------
+
+Mailing list: <carrierclass@googlegroups.com>
+Subscribe: <https://groups.google.com/d/forum/carrierclass>
+
 Usage
 -----
 
