@@ -1,17 +1,23 @@
-esl = require '../lib/esl'
-esl.debug = true
+FS = require '../lib/esl'
 
-# Open connection, send arbitrary API command, disconnect.
-fs_command = (cmd,cb) ->
-  client = esl.createClient()
-  client.on 'esl_auth_request', (req,res) ->
-    res.auth 'ClueCon', (req,res) ->
-      res.api cmd, (req,res) ->
-        res.exit ->
-          client.end()
-  if cb?
-    client.on 'close', cb
-  client.connect(8021, '127.0.0.1')
+log = -> console.log arguments...
 
-# Example
+assert = require 'assert'
+
+fs_command = (cmd) ->
+  FS.client (call) ->
+    log 'Client started'
+    assert.equal call.headers['Reply-Text'], '+OK accepted'
+    outcome = call.sequence [
+      -> @api(cmd)
+      ->
+        assert @body.match /\+OK \[Success\]/
+        @
+      -> @exit()
+    ]
+    outcome.then -> log 'Client succeeded'
+    outcome.fail (reason) -> log "Client failed: #{reason}"
+    outcome.fin -> call.end()
+  .connect(8021, '127.0.0.1')
+
 fs_command "reloadxml"
