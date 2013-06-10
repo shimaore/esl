@@ -1,4 +1,70 @@
-Client and server for FreeSwitch events socket that follow Node.js conventions
+Promise-aware client and server for FreeSwitch events socket.
+
+This file documents the new version 1.0.x of the package which is under development.
+
+The old API is still available in the 0.3.1 package version. It uses `createClient` and `createCallServer` instead of `client` and `server`, so that there is no ambiguity which version you expect / are using.
+
+Client Usage
+------------
+
+The following code does the equivalent of `fs_cli -x`: it connects to the Event Socket, runs a single command, then disconnects.
+
+    var fs_command = function(cmd) {
+
+      var call_manager = function(call) {
+        call
+        .api(cmd)                 // send the command
+        .then(function(call) {
+          return call.exit();     // tell FreeSwitch we're disconnecting
+        })
+        .then(function(call) {
+          return call.end();      // close the socket
+        })
+      };
+
+      require('esl').client(call_manager).connect(8021, '127.0.0.1');
+    };
+
+    fs_command("reloadxml");
+
+Alternatively you can send multiple commands using the `sequence` method:
+
+    var fs_command = function(cmd) {
+
+      var call_manager = function(call) {
+
+        var outcome = call.sequence([
+          function(){ this.api(cmd) }
+        , function(){ this.exit()   }
+        ]);
+
+        outcome.fin( function(){ call.end() });
+      };
+
+      require('esl').client(call_manager).connect(8021, '127.0.0.1');
+    };
+
+    fs_command("reloadxml");
+
+The methods return [Q promises](http://documentup.com/kriskowal/q/). If the `then` calls do not return a value, the proper object is substituted.
+
+The last example as CoffeeScript:
+
+    fs_command = (cmd) ->
+      call_manager = (call) ->
+
+        outcome = call.sequence [
+          -> @api cmd
+          -> @exit()
+        ]
+        outcome.fin -> call.end()
+
+      require('esl')
+      .client(call_manager)
+      .connect 8021, '127.0.0.1'
+
+    fs_command 'reloadxml'
+
 
 Install
 -------
@@ -8,9 +74,9 @@ Install
 Overview
 --------
 
-This module is modelled after Node.js' own httpServer and client.
+This module is modelled after Node.js' own httpServer and client, with the addition of a promise-based API.
 
-It offers two Event Socket handlers, `createClient()` and `createCallServer()`.
+It offers two Event Socket handlers, `client()` and `server()`.
 
 Typically a client would be used to trigger calls asynchronously (for example in a click-to-dial application); this mode of operation is called "inbound" (to FreeSwitch) in the [Event Socket](http://wiki.freeswitch.org/wiki/Event_Socket) FreeSwitch documentation.
 
@@ -22,37 +88,8 @@ Support
 Mailing list: <carrierclass@googlegroups.com>
 Subscribe: <https://groups.google.com/d/forum/carrierclass>
 
-Usage
------
-
-    esl = require 'esl'
-
-The library is a plain Node.js module so you can also call it from Javascript. All examples are given using CoffeeScript for simplicity but will work as plain Javascript.
-
-Client Example
+Client Notes
 --------------
-
-The following code does the equivalent of `fs_cli -x`: it connects to the Event Socket, runs a single command, then disconnects.
-
-    esl = require 'esl'
-
-    fs_command = (cmd,cb) ->
-      # Open connection.
-      client = esl.createClient()
-      client.on 'esl_auth_request', (call) ->
-        call.auth 'ClueCon', ->
-          # Send arbitrary API command.
-          call.api cmd, ->
-            # Disconnect.
-            call.exit ->
-              # Stops the client.
-              client.end()
-      if cb?
-        client.on 'close', cb
-      client.connect(8021, '127.0.0.1')
-
-    # Example
-    fs_command "reloadxml"
 
 Note: Use `call.event_json 'HEARTBEAT'` to start receiving event notifications.
 
