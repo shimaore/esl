@@ -92,8 +92,7 @@ Re-parse whatever data was left after these headers were fully consumed.
 ### Dispatch incoming data into the header or body parsers.
 
       on_data: (data) ->
-        if exports.debug
-          util.log "on_data(#{data})"
+        debug? "on_data(#{data})"
 
 Capture the body as needed
 
@@ -106,10 +105,9 @@ For completeness provide an `on_end()` method.
 TODO: it probably should make sure the buffer is empty?
 
       on_end: () ->
-        if exports.debug
-          util.log "Parser: end of stream"
-          if @buffer.length > 0
-            util.log "Buffer is not empty, left over: #{@buffer}"
+        debug? "Parser: end of stream"
+        if @buffer.length > 0
+          debug? "Buffer is not empty, left over: #{@buffer}"
 
 Headers parser
 --------------
@@ -118,8 +116,7 @@ Event Socket framing contains headers and a body.
 The header must be decoded first to learn the presence and length of the body.
 
     parse_header_text = (header_text) ->
-      if exports.debug
-        util.log "parse_header_text(#{header_text})"
+      debug? "parse_header_text(#{header_text})"
 
       header_lines = header_text.split("\n")
       headers = {}
