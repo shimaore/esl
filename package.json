@@ -22,8 +22,11 @@
 , "dependencies": {
     "q": "*"
   }
+, "devDependencies": {
+    "coffee-script": "*"
+  }
 , "scripts": {
-    "prepublish": "coffee -c -o lib src/esl.coffee.md && coffee -c -o lib src/parser.coffee.md && coffee -c -o lib src/response.coffee.md"
+    "prepublish": "cake build"
   }
 , "engines": {
     "node": ">=0.4.7"
