@@ -3,6 +3,14 @@ ESL response and associated API
 
     Q = require 'q'
 
+    exports.debug = false
+
+    if exports.debug
+      util = require 'util'
+      debug = (o) ->
+        util.log util.inspect o
+
+
     module.exports = class eslResponse
       constructor: (@socket,@headers,@body) ->
 

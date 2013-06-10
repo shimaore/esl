@@ -1,9 +1,11 @@
     net         = require 'net'
-    util        = require 'util'
-
-If you ever need to debug esl, set `esl.debug = true`.
 
     exports.debug = false
+
+    if exports.debug
+      util = require 'util'
+      debug = (o) ->
+        util.log util.inspect o
 
     eslParser = require './parser'
     eslResponse = require './response'
