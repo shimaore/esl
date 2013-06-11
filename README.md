@@ -1,33 +1,15 @@
 Promise-aware client and server for FreeSwitch events socket.
 
-This file documents the new version 1.0.x of the package which is under development.
+This file documents the new, promise-based API of the package, version 1.x, which is under development.
 
-The old API is still available in the 0.3.1 package version. It uses `createClient` and `createCallServer` instead of `client` and `server`, so that there is no ambiguity which version you expect / are using.
+The old, callback-based API is still available in the 0.3 packages. It uses `createClient` and `createCallServer` instead of `client` and `server`, so that there is no ambiguity which version you expect / are using. If your existing code uses the old API make sure that your `package.json` contains
+
+    "esl": "~0.3.2"
 
 Client Usage
 ------------
 
 The following code does the equivalent of `fs_cli -x`: it connects to the Event Socket, runs a single command, then disconnects.
-
-    var fs_command = function(cmd) {
-
-      var call_manager = function(call) {
-        call
-        .api(cmd)                 // send the command
-        .then(function(call) {
-          return call.exit();     // tell FreeSwitch we're disconnecting
-        })
-        .then(function(call) {
-          return call.end();      // close the socket
-        })
-      };
-
-      require('esl').client(call_manager).connect(8021, '127.0.0.1');
-    };
-
-    fs_command("reloadxml");
-
-Alternatively you can send multiple commands using the `sequence` method:
 
     var fs_command = function(cmd) {
 
@@ -38,7 +20,6 @@ Alternatively you can send multiple commands using the `sequence` method:
         , function(){ this.exit()   }
         ]);
 
-        outcome.fin( function(){ call.end() });
       };
 
       require('esl').client(call_manager).connect(8021, '127.0.0.1');
@@ -46,9 +27,26 @@ Alternatively you can send multiple commands using the `sequence` method:
 
     fs_command("reloadxml");
 
-The methods return [Q promises](http://documentup.com/kriskowal/q/). If the `then` calls do not return a value, the proper object is substituted.
+`call.sequence` is a shorthand for the longer version:
 
-The last example as CoffeeScript:
+    var fs_command = function(cmd) {
+
+      var call_manager = function(call) {
+        call
+        .api(cmd)                 // send the command
+        .then(function(call) {
+          return call.exit();     // tell FreeSwitch we're disconnecting
+        })
+      };
+
+      require('esl').client(call_manager).connect(8021, '127.0.0.1');
+    };
+
+    fs_command("reloadxml");
+
+The API methods return [Q promises](http://documentup.com/kriskowal/q/). If the function inside `then` does not return a value, the proper object is substituted (in other words you may `return call.exit();` or just `call.exit();`).
+
+The original example as CoffeeScript:
 
     fs_command = (cmd) ->
       call_manager = (call) ->
@@ -82,7 +80,6 @@ Here is a simplistic event server:
       })
       .hangup() // hang-up the call
       .exit()   // tell FreeSwitch we're disconnecting
-      .end()    // close this server instance
     };
 
     require('esl').server(call_handler).listen(7000);
@@ -90,12 +87,18 @@ Here is a simplistic event server:
 Install
 -------
 
-    npm install esl
+For the new, promise-based API:
+
+    npm install esl@1.0
+
+For the old, callback-based API:
+
+    npm install esl@0.3
 
 Overview
 --------
 
-This module is modelled after Node.js' own httpServer and client, with the addition of a promise-based API.
+This module is modelled after Node.js' own httpServer and client, and uses an event-driven interface wrapper inside a promise-based API.
 
 It offers two Event Socket handlers, `client()` and `server()`.
 
@@ -124,12 +127,13 @@ For some applications you might want to capture channel events instead of using 
 
       # These are called asynchronously.
       call
-      .on('CHANNEL_ANSWER', function(call) {
+      .once('CHANNEL_ANSWER', function(call) {
         util.log('Call was answered');
       })
-      .on('CHANNEL_HANGUP_COMPLETE', function(call) {
+      .once('CHANNEL_HANGUP_COMPLETE', function(call) {
         util.log('Call was disconnected');
       }
+    };
 
 Alternative
 -----------

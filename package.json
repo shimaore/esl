@@ -2,7 +2,7 @@
   "name": "esl"
 , "version": "1.0.1pre"
 , "description": "Client and Server for FreeSwitch Event System"
-, "keywords": "freeswitch, event"
+, "keywords": [ "freeswitch", "event" ]
 , "author": { "name": "Stéphane Alnet", "email": "stephane@shimaore.net" }
 , "homepage": "https://github.com/shimaore/esl"
 , "repository": {
