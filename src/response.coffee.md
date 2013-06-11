@@ -17,7 +17,7 @@ ESL response and associated API
       once: (event) ->
         deferred = Q.defer()
         @socket.once event, (call) ->
-          debug? where:'once (event received)', event:event, call:call
+          debug? when:'once (event received)', event:event, call:call
           deferred.resolve call
         deferred.promise
 

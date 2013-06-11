@@ -131,8 +131,9 @@ ESL client
         throw new Error "handler is required"
       client = new FreeSwitchClient()
       client.once 'freeswitch_auth_request', (call) ->
-        console.log "Challenged for authentication"
+        debug? when: "Challenged for authentication"
         call.auth(options.password).then (call) ->
+          call.auto_cleanup()
           debug? when:"Authentication sent", call:call
           handler? call
       return client
