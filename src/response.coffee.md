@@ -135,6 +135,7 @@ connect() and linger() are used in server mode.
       linger: (cb)              -> @send "linger", cb     # Outbound mode
 
 Send the exit command to the FreeSwitch socket.
+
       exit: (cb)                -> @send "exit", cb
 
 ### Event logging commands
