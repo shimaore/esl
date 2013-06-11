@@ -9,3 +9,7 @@ task 'build', 'build the code', (options) ->
     console.log "Compiling #{g} into #{f}"
     code = fs.readFileSync g, 'utf-8'
     fs.writeFileSync f, cs.compile(code, literate:true), 'utf-8'
+
+task 'clean', 'cleanup the build', (options) ->
+  for f in config.files
+    fs.unlink f, ->

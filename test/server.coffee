@@ -1,16 +1,14 @@
-# Incomplete test
-# Verify either with
-#     nc localhost 7000
-# or by connecting from a real server using the "socket" application.
-port = 7000
+FS = require '../lib/esl'
+Q = require 'q'
+log = -> console.log arguments...
 
-esl = require '../lib/esl'
-esl.debug = true
-
-server = esl.createCallServer()
-
-server.on 'CONNECT', (req,res) ->
-  util.log 'CONNECT received'
-  res.emit 'force_disconnect'
-
-server.listen port
+FS.server (call) ->
+  log '--- New server connection'
+  outcome = call.sequence [
+    -> Q.delay(1000).done @command 'answer'
+    -> Q.delay(1000).done @command 'hangup'
+  ]
+  outcome.then -> log '--- Server succeeded'
+  outcome.fail (reason) -> log "--- Server failed: #{reason}"
+.listen 7000
+log '--- Server waiting for connection'

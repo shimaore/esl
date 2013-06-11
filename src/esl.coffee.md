@@ -24,7 +24,7 @@ This is modelled after Node.js' http.js
 
 Make the command responses somewhat unique.
 
-      call.socket.on 'CHANNEL_EXECUTE_COMPLETE', (call) ->
+      call.socket.once 'CHANNEL_EXECUTE_COMPLETE', (call) ->
         application = call.body['Application']
         application_data = call.body['Application-Data']
         call.socket.emit "CHANNEL_EXECUTE_COMPLETE #{application} #{application_data}", call
@@ -99,18 +99,21 @@ The callback will receive a FreeSwitchResponse object.
     exports.server = (handler) ->
       server = new FreeSwitchServer (call) ->
         Unique_ID = 'Unique-ID'
-        call.connect().then ( (call) ->
-          # "verbose_events" will send us channel data after each "command".
-          call.command 'verbose_events'
-          call.auto_cleanup()
-        ).then( (call) ->
-          unique_id = call.body[Unique_ID]
-          call.filter(Unique_ID, unique_id)
-        ).then( (call) ->
-            call.event_json('ALL')
-        ).then( (call) ->
-          handler? call
-        )
+        call.sequence [
+          ->
+            @connect()
+          ->
+            # "verbose_events" will send us channel data after each "command".
+            @command 'verbose_events'
+            @auto_cleanup()
+          ->
+            unique_id = @body[Unique_ID]
+            @filter Unique_ID, unique_id
+          ->
+              @event_json 'ALL'
+          ->
+            handler? @
+        ]
       return server
 
 ESL client
