@@ -14,10 +14,26 @@ ESL response and associated API
     module.exports = class FreeSwitchResponse
       constructor: (@socket) ->
 
+      trace: (logger) ->
+        if logger is on
+          util = require 'util'
+          @_trace = (o) ->
+            util.log util.inspect o
+          return
+        if logger is off
+          delete @_trace
+          return
+        if typeof logger is 'function'
+          @_trace = logger
+        if typeof logger is 'string'
+          util = require 'util'
+          @_trace = (o) ->
+            util.log logger + util.inspect o
+
       once: (event) ->
         deferred = Q.defer()
-        @socket.once event, (call) ->
-          debug? when:'once (event received)', event:event, call:call
+        @socket.once event, (call) =>
+          @_trace? {event,headers:call.headers,body:call.body}
           deferred.resolve call
         deferred.promise
 
@@ -34,13 +50,13 @@ Typically `command/reply` will contain the status in the `Reply-Text` header whi
         @once('freeswitch_command_reply').then (call) ->
           debug? {when:'command reply', command, args, call}
           reply = call.headers['Reply-Text']
-          if reply[0] is '+'
-            deferred.resolve call
-          else
+          if reply.match /^-ERR/
             debug? {when:'api response failed', reply}
             deferred.reject new Error reply
+          else
+            deferred.resolve call
 
-        debug? action:'send (write)', command: command, args: args
+        @_trace? command: command, args: args
 
         try
           @socket.write "#{command}\n"
@@ -70,11 +86,11 @@ Send an API command, see [Mod commands](http://wiki.freeswitch.org/wiki/Mod_comm
         @once('freeswitch_api_response').then (call) ->
           debug? when: 'api response', command:command, call:call
           reply = call.body
-          if reply[0] is '+'
-            deferred.resolve call
-          else
+          if reply.match /^-ERR/
             debug? when:'api response failed', reply:reply
             deferred.reject new Error reply
+          else
+            deferred.resolve call
 
         @send "api #{command}"
         deferred.promise
@@ -234,6 +250,7 @@ Clean-up at the end of the connection.
 The default behavior in linger mode is to disconnect the call (which is roughly equivalent to not using linger mode).
 
         @once('freeswitch_linger').then (call) ->
+          debug? when:'auto_cleanup/linger: exit'
           call.exit()
 
 Use `call.once("freeswitch_linger",...)` to capture the end of the call. In this case you are responsible for calling `call.exit()`. If you do not do it, the calls will leak.
@@ -243,6 +260,7 @@ Use `call.once("freeswitch_linger",...)` to capture the end of the call. In this
 Normal behavior on disconnect is to end the call.  (However you may capture the `freeswitch_disconnect` event as well.)
 
         @once('freeswitch_disconnect').then (call) ->
+          debug? when:'auto_cleanup/disconnect: end'
           call.end()
 
 Make `auto_cleanup` chainable.
@@ -256,5 +274,5 @@ Promise toolbox
         call = @
         steps = steps.map (f) ->
           (call) ->
-            f.apply call
+            f.apply(call) ? call
         steps.reduce Q.when, Q.resolve call

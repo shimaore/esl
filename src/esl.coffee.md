@@ -1,6 +1,6 @@
     net         = require 'net'
 
-    exports.debug = false
+    exports.debug = true
 
     if exports.debug
       util = require 'util'
@@ -30,7 +30,7 @@ Make the command responses somewhat unique.
         call.socket.emit "CHANNEL_EXECUTE_COMPLETE #{application} #{application_data}", call
 
       parser.process = (headers,body) ->
-        debug? headers: headers, body: body
+        debug? {headers,body}
 
 Rewrite headers as needed to work around some weirdnesses in the protocol; and assign unified event IDs to the ESL Content-Types.
 

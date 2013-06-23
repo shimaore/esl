@@ -44,7 +44,7 @@ The following code does the equivalent of `fs_cli -x`: it connects to the Event 
 
     fs_command("reloadxml");
 
-The API methods return [Q promises](http://documentup.com/kriskowal/q/). If the function inside `then` does not return a value, the proper object is substituted (in other words you may `return call.exit();` or just `call.exit();`).
+The API methods return [Q promises](http://documentup.com/kriskowal/q/). If you are not using `call.sequence` make sure you return a promise for the `call` object at the end of your callbacks.
 
 The original example as CoffeeScript:
 
@@ -55,7 +55,6 @@ The original example as CoffeeScript:
           -> @api cmd
           -> @exit()
         ]
-        outcome.fin -> call.end()
 
       require('esl')
       .client(call_manager)
@@ -83,6 +82,27 @@ Here is a simplistic event server:
     };
 
     require('esl').server(call_handler).listen(7000);
+
+Message tracing
+---------------
+
+During development it is often useful to be able to see what messages are sent to FreeSwitch or received from FreeSwitch.
+
+    call.trace(true)
+
+will start a default tracing logger, while
+
+    call.trace(false)
+
+will stop it. Also
+
+    call.trace("my prefix")
+
+will print out the specified string each time.
+
+You may also provide your own tracing function instead of `true`; it will receive an object containing either `command` and `args` when sending messages to FreeSwitch, or `headers` and `body` when receiving messages from FreeSwitch.
+
+Note: the `headers` and `body` are the ones you might see inside your call-handling functions. They may differ from on-wire headers and body; use `FS.debug = true` to trace those.
 
 Install
 -------
@@ -113,12 +133,12 @@ Mailing list: <carrierclass@googlegroups.com>
 Subscribe: <https://groups.google.com/d/forum/carrierclass>
 
 Client Notes
---------------
+------------
 
 Note: Use `call.event_json 'HEARTBEAT'` to start receiving event notifications.
 
 Server Notes
-------------------
+------------
 
 For some applications you might want to capture channel events instead of using the `command()` / callback pattern:
 
@@ -138,5 +158,5 @@ For some applications you might want to capture channel events instead of using 
 Alternative
 -----------
 
-This module should be more convenient if you've already coded for Node.js and are used to its [`http` interface](http://nodejs.org/api/http.html) and the `EventEmitter` pattern.
+The present module should be more convenient if you've already coded for Node.js and are used to its [`http` interface](http://nodejs.org/api/http.html) and the `EventEmitter` pattern.
 If you are coming from the world of FreeSwitch and are used to the Event Socket Library API, you might want to try [node-esl](https://github.com/englercj/node-esl).

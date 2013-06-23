@@ -11,6 +11,8 @@
       <modules>
         <load module="mod_event_socket"/>
         <load module="mod_commands"/>
+        <load module="mod_dptools"/>
+        <load module="mod_loopback"/>
       </modules>
     </configuration>
     <configuration name="event_socket.conf" description="Socket Client">

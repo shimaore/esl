@@ -7,4 +7,4 @@ To test the client you need:
 
 To test the server you also need:
 
-    aptitude install freeswitch-mod-dptools
+    aptitude install freeswitch-mod-dptools freeswitch-mod-loopback
