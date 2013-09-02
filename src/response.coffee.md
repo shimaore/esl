@@ -3,14 +3,6 @@ ESL response and associated API
 
     Q = require 'q'
 
-    exports.debug = false
-
-    if exports.debug
-      util = require 'util'
-      debug = (o) ->
-        util.log util.inspect o
-
-
     module.exports = class FreeSwitchResponse
       constructor: (@socket) ->
 
@@ -30,6 +22,12 @@ ESL response and associated API
           @_trace = (o) ->
             util.log logger + util.inspect o
 
+      debug: (status) ->
+        if status
+          @_debug = (o) -> @_trace? o
+        else
+          delete @_debug
+
       once: (event) ->
         deferred = Q.defer()
         @socket.once event, (call) =>
@@ -48,10 +46,10 @@ This is normally not used directly.
 Typically `command/reply` will contain the status in the `Reply-Text` header while `api/response` will contain the status in the body.
 
         @once('freeswitch_command_reply').then (call) ->
-          debug? {when:'command reply', command, args, call}
+          call._debug? {when:'command reply', command, args, call}
           reply = call.headers['Reply-Text']
           if reply.match /^-ERR/
-            debug? {when:'api response failed', reply}
+            call._debug? {when:'command failed', reply}
             deferred.reject new Error reply
           else
             deferred.resolve call
@@ -71,7 +69,7 @@ Typically `command/reply` will contain the status in the `Reply-Text` header whi
         deferred.promise
 
       end: () ->
-        debug? when:'end'
+        @_debug? when:'end'
         @socket.end()
         @
 
@@ -80,14 +78,14 @@ Typically `command/reply` will contain the status in the `Reply-Text` header whi
 Send an API command, see [Mod commands](http://wiki.freeswitch.org/wiki/Mod_commands)
 
       api: (command) ->
-        debug? when:'api', command: command
+        @_debug? when:'api', command: command
 
         deferred = Q.defer()
         @once('freeswitch_api_response').then (call) ->
-          debug? when: 'api response', command:command, call:call
+          @_debug? when: 'api response', command:command, call:call
           reply = call.body
           if reply.match /^-ERR/
-            debug? when:'api response failed', reply:reply
+            @_debug? when:'api response failed', reply:reply
             deferred.reject new Error reply
           else
             deferred.resolve call
@@ -237,20 +235,20 @@ Clean-up at the end of the connection.
 
       auto_cleanup: ->
         @once('freeswitch_disconnect_notice').then (call) ->
-          debug? "Received ESL disconnection notice"
+          @_debug? "Received ESL disconnection notice"
           switch call.headers['Content-Disposition']
             when 'linger'
-              debug? "Sending freeswitch_linger"
+              @_debug? "Sending freeswitch_linger"
               call.socket.emit 'freeswitch_linger', call
             when 'disconnect'
-              debug? "Sending freeswitch_disconnect"
+              @_debug? "Sending freeswitch_disconnect"
               call.socket.emit 'freeswitch_disconnect', call
 
 ### Linger
 The default behavior in linger mode is to disconnect the call (which is roughly equivalent to not using linger mode).
 
         @once('freeswitch_linger').then (call) ->
-          debug? when:'auto_cleanup/linger: exit'
+          @_debug? when:'auto_cleanup/linger: exit'
           call.exit()
 
 Use `call.once("freeswitch_linger",...)` to capture the end of the call. In this case you are responsible for calling `call.exit()`. If you do not do it, the calls will leak.
@@ -260,7 +258,7 @@ Use `call.once("freeswitch_linger",...)` to capture the end of the call. In this
 Normal behavior on disconnect is to end the call.  (However you may capture the `freeswitch_disconnect` event as well.)
 
         @once('freeswitch_disconnect').then (call) ->
-          debug? when:'auto_cleanup/disconnect: end'
+          @_debug? when:'auto_cleanup/disconnect: end'
           call.end()
 
 Make `auto_cleanup` chainable.
@@ -274,5 +272,6 @@ Promise toolbox
         call = @
         steps = steps.map (f) ->
           (call) ->
+            call._debug? when:'next step'
             f.apply(call) ? call
         steps.reduce Q.when, Q.resolve call

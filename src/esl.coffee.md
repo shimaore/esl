@@ -1,6 +1,6 @@
     net         = require 'net'
 
-    exports.debug = true
+    exports.debug = false
 
     if exports.debug
       util = require 'util'
