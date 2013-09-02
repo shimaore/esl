@@ -10,6 +10,7 @@ cleanup() {
 
 trap cleanup EXIT
 trap cleanup INT
+ulimit -s 240
 
 DIR="`pwd`"
 
@@ -22,6 +23,10 @@ sleep 1
 echo "-- Starting client test --"
 coffee client.coffee
 echo "-- Client test completed --"
+
+echo "-- Starting esl-8 test --"
+node esl-8.js
+echo "-- esl-8 test completed --"
 
 freeswitch -stop -run "$DIR"
 cleanup
