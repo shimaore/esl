@@ -1,4 +1,6 @@
 // Example code contributed by Fraser Redmond
+// WARNING: this code still uses the old (0.3.x) version of the module.
+// TODO: Migrate to the new (1.0) version.
 
 var fsServer = '127.0.0.1',
     fsPass   = 'clueCon',
