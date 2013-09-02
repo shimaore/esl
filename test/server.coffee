@@ -8,15 +8,17 @@ delay = ->
 
 server = FS.server (call) ->
   log '--- New server connection'
-  call.trace 'server: '
+  # call.trace 'server: '
   outcome = call.sequence [
     delay
     -> @command 'answer'
     delay
-    -> @command 'hangup'
+    -> @hangup()
   ]
-  outcome.then -> log '--- Server succeeded'
-  outcome.fail (reason) -> log "--- Server failed: #{reason}"
+  outcome.then ->
+    log '--- Server succeeded'
+  outcome.fail (reason) ->
+    log "--- Server failed: #{reason}"
 
   call.socket.on 'close', ->
     # Only run the server once

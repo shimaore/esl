@@ -1,4 +1,5 @@
 FS = require '../lib/esl'
+Q = require 'q'
 
 log = -> console.log arguments...
 
@@ -7,15 +8,18 @@ FS.client (call) ->
   uuid = null
   outcome = call.sequence [
     ->
-      @trace "client: "
       log '--- Creating new instance'
+      @trace "client: "
+      @debug on
       @api 'originate loopback/app=park &park()'
     ->
       uuid = @body.match(/^\+OK ([0-9a-f-]+)/)[1]
-      return
+      @command_uuid uuid, 'set', 'socket_resume=true'
     ->
       log '--- Connecting to server'
       @command_uuid uuid, 'socket', '127.0.0.1:7000 async full'
+    ->
+      @exit()
   ]
   outcome.then ->
     log '--- Client succeeded'
