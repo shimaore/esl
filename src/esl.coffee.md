@@ -24,7 +24,7 @@ This is modelled after Node.js' http.js
 
 Make the command responses somewhat unique.
 
-      call.socket.once 'CHANNEL_EXECUTE_COMPLETE', (call) ->
+      call.socket.on 'CHANNEL_EXECUTE_COMPLETE', (call) ->
         application = call.body['Application']
         application_data = call.body['Application-Data']
         call.socket.emit "CHANNEL_EXECUTE_COMPLETE #{application} #{application_data}", call
