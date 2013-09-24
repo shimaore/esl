@@ -46,6 +46,13 @@ The following code does the equivalent of `fs_cli -x`: it connects to the Event 
 
 The API methods return [Q promises](http://documentup.com/kriskowal/q/). If you are not using `call.sequence` make sure you return a promise for the `call` object at the end of your callbacks.
 
+If you need to collect data back from an API call:
+
+        var outcome = call.sequence([
+          function(){ this.api(cmd) }
+          function(){ console.log("API said: "+this.body) }
+        ]);
+
 The original example as CoffeeScript:
 
     fs_command = (cmd) ->
