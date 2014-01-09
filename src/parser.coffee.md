@@ -3,12 +3,9 @@ Event Socket stream parser
 
     querystring = require 'querystring'
 
-    exports.debug = false
-
-    if exports.debug
-      debug = (o) ->
-        util = require 'util'
-        util.log util.inspect o
+    exports.report = (o) ->
+      util = require 'util'
+      util.log util.inspect o
 
     module.exports = class FreeSwitchParser
 
@@ -92,7 +89,6 @@ Re-parse whatever data was left after these headers were fully consumed.
 ### Dispatch incoming data into the header or body parsers.
 
       on_data: (data) ->
-        debug? "on_data(#{data})"
 
 Capture the body as needed
 
@@ -105,9 +101,8 @@ For completeness provide an `on_end()` method.
 TODO: it probably should make sure the buffer is empty?
 
       on_end: () ->
-        debug? "Parser: end of stream"
         if @buffer.length > 0
-          debug? "Buffer is not empty, left over: #{@buffer}"
+          exports.report error:'Buffer is not empty at end of stream', buffer:@buffer
 
 Headers parser
 --------------
@@ -116,7 +111,6 @@ Event Socket framing contains headers and a body.
 The header must be decoded first to learn the presence and length of the body.
 
     parse_header_text = (header_text) ->
-      debug? "parse_header_text(#{header_text})"
 
       header_lines = header_text.split("\n")
       headers = {}

@@ -1,11 +1,8 @@
     net         = require 'net'
 
-    exports.debug = false
-
-    if exports.debug
+    exports.report = (o) ->
       util = require 'util'
-      debug = (o) ->
-        util.log util.inspect o
+      util.log util.inspect o
 
     FreeSwitchParser = require './parser'
     FreeSwitchResponse = require './response'
@@ -30,7 +27,6 @@ Make the command responses somewhat unique.
         call.socket.emit "CHANNEL_EXECUTE_COMPLETE #{application} #{application_data}", call
 
       parser.process = (headers,body) ->
-        debug? {headers,body}
 
 Rewrite headers as needed to work around some weirdnesses in the protocol; and assign unified event IDs to the ESL Content-Types.
 
@@ -53,7 +49,7 @@ Rewrite headers as needed to work around some weirdnesses in the protocol; and a
             try
               body = JSON.parse(body)
             catch error
-              debug? "JSON #{error} in #{body}"
+              exports.report when:'JSON error', error:error, body:body
               return
             event = body['Event-Name']
 
@@ -76,11 +72,9 @@ Rewrite headers as needed to work around some weirdnesses in the protocol; and a
         call.headers = headers
         call.body = body
 
-        debug? when:'connection listener socket.emit', event:event, call:call
         call.socket.emit event, call
 
       # Get things started
-      debug? when:'connection listener emit freeswitch_connect', call:call
       call.socket.emit 'freeswitch_connect', call
 
 ESL Server
@@ -112,7 +106,10 @@ The callback will receive a FreeSwitchResponse object.
           ->
               @event_json 'ALL'
           ->
-            handler? @
+            try
+              handler? @
+            catch e
+              exports.report when:'handler', error:e
         ]
       return server
 
@@ -134,9 +131,10 @@ ESL client
         throw new Error "handler is required"
       client = new FreeSwitchClient()
       client.once 'freeswitch_auth_request', (call) ->
-        debug? when: "Challenged for authentication"
         call.auth(options.password).then (call) ->
           call.auto_cleanup()
-          debug? when:"Authentication sent", call:call
-          handler? call
+          try
+            handler? call
+          catch e
+            exports.report when:'handler', error:e
       return client
