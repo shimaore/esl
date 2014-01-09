@@ -95,13 +95,21 @@ Send an API command, see [Mod commands](http://wiki.freeswitch.org/wiki/Mod_comm
 
 Send an API command in the background.
 
-      bgapi: (command,cb) ->
+      bgapi: (command) ->
 
-The callback will receive the Job UUID (instead of the usual response).
-
-        @send "bgapi #{command}", (res) ->
+        deferred = Q.defer()
+        cmd = @send "bgapi #{command}"
+        cmd.then (res) ->
           r = res.headers['Reply-Text']?.match /\+OK Job-UUID: (.+)$/
-          cb? r[1]
+
+The promise will receive the Job UUID (instead of the usual response).
+
+          if r? and r[1]?
+            deferred.resolve r[1]
+          else
+            deferred.reject new Error "bgapi #{command} did not provide a Job-UUID."
+
+        deferred.promise
 
 ### Event reception and filtering
 
