@@ -149,13 +149,13 @@ Authenticate:
 
 connect() and linger() are used in server mode.
 
-      connect: (cb)             -> @send "connect"    # Outbound mode
+      connect: -> @send "connect"    # Outbound mode
 
-      linger: (cb)              -> @send "linger"     # Outbound mode
+      linger: -> @send "linger"     # Outbound mode
 
 Send the exit command to the FreeSwitch socket.
 
-      exit: (cb)                -> @send "exit"
+      exit: -> @send "exit"
 
 ### Event logging commands
 
@@ -165,7 +165,7 @@ Send the exit command to the FreeSwitch socket.
         else
           @send "log"
 
-      nolog: (cb)                 -> @send "nolog"
+      nolog: -> @send "nolog"
 
 ### Message sending
 
