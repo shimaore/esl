@@ -27,6 +27,7 @@
   }
 , "scripts": {
     "prepublish": "cake build"
+  , "test": "mocha --compilers coffee.md:coffee-script --reporter spec"
   }
 , "publishConfig" : {
     "tag": "development"
