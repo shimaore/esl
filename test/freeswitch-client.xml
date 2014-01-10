@@ -1,0 +1,51 @@
+<?xml version="1.0"?>
+<document type="freeswitch/xml">
+  <X-PRE-PROCESS cmd="set" data="name=client"/>
+
+  <section name="configuration" description="Various Configuration">
+    <configuration name="switch.conf" description="Core Configuration">
+      <settings>
+        <param name="colorize-console" value="true"/>
+        <param name="core-db-name" value="/dev/shm/freeswitch/core-$${name}.db" />
+        <param name="rtp-start-port" value="49152"/>
+        <param name="rtp-end-port" value="65535"/>
+      </settings>
+    </configuration>
+    <configuration name="modules.conf" description="Modules">
+      <modules>
+        <load module="mod_event_socket"/>
+        <load module="mod_commands"/>
+        <load module="mod_dptools"/>
+        <load module="mod_loopback"/>
+        <load module="mod_sofia"/>
+      </modules>
+    </configuration>
+    <configuration name="event_socket.conf" description="Socket Client">
+      <settings>
+        <param name="nat-map" value="false"/>
+        <param name="listen-ip" value="127.0.0.1"/>
+        <param name="listen-port" value="8021"/>
+        <param name="password" value="ClueCon"/>
+      </settings>
+    </configuration>
+    <configuration name="acl.conf" description="Network Lists">
+      <network-lists>
+        <list name="any" default="allow">
+          <node type="allow" cidr="127.0.0.1/8"/>
+        </list>
+      </network-lists>
+    </configuration>
+
+    <configuration name="sofia.conf" description="sofia Endpoint">
+      <global_settings>
+        <param name="log-level" value="9"/> <!-- anything below 9 makes FreeSwitch segfault??! -->
+        <param name="debug-presence" value="0"/>
+      </global_settings>
+      <profiles>
+        <X-PRE-PROCESS cmd="set" data="sip_port=5064"/>
+        <X-PRE-PROCESS cmd="include" data="profile-test.xml"/>
+      </profiles>
+    </configuration>
+
+  </section>
+</document>
