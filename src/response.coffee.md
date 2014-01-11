@@ -49,7 +49,13 @@ Typically `command/reply` will contain the status in the `Reply-Text` header whi
         .then (call) ->
           call._debug? {when:'command reply', command, args, call}
           reply = call.headers['Reply-Text']
-          if reply.match /^-ERR/
+          if not reply?
+            call._debug? {when:'command failed', why:'no reply', command, args}
+            ## At least `exit` will not return a reply.
+            # deferred.reject new Error "no reply to command #{command} #{args}"
+            # return
+
+          if reply?.match /^-ERR/
             call._debug? {when:'command failed', reply}
             deferred.reject new Error reply
           else
@@ -87,7 +93,12 @@ Send an API command, see [Mod commands](http://wiki.freeswitch.org/wiki/Mod_comm
         .then (call) ->
           @_debug? when: 'api response', command:command, call:call
           reply = call.body
-          if reply.match /^-ERR/
+          if not reply?
+            call._debug? {when:'api failed', why:'no reply', command}
+            deferred.reject new Error "no reply to api #{command}"
+            return
+
+          if reply?.match /^-ERR/
             @_debug? when:'api response failed', reply:reply
             deferred.reject new Error reply
           else
