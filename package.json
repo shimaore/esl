@@ -1,36 +1,50 @@
 {
-  "name": "esl"
-, "version": "1.1.0"
-, "description": "Client and Server for FreeSwitch Event System"
-, "keywords": [ "freeswitch", "event" ]
-, "author": { "name": "Stéphane Alnet", "email": "stephane@shimaore.net" }
-, "homepage": "https://github.com/shimaore/esl"
-, "repository": {
-    "type": "git"
-  , "url": "git://github.com/shimaore/esl.git"
-  }
-, "contributors": [
-    { "name": "Paweł Pierścionek", "email": "pawel@voiceworks.pl" }
-  , { "name": "Akash Deep Verma", "email": "akashdeep@flexydial.com" }
-  ]
-, "main": "lib/esl.js"
-, "files": [
-    "lib/esl.js"
-  , "lib/parser.js"
-  , "lib/response.js"
-  ]
-, "dependencies": {
+  "name": "esl",
+  "version": "1.1.0",
+  "description": "Client and Server for FreeSwitch Event System",
+  "keywords": [
+    "freeswitch",
+    "event"
+  ],
+  "author": {
+    "name": "Stéphane Alnet",
+    "email": "stephane@shimaore.net"
+  },
+  "homepage": "https://github.com/shimaore/esl",
+  "repository": {
+    "type": "git",
+    "url": "git://github.com/shimaore/esl.git"
+  },
+  "contributors": [
+    {
+      "name": "Paweł Pierścionek",
+      "email": "pawel@voiceworks.pl"
+    },
+    {
+      "name": "Akash Deep Verma",
+      "email": "akashdeep@flexydial.com"
+    }
+  ],
+  "main": "lib/esl.js",
+  "files": [
+    "lib/esl.js",
+    "lib/parser.js",
+    "lib/response.js"
+  ],
+  "dependencies": {
     "q": "*"
-  }
-, "devDependencies": {
-    "coffee-script": "*"
-  }
-, "scripts": {
-    "prepublish": "cake build"
-  , "test": "mocha --compilers coffee.md:coffee-script --reporter spec"
-  }
-, "publishConfig" : {
+  },
+  "devDependencies": {
+    "coffee-script": "~1.6.3",
+    "should": "~2.1.1",
+    "mocha": "~1.17.0"
+  },
+  "scripts": {
+    "prepublish": "cake build",
+    "test": "mocha --compilers coffee.md:coffee-script --reporter spec"
+  },
+  "publishConfig": {
     "tag": "development"
-  }
-, "ok": true
+  },
+  "ok": true
 }
