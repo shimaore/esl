@@ -5,7 +5,7 @@
   <section name="configuration" description="Various Configuration">
     <configuration name="switch.conf" description="Core Configuration">
       <settings>
-        <param name="colorize-console" value="true"/>
+        <param name="switchname" value="freeswitch-$${name}"/>
         <param name="core-db-name" value="/dev/shm/freeswitch/core-$${name}.db" />
         <param name="rtp-start-port" value="49152"/>
         <param name="rtp-end-port" value="65535"/>
@@ -24,7 +24,7 @@
       <settings>
         <param name="nat-map" value="false"/>
         <param name="listen-ip" value="127.0.0.1"/>
-        <param name="listen-port" value="8021"/>
+        <param name="listen-port" value="8024"/>
         <param name="password" value="ClueCon"/>
       </settings>
     </configuration>
@@ -43,7 +43,7 @@
       </global_settings>
       <profiles>
         <X-PRE-PROCESS cmd="set" data="sip_port=5064"/>
-        <X-PRE-PROCESS cmd="include" data="profile-test.xml"/>
+        <X-PRE-PROCESS cmd="include" data="../test/profile-test.xml"/>
       </profiles>
     </configuration>
 

@@ -8,6 +8,7 @@
     <param name="sip-port" value="$${sip_port}"/>
     <param name="bind-params" value="transport=udp,tcp"/>
 
+    <X-PRE-PROCESS cmd="set" data="local_ip=127.0.0.1"/>
     <param name="sip-ip" value="$${local_ip}"/>
     <param name="ext-sip-ip" value="$${local_ip}"/>
 
