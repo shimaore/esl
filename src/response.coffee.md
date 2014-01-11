@@ -45,7 +45,8 @@ This is normally not used directly.
 
 Typically `command/reply` will contain the status in the `Reply-Text` header while `api/response` will contain the status in the body.
 
-        @once('freeswitch_command_reply').then (call) ->
+        @once('freeswitch_command_reply')
+        .then (call) ->
           call._debug? {when:'command reply', command, args, call}
           reply = call.headers['Reply-Text']
           if reply.match /^-ERR/
@@ -53,6 +54,7 @@ Typically `command/reply` will contain the status in the `Reply-Text` header whi
             deferred.reject new Error reply
           else
             deferred.resolve call
+        .done()
 
         @_trace? command: command, args: args
 
@@ -81,7 +83,8 @@ Send an API command, see [Mod commands](http://wiki.freeswitch.org/wiki/Mod_comm
         @_debug? when:'api', command: command
 
         deferred = Q.defer()
-        @once('freeswitch_api_response').then (call) ->
+        @once('freeswitch_api_response')
+        .then (call) ->
           @_debug? when: 'api response', command:command, call:call
           reply = call.body
           if reply.match /^-ERR/
@@ -89,6 +92,7 @@ Send an API command, see [Mod commands](http://wiki.freeswitch.org/wiki/Mod_comm
             deferred.reject new Error reply
           else
             deferred.resolve call
+        .done()
 
         @send "api #{command}"
         deferred.promise
@@ -99,8 +103,10 @@ Send an API command in the background.
 
         deferred = Q.defer()
         cmd = @send "bgapi #{command}"
-        cmd.then (res) ->
-          r = res.headers['Reply-Text']?.match /\+OK Job-UUID: (.+)$/
+        cmd
+        .then (res) ->
+          reply = res.headers['Reply-Text']
+          r = reply?.match /\+OK Job-UUID: (.+)$/
 
 The promise will receive the Job UUID (instead of the usual response).
 
@@ -108,6 +114,7 @@ The promise will receive the Job UUID (instead of the usual response).
             deferred.resolve r[1]
           else
             deferred.reject new Error "bgapi #{command} did not provide a Job-UUID."
+        .done()
 
         deferred.promise
 
@@ -242,7 +249,8 @@ TODO: `nomedia`
 Clean-up at the end of the connection.
 
       auto_cleanup: ->
-        @once('freeswitch_disconnect_notice').then (call) ->
+        @once('freeswitch_disconnect_notice')
+        .then (call) ->
           @_debug? "Received ESL disconnection notice"
           switch call.headers['Content-Disposition']
             when 'linger'
@@ -251,13 +259,16 @@ Clean-up at the end of the connection.
             when 'disconnect'
               @_debug? "Sending freeswitch_disconnect"
               call.socket.emit 'freeswitch_disconnect', call
+        .done()
 
 ### Linger
 The default behavior in linger mode is to disconnect the call (which is roughly equivalent to not using linger mode).
 
-        @once('freeswitch_linger').then (call) ->
+        @once('freeswitch_linger')
+        .then (call) ->
           @_debug? when:'auto_cleanup/linger: exit'
           call.exit()
+        .done()
 
 Use `call.once("freeswitch_linger",...)` to capture the end of the call. In this case you are responsible for calling `call.exit()`. If you do not do it, the calls will leak.
 
@@ -265,9 +276,11 @@ Use `call.once("freeswitch_linger",...)` to capture the end of the call. In this
 
 Normal behavior on disconnect is to end the call.  (However you may capture the `freeswitch_disconnect` event as well.)
 
-        @once('freeswitch_disconnect').then (call) ->
+        @once('freeswitch_disconnect')
+        .then (call) ->
           @_debug? when:'auto_cleanup/disconnect: end'
           call.end()
+        .done()
 
 Make `auto_cleanup` chainable.
 
