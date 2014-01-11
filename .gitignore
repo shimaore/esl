@@ -1,5 +1,3 @@
 lib/
 docs/esl.html
-test/freeswitch.history
-test/freeswitch.serial
-test/freeswitch.xml.fsxml
+node_modules/
