@@ -109,7 +109,7 @@ The callback will receive a FreeSwitchResponse object.
             try
               handler? @
             catch e
-              exports.report when:'handler', error:e
+              exports.report when:'server.handler', error:e
         ]
       return server
 
@@ -136,5 +136,5 @@ ESL client
           try
             handler? call
           catch e
-            exports.report when:'handler', error:e
+            exports.report when:'client.handler', error:e
       return client

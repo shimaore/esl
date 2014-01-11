@@ -280,6 +280,6 @@ Promise toolbox
         call = @
         steps = steps.map (f) ->
           (call) ->
-            call._debug? when:'next step'
+            call._debug? when:'next sequence step'
             f.apply(call) ? call
         steps.reduce Q.when, Q.resolve call
