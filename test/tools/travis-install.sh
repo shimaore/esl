@@ -1,5 +1,5 @@
 #!/bin/sh
-# apt-get install update-manager-core
+apt-get install update-manager-core
 do-release-upgrade -m server -f DistUpgradeViewNonInteractive
 apt-get install -qq python-software-properties
 apt-add-repository "deb http://debian.sotelips.net/shimaore shimaore main"
