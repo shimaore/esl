@@ -1,2 +1,2 @@
 before_install:
-  - sudo apt-get install -qq freeswitch freeswitch-mod-commands freeswitch-mod-event-socket  freeswitch-mod-dptools freeswitch-mod-loopback freeswitch-mod-dialplan-xml freeswitch-mod-sofia
+  - sudo ./test/tools/travis-install.sh
