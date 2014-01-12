@@ -14,5 +14,5 @@ gpg --armor --export "=Stephane Alnet (Packaging) <stephane@shimaore.net>" | apt
 apt-get update -qq
 
 ## Install FreeSwitch
-apt-get install \
+apt-get install --no-install-recommends \
   freeswitch freeswitch-mod-commands freeswitch-mod-event-socket freeswitch-mod-dptools freeswitch-mod-loopback freeswitch-mod-dialplan-xml freeswitch-mod-sofia
