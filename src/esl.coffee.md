@@ -91,6 +91,9 @@ ESL Server
 The callback will receive a FreeSwitchResponse object.
 
     exports.server = (handler) ->
+      if not handler?
+        throw new Error "server handler is required"
+
       server = new FreeSwitchServer (call) ->
         Unique_ID = 'Unique-ID'
         call.sequence [
@@ -107,7 +110,7 @@ The callback will receive a FreeSwitchResponse object.
               @event_json 'ALL'
           ->
             try
-              handler? @
+              handler @
             catch e
               exports.report when:'server.handler', error:e
         ]
@@ -127,14 +130,16 @@ ESL client
       if typeof options is 'function'
         [options,handler] = [{},options]
       options.password ?= 'ClueCon'
+
       if not handler?
-        throw new Error "handler is required"
+        throw new Error "client handler is required"
+
       client = new FreeSwitchClient()
       client.once 'freeswitch_auth_request', (call) ->
         call.auth(options.password).then (call) ->
           call.auto_cleanup()
           try
-            handler? call
+            handler call
           catch e
             exports.report when:'client.handler', error:e
       return client
