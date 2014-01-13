@@ -1,7 +1,7 @@
     net         = require 'net'
+    util = require 'util'
 
     exports.report = (o) ->
-      util = require 'util'
       util.log util.inspect o
 
     FreeSwitchParser = require './parser'
