@@ -54,10 +54,8 @@
 
     <context name="private">
       <extension name="test">
-        <condition field="destination_number" expression="^(fr|en)$">
-          <action application="answer"/>
-          <action application="set" data="language=$1"/>
-          <action application="socket" data="127.0.0.1:7000 async full"/>
+        <condition field="destination_number" expression=".">
+          <action application="socket" data="127.0.0.1:7004 async full"/>
         </condition>
       </extension>
     </context>
