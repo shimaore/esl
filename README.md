@@ -1,3 +1,5 @@
+[![Build Status](https://travis-ci.org/shimaore/esl.png?branch=master)](https://travis-ci.org/shimaore/esl)
+
 Promise-aware client and server for FreeSwitch events socket.
 
 This file documents the new, promise-based API of the package, version 1.x, which is under development.
