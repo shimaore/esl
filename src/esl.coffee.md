@@ -98,7 +98,7 @@ The callback will receive a FreeSwitchResponse object.
 
       server = new FreeSwitchServer (call) ->
         Unique_ID = 'Unique-ID'
-        call.sequence [
+        thus = call.sequence [
           ->
             @connect()
           ->
@@ -116,6 +116,7 @@ The callback will receive a FreeSwitchResponse object.
             catch e
               exports.report when:'server.handler', error:e
         ]
+        thus.done()
       return server
 
 ESL client
