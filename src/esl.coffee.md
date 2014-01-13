@@ -30,7 +30,8 @@ Make the command responses somewhat unique.
 
 Rewrite headers as needed to work around some weirdnesses in the protocol; and assign unified event IDs to the ESL Content-Types.
 
-        switch headers['Content-Type']
+        content_type = headers['Content-Type']
+        switch content_type
 
           when 'auth/request'
             event = 'freeswitch_auth_request'
@@ -67,7 +68,8 @@ Rewrite headers as needed to work around some weirdnesses in the protocol; and a
             event = 'freeswitch_api_response'
 
           else
-            event = headers['Content-Type']
+            exports.report when:'unhandled Content-Type', content_type:content_type
+            event = "freeswitch_#{content_type.replace /[^a-z]/, '_'}"
 
         call.headers = headers
         call.body = body
