@@ -1,6 +1,7 @@
 <?xml version="1.0"?>
 <document type="freeswitch/xml">
-  <X-PRE-PROCESS cmd="set" data="name=server"/>
+  <X-PRE-PROCESS cmd="set" data="name=client"/>
+
   <section name="configuration" description="Various Configuration">
     <configuration name="switch.conf" description="Core Configuration">
       <settings>
@@ -16,23 +17,21 @@
         <load module="mod_commands"/>
         <load module="mod_dptools"/>
         <load module="mod_loopback"/>
-
-        <load module="mod_dialplan_xml"/>
         <load module="mod_sofia"/>
       </modules>
     </configuration>
     <configuration name="event_socket.conf" description="Socket Client">
       <settings>
         <param name="nat-map" value="false"/>
-        <param name="listen-ip" value="127.0.0.1"/>
-        <param name="listen-port" value="8022"/>
+        <param name="listen-ip" value="0.0.0.0"/>
+        <param name="listen-port" value="8024"/>
         <param name="password" value="ClueCon"/>
       </settings>
     </configuration>
     <configuration name="acl.conf" description="Network Lists">
       <network-lists>
         <list name="any" default="allow">
-          <node type="allow" cidr="127.0.0.1/8"/>
+          <node type="allow" cidr="0.0.0.0/8"/>
         </list>
       </network-lists>
     </configuration>
@@ -43,23 +42,10 @@
         <param name="debug-presence" value="0"/>
       </global_settings>
       <profiles>
-        <X-PRE-PROCESS cmd="set" data="sip_port=5062"/>
-        <X-PRE-PROCESS cmd="include" data="../test/profile-test.xml"/>
+        <X-PRE-PROCESS cmd="set" data="sip_port=5064"/>
+        <X-PRE-PROCESS cmd="include" data="profile-test.xml"/>
       </profiles>
     </configuration>
 
   </section>
-
-  <section name="dialplan" description="Regex/XML Dialplan">
-
-    <context name="private">
-      <extension name="test">
-        <condition field="destination_number" expression=".">
-          <action application="socket" data="127.0.0.1:7004 async full"/>
-        </condition>
-      </extension>
-    </context>
-
-  </section>
-
 </document>
