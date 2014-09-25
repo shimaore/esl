@@ -35,7 +35,7 @@
     "q": "*"
   },
   "devDependencies": {
-    "coffee-script": "~1.6.3",
+    "coffee-script": "^1.8.0",
     "should": "~2.1.1",
     "mocha": "~1.17.0",
     "travis-freeswitch": "~2.1.0"

@@ -55,7 +55,7 @@
     <context name="private">
       <extension name="test">
         <condition field="destination_number" expression=".">
-          <action application="socket" data="127.0.0.1:7004 async full"/>
+          <action application="socket" data="172.17.42.1:7004 async full"/>
         </condition>
       </extension>
     </context>
