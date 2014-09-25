@@ -13,6 +13,7 @@ Connection Listener (socket events handler)
 This is modelled after Node.js' http.js
 
     connectionListener = (call) ->
+      call.stats ?= {}
 
       call.socket.setEncoding('ascii')
       parser = new FreeSwitchParser call.socket
@@ -35,6 +36,8 @@ Rewrite headers as needed to work around some weirdnesses in the protocol; and a
 
           when 'auth/request'
             event = 'freeswitch_auth_request'
+            call.stats.auth_request ?= 0
+            call.stats.auth_request++
 
           when 'command/reply'
             event = 'freeswitch_command_reply'
@@ -45,11 +48,15 @@ Rewrite headers as needed to work around some weirdnesses in the protocol; and a
               for n in ['Content-Type','Reply-Text','Socket-Mode','Control']
                 headers[n] = body[n]
                 delete body[n]
+            call.stats.command_reply ?= 0
+            call.stats.command_reply++
 
           when 'text/event-json'
             try
               body = JSON.parse(body)
             catch error
+              call.stats.json_parse_errors ?= 0
+              call.stats.json_parse_errors++
               exports.report when:'JSON error', error:error, body:body
               return
             event = body['Event-Name']
@@ -57,19 +64,29 @@ Rewrite headers as needed to work around some weirdnesses in the protocol; and a
           when 'text/event-plain'
             body = parse_header_text(body)
             event = body['Event-Name']
+            call.stats.events ?= 0
+            call.stats.events++
 
           when 'log/data'
             event = 'freeswitch_log_data'
+            call.stats.log_data ?= 0
+            call.stats.log_data++
 
           when 'text/disconnect-notice'
             event = 'freeswitch_disconnect_notice'
+            call.stats.disconnect ?= 0
+            call.stats.disconnect++
 
           when 'api/response'
             event = 'freeswitch_api_response'
+            call.stats.api_responses ?= 0
+            call.stats.api_responses++
 
           else
             exports.report when:'unhandled Content-Type', content_type:content_type
             event = "freeswitch_#{content_type.replace /[^a-z]/, '_'}"
+            call.stats.other_events ?= 0
+            call.stats.other_events++
 
         call.headers = headers
         call.body = body
@@ -84,7 +101,10 @@ ESL Server
 
     class FreeSwitchServer extends net.Server
       constructor: (requestListener) ->
+        @stats = {}
         @on 'connection', (socket) ->
+          @stats.connection_received ?= 0
+          @stats.connection_received++
           socket.on 'freeswitch_connect', requestListener
           connectionListener new FreeSwitchResponse socket
 
@@ -100,6 +120,8 @@ The callback will receive a FreeSwitchResponse object.
         Unique_ID = 'Unique-ID'
         thus = call.sequence [
           ->
+            server.stats.connecting ?= 0
+            server.stats.connecting++
             @connect()
           ->
             # "verbose_events" will send us channel data after each "command".
@@ -111,9 +133,13 @@ The callback will receive a FreeSwitchResponse object.
           ->
               @event_json 'ALL'
           ->
+            server.stats.handler ?= 0
+            server.stats.handler++
             try
               handler @
             catch e
+              server.stats.handler_errors ?= 0
+              server.stats.handler_errors++
               exports.report when:'server.handler', error:e
         ]
         thus.done()

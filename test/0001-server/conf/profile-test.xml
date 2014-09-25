@@ -2,8 +2,8 @@
   <settings>
     <param name="user-agent-string" value="esl test-$${name}-$${sip_port}"/>
     <param name="username" value="esl-test-$${name}"/>
-    <param name="debug" value="7"/>
-    <param name="sip-trace" value="true"/>
+    <param name="debug" value="2"/>
+    <param name="sip-trace" value="false"/>
 
     <param name="sip-port" value="$${sip_port}"/>
     <param name="bind-params" value="transport=udp,tcp"/>
@@ -57,7 +57,7 @@
     <!--<param name="disable-srv503" value="true"/>-->
     <!--<param name="record-template" value="$${recordings_dir}/${caller_id_number}.${strftime(%Y-%m-%d-%H-%M-%S)}.wav"/>-->
     <!--<param name="bitpacking" value="aal2"/> -->
-    <!--<param name="max-proceeding" value="1000"/>-->
+    <param name="max-proceeding" value="2000"/>
     <!--<param name="session-timeout" value="1800"/>-->
     <!--<param name="multiple-registrations" value="true"/>-->
     <!--<param name="unregister-on-options-fail" value="true"/>-->

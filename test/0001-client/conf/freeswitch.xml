@@ -9,6 +9,7 @@
         <param name="core-db-name" value="/dev/shm/freeswitch/core-$${name}.db" />
         <param name="rtp-start-port" value="49152"/>
         <param name="rtp-end-port" value="65535"/>
+        <param name="loglevel" value="info"/>
       </settings>
     </configuration>
     <configuration name="modules.conf" description="Modules">
@@ -38,7 +39,7 @@
 
     <configuration name="sofia.conf" description="sofia Endpoint">
       <global_settings>
-        <param name="log-level" value="9"/> <!-- anything below 9 makes FreeSwitch segfault??! -->
+        <param name="log-level" value="1"/> <!-- anything below 9 makes FreeSwitch segfault??! -->
         <param name="debug-presence" value="0"/>
       </global_settings>
       <profiles>

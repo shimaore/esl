@@ -2,8 +2,8 @@
   <settings>
     <param name="user-agent-string" value="esl test-$${name}-$${sip_port}"/>
     <param name="username" value="esl-test-$${name}"/>
-    <param name="debug" value="7"/>
-    <param name="sip-trace" value="true"/>
+    <param name="debug" value="2"/>
+    <param name="sip-trace" value="false"/>
 
     <param name="sip-port" value="$${sip_port}"/>
     <param name="bind-params" value="transport=udp,tcp"/>
