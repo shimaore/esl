@@ -1,14 +1,14 @@
 ESL response and associated API
 -------------------------------
 
-    Q = require 'q'
+    Promise = require 'bluebird'
+    util = require 'util'
 
     module.exports = class FreeSwitchResponse
       constructor: (@socket) ->
 
       trace: (logger) ->
         if logger is on
-          util = require 'util'
           @_trace = (o) ->
             util.log util.inspect o
           return
@@ -29,11 +29,23 @@ ESL response and associated API
           delete @_debug
 
       once: (event) ->
-        deferred = Q.defer()
-        @socket.once event, (call) =>
-          @_trace? {event,headers:call.headers,body:call.body}
-          deferred.resolve call
-        deferred.promise
+        p = new Promise (resolve,reject) =>
+          @socket.once event, =>
+            @_trace? {event,headers:@headers,body:@body}
+            resolve event
+        p.bind this
+
+
+      write: (command,args) ->
+        @_trace? command: command, args: args
+
+        text = "#{command}\n"
+        if args?
+          for key, value of args
+            text += "#{key}: #{value}\n"
+        text += "\n"
+        @socket.write text
+
 
 A generic way of sending commands to FreeSwitch.
 `send (string,array,function(){})`
@@ -41,45 +53,34 @@ This is normally not used directly.
 
       send: (command,args) ->
 
-        deferred = Q.defer()
+        p = new Promise (resolve,reject) =>
 
 Typically `command/reply` will contain the status in the `Reply-Text` header while `api/response` will contain the status in the body.
 
-        @once('freeswitch_command_reply')
-        .then (call) ->
-          call._debug? {when:'command reply', command, args, call}
-          reply = call.headers['Reply-Text']
-          if not reply?
-            call._debug? {when:'command failed', why:'no reply', command, args}
-            ## At least `exit` will not return a reply.
-            # deferred.reject new Error "no reply to command #{command} #{args}"
-            # return
+          @once 'freeswitch_command_reply'
+          .then ->
+            @_debug? {when:'command reply', command, args, call:this}
+            reply = @headers['Reply-Text']
+            if not reply?
+              @_debug? {when:'command failed', why:'no reply', command, args}
+              ## At least `exit` will not return a reply.
+              # deferred.reject new Error "no reply to command #{command} #{args}"
+              # return
 
-          if reply?.match /^-ERR/
-            call._debug? {when:'command failed', reply}
-            deferred.reject new Error reply
-          else
-            deferred.resolve call
-        .done()
+            if reply?.match /^-ERR/
+              @_debug? {when:'command failed', reply}
+              reject new Error util.inspect {when:'command reply',reply,command,args}
+            else
+              resolve reply
 
-        @_trace? command: command, args: args
+          @write command, args
 
-        try
-          @socket.write "#{command}\n"
-          if args?
-            for key, value of args
-              @socket.write "#{key}: #{value}\n"
-          @socket.write "\n"
-        catch e
-          deferred.reject e
-          @socket.emit 'freeswitch_error', error:e
-
-        deferred.promise
+        p.bind this
 
       end: () ->
         @_debug? when:'end'
         @socket.end()
-        @
+        this
 
 ### Channel-level commands
 
@@ -88,46 +89,44 @@ Send an API command, see [Mod commands](http://wiki.freeswitch.org/wiki/Mod_comm
       api: (command) ->
         @_debug? when:'api', command: command
 
-        deferred = Q.defer()
-        @once('freeswitch_api_response')
-        .then (call) ->
-          @_debug? when: 'api response', command:command, call:call
-          reply = call.body
-          if not reply?
-            call._debug? {when:'api failed', why:'no reply', command}
-            deferred.reject new Error "no reply to api #{command}"
-            return
+        p = new Promise (resolve,reject) =>
+          @once 'freeswitch_api_response'
+          .then ->
+            @_debug? when: 'api response', command:command, call:this
+            reply = @body
+            if not reply?
+              @_debug? {when:'api failed', why:'no reply', command}
+              reject new Error "no reply to api #{command}"
+              return
 
-          if reply?.match /^-ERR/
-            @_debug? when:'api response failed', reply:reply
-            deferred.reject new Error reply
-          else
-            deferred.resolve call
-        .done()
+            if reply?.match /^-ERR/
+              @_debug? {when:'api response failed', reply, command}
+              reject new Error util.inspect {when:'api response',reply,command}
+            else
+              resolve reply
 
-        @send "api #{command}"
-        deferred.promise
+          @write "api #{command}"
+
+        p.bind this
 
 Send an API command in the background.
 
       bgapi: (command) ->
 
-        deferred = Q.defer()
-        cmd = @send "bgapi #{command}"
-        cmd
-        .then (res) ->
-          reply = res.headers['Reply-Text']
-          r = reply?.match /\+OK Job-UUID: (.+)$/
+        p = new Promise (resolve,reject) =>
+          @send "bgapi #{command}"
+          .then (res) ->
+            reply = res.headers['Reply-Text']
+            r = reply?.match /\+OK Job-UUID: (.+)$/
 
 The promise will receive the Job UUID (instead of the usual response).
 
-          if r? and r[1]?
-            deferred.resolve r[1]
-          else
-            deferred.reject new Error "bgapi #{command} did not provide a Job-UUID."
-        .done()
+            if r? and r[1]?
+              resolve r[1]
+            else
+              reject new Error "bgapi #{command} did not provide a Job-UUID."
 
-        deferred.promise
+        p.bind this
 
 ### Event reception and filtering
 
@@ -258,53 +257,39 @@ Execute an application for the current UUID (in server/outbound mode)
 
 TODO: `nomedia`
 
+### Cleanup at end of call
+
 Clean-up at the end of the connection.
 
       auto_cleanup: ->
-        @once('freeswitch_disconnect_notice')
-        .then (call) ->
+        @once 'freeswitch_disconnect_notice'
+        .then ->
           @_debug? "Received ESL disconnection notice"
-          switch call.headers['Content-Disposition']
+          switch @headers['Content-Disposition']
             when 'linger'
               @_debug? "Sending freeswitch_linger"
-              call.socket.emit 'freeswitch_linger', call
+              @socket.emit 'freeswitch_linger', this
             when 'disconnect'
               @_debug? "Sending freeswitch_disconnect"
-              call.socket.emit 'freeswitch_disconnect', call
-        .done()
+              @socket.emit 'freeswitch_disconnect', this
 
-### Linger
+#### Linger
 The default behavior in linger mode is to disconnect the call (which is roughly equivalent to not using linger mode).
 
-        @once('freeswitch_linger')
-        .then (call) ->
+        @once 'freeswitch_linger'
+        .then ->
           @_debug? when:'auto_cleanup/linger: exit'
-          call.exit()
-        .done()
+          @exit()
 
 Use `call.once("freeswitch_linger",...)` to capture the end of the call. In this case you are responsible for calling `call.exit()`. If you do not do it, the calls will leak.
 
-### Disconnect
+#### Disconnect
 
 Normal behavior on disconnect is to end the call.  (However you may capture the `freeswitch_disconnect` event as well.)
 
-        @once('freeswitch_disconnect')
-        .then (call) ->
+        @once 'freeswitch_disconnect'
+        .then ->
           @_debug? when:'auto_cleanup/disconnect: end'
-          call.end()
-        .done()
+          @end()
 
-Make `auto_cleanup` chainable.
-
-        @
-
-Promise toolbox
----------------
-
-      sequence: (steps) ->
-        call = @
-        steps = steps.map (f) ->
-          (call) ->
-            call._debug? when:'next sequence step'
-            f.apply(call) ? call
-        steps.reduce Q.when, Q.resolve call
+        return

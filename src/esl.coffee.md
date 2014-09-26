@@ -1,4 +1,4 @@
-    net         = require 'net'
+    net = require 'net'
     util = require 'util'
 
     exports.report = (o) ->
@@ -118,31 +118,23 @@ The callback will receive a FreeSwitchResponse object.
 
       server = new FreeSwitchServer (call) ->
         Unique_ID = 'Unique-ID'
-        thus = call.sequence [
-          ->
-            server.stats.connecting ?= 0
-            server.stats.connecting++
-            @connect()
-          ->
-            # "verbose_events" will send us channel data after each "command".
-            @command 'verbose_events'
-            @auto_cleanup()
-          ->
-            unique_id = @body[Unique_ID]
-            @filter Unique_ID, unique_id
-          ->
-              @event_json 'ALL'
-          ->
-            server.stats.handler ?= 0
-            server.stats.handler++
-            try
-              handler @
-            catch e
-              server.stats.handler_errors ?= 0
-              server.stats.handler_errors++
-              exports.report when:'server.handler', error:e
-        ]
-        thus.done()
+        server.stats.connecting ?= 0
+        server.stats.connecting++
+        call.connect()
+        .then ->
+          unique_id = @body[Unique_ID]
+          @filter Unique_ID, unique_id
+        .then ->
+          @auto_cleanup()
+          # "verbose_events" will send us channel data after each "command".
+          @command 'verbose_events' # FIXME why can't we return the value of @command ?
+          null
+        .then -> @event_json 'ALL'
+        .then ->
+          server.stats.handler ?= 0
+          server.stats.handler++
+          this
+        .then handler
       return server
 
 ESL client
@@ -165,10 +157,7 @@ ESL client
 
       client = new FreeSwitchClient()
       client.once 'freeswitch_auth_request', (call) ->
-        call.auth(options.password).then (call) ->
-          call.auto_cleanup()
-          try
-            handler call
-          catch e
-            exports.report when:'client.handler', error:e
+        call.auth options.password
+        .then -> @auto_cleanup()
+        .then handler
       return client
