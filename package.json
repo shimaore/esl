@@ -32,7 +32,8 @@
     "lib/response.js"
   ],
   "dependencies": {
-    "q": "*"
+    "bluebird": "^2.3.2",
+    "co": "*"
   },
   "devDependencies": {
     "coffee-script": "git+https://github.com/jashkenas/coffeescript.git",
