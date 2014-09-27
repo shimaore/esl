@@ -40,6 +40,13 @@ The debug method will provide tracing inside the module's code. (The trace metho
             resolve event
         p.bind this
 
+      on: (event) ->
+        p = new Promise (resolve,reject) =>
+          @socket.on event, =>
+            @_trace? {event,headers:@headers,body:@body}
+            resolve event
+        p.bind this
+
       write: (command,args) ->
         @_trace? command: command, args: args
 
