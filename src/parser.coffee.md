@@ -3,10 +3,6 @@ Event Socket stream parser
 
     querystring = require 'querystring'
 
-    exports.report = (o) ->
-      util = require 'util'
-      util.log util.inspect o
-
     module.exports = class FreeSwitchParser
 
 The Event Socket parser will parse an incoming ES stream, whether your code is acting as a client (connected to the FreeSwitch ES server) or as a server (called back by FreeSwitch due to the "socket" application command).
@@ -102,7 +98,7 @@ TODO: it probably should make sure the buffer is empty?
 
       on_end: () ->
         if @buffer.length > 0
-          exports.report error:'Buffer is not empty at end of stream', buffer:@buffer
+          @socket.emit 'error', error:'Buffer is not empty at end of stream', buffer:@buffer
 
 Headers parser
 --------------

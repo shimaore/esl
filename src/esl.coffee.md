@@ -1,8 +1,5 @@
     net = require 'net'
-    util = require 'util'
-
-    exports.report = (o) ->
-      util.log util.inspect o
+    assert = require 'assert'
 
     FreeSwitchParser = require './parser'
     FreeSwitchResponse = require './response'
@@ -57,7 +54,7 @@ Rewrite headers as needed to work around some weirdnesses in the protocol; and a
             catch error
               call.stats.json_parse_errors ?= 0
               call.stats.json_parse_errors++
-              exports.report when:'JSON error', error:error, body:body
+              call.socket.emit 'error', when:'JSON error', error:error, body:body
               return
             event = body['Event-Name']
 
@@ -83,10 +80,11 @@ Rewrite headers as needed to work around some weirdnesses in the protocol; and a
             call.stats.api_responses++
 
           else
-            exports.report when:'unhandled Content-Type', content_type:content_type
+            # FIXME report when:'unhandled Content-Type', content_type:content_type
             event = "freeswitch_#{content_type.replace /[^a-z]/, '_'}"
-            call.stats.other_events ?= 0
-            call.stats.other_events++
+            call.socket.emit 'error', when:'Unhandled Content-Type', error:content_type
+            call.stats.unhandled ?= 0
+            call.stats.unhandled++
 
         call.headers = headers
         call.body = body
@@ -103,9 +101,13 @@ ESL Server
       constructor: (requestListener) ->
         @stats = {}
         @on 'connection', (socket) ->
-          @stats.connection_received ?= 0
-          @stats.connection_received++
-          socket.on 'freeswitch_connect', requestListener
+          @stats.connections ?= 0
+          @stats.connections++
+          socket.on 'freeswitch_connect', (call) ->
+            try
+              requestListener call
+            catch error
+              socket.emit 'error', error
           connectionListener new FreeSwitchResponse socket
 
         super()
@@ -113,8 +115,7 @@ ESL Server
 The callback will receive a FreeSwitchResponse object.
 
     exports.server = (handler) ->
-      if not handler?
-        throw new Error "server handler is required"
+      assert.ok handler?, "server handler is required"
 
       server = new FreeSwitchServer (call) ->
         Unique_ID = 'Unique-ID'
@@ -143,7 +144,7 @@ ESL client
     class FreeSwitchClient extends net.Socket
       constructor: () ->
         @on 'connect', ->
-          connectionListener new FreeSwitchResponse @
+          connectionListener new FreeSwitchResponse this
 
         super()
 
@@ -152,8 +153,7 @@ ESL client
         [options,handler] = [{},options]
       options.password ?= 'ClueCon'
 
-      if not handler?
-        throw new Error "client handler is required"
+      assert.ok handler?, "client handler is required"
 
       client = new FreeSwitchClient()
       client.once 'freeswitch_auth_request', (call) ->

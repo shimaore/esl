@@ -7,6 +7,10 @@ ESL response and associated API
     module.exports = class FreeSwitchResponse
       constructor: (@socket) ->
 
+### Tracing and debugging
+
+The trace method will trace exchanges with the FreeSwitch server.
+
       trace: (logger) ->
         if logger is on
           @_trace = (o) ->
@@ -18,9 +22,10 @@ ESL response and associated API
         if typeof logger is 'function'
           @_trace = logger
         if typeof logger is 'string'
-          util = require 'util'
           @_trace = (o) ->
             util.log logger + util.inspect o
+
+The debug method will provide tracing inside the module's code. (The trace method must have been called first.)
 
       debug: (status) ->
         if status
