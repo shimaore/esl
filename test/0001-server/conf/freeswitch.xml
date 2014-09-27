@@ -11,7 +11,7 @@
         <param name="max-sessions" value="2000"/>
         <param name="sessions-per-second" value="2000"/>
         <param name="min-idle-cpu" value="0"/>
-        <param name="loglevel" value="alert"/>
+        <param name="loglevel" value="info"/>
       </settings>
     </configuration>
     <configuration name="modules.conf" description="Modules">
@@ -58,8 +58,8 @@
 
     <context name="private">
       <extension name="test">
-        <condition field="destination_number" expression=".">
-          <action application="socket" data="172.17.42.1:7004 async full"/>
+        <condition field="destination_number" expression="^server(\d+)$">
+          <action application="socket" data="172.17.42.1:$1 async full"/>
         </condition>
       </extension>
     </context>
