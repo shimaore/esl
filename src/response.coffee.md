@@ -40,7 +40,6 @@ The debug method will provide tracing inside the module's code. (The trace metho
             resolve event
         p.bind this
 
-
       write: (command,args) ->
         @_trace? command: command, args: args
 
@@ -183,7 +182,9 @@ connect() and linger() are used in server mode.
 
       linger: -> @send "linger"     # Outbound mode
 
-Send the exit command to the FreeSwitch socket.
+Send the `exit` command to the FreeSwitch socket.
+FreeSwitch will respond with "+OK bye" followed by a `disconnect-notice` message, which gets translated into a `freeswitch_disconnect_notice` event internally, which in turn gets translated into either `freeswitch_disconnect` or `freeswitch_linger`.
+You normally do not need to call `@exit` directly.
 
       exit: -> @send "exit"
 
