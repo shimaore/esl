@@ -123,6 +123,7 @@ The callback will receive a FreeSwitchResponse object.
         server.stats.connecting++
         call.connect()
         .then ->
+          @data = @body
           unique_id = @body[Unique_ID]
           @filter Unique_ID, unique_id
         .then ->
