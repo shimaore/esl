@@ -11,6 +11,12 @@ The Event Socket parser will parse an incoming ES stream, whether your code is a
         @body_length = 0
         @buffer = ""
 
+        @socket.on 'data', (data) =>
+          @on_data data
+
+        @socket.on 'end', =>
+          @on_end()
+
 ### Capture body
 
       capture_body: (data) ->

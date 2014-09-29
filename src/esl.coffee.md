@@ -14,8 +14,8 @@ This is modelled after Node.js' http.js
 
       call.socket.setEncoding('ascii')
       parser = new FreeSwitchParser call.socket
-      call.socket.on 'data', (data) ->  parser.on_data(data)
-      call.socket.on 'end',  ()     ->  parser.on_end()
+      # call.socket.on 'data', (data) ->  parser.on_data(data)
+      # call.socket.on 'end',  ()     ->  parser.on_end()
 
 Make the command responses somewhat unique.
 
