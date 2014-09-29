@@ -2,6 +2,7 @@ Event Socket stream parser
 --------------------------
 
     querystring = require 'querystring'
+    util = require 'util'
 
     module.exports = class FreeSwitchParser
 
@@ -104,7 +105,7 @@ TODO: it probably should make sure the buffer is empty?
 
       on_end: () ->
         if @buffer.length > 0
-          @socket.emit 'error', error:'Buffer is not empty at end of stream', buffer:@buffer
+          @socket.emit 'error', new Error util.inspect error:'Buffer is not empty at end of stream', buffer:@buffer
 
 Headers parser
 --------------
