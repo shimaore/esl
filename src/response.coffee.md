@@ -36,15 +36,17 @@ The debug method will provide tracing inside the module's code. (The trace metho
       once: (event) ->
         p = new Promise (resolve,reject) =>
           @socket.once event, =>
-            @_trace? {event,headers:@headers,body:@body}
+            @_trace? {once:event,headers:@headers,body:@body}
             resolve event
+            return
         p.bind this
 
       on: (event) ->
         p = new Promise (resolve,reject) =>
           @socket.on event, =>
-            @_trace? {event,headers:@headers,body:@body}
+            @_trace? {on:event,headers:@headers,body:@body}
             resolve event
+            return
         p.bind this
 
       write: (command,args) ->
@@ -74,15 +76,16 @@ Typically `command/reply` will contain the status in the `Reply-Text` header whi
             reply = @headers['Reply-Text']
             if not reply?
               @_debug? {when:'command failed', why:'no reply', command, args}
-              ## At least `exit` will not return a reply.
-              # deferred.reject new Error "no reply to command #{command} #{args}"
-              # return
+              reject new Error util.inspect {when:'no reply to command',command,args}
+              return
 
-            if reply?.match /^-ERR/
+            if reply?.match /^-/
               @_debug? {when:'command failed', reply}
               reject new Error util.inspect {when:'command reply',reply,command,args}
-            else
-              resolve reply
+              return
+
+            resolve reply
+            return
 
           @write command, args
 
@@ -103,18 +106,20 @@ Send an API command, see [Mod commands](http://wiki.freeswitch.org/wiki/Mod_comm
         p = new Promise (resolve,reject) =>
           @once 'freeswitch_api_response'
           .then ->
-            @_debug? when: 'api response', command:command, call:this
+            @_debug? {when: 'api response', command, call:this}
             reply = @body
             if not reply?
               @_debug? {when:'api failed', why:'no reply', command}
-              reject new Error "no reply to api #{command}"
+              reject new Error util.inspect {when:'no reply to api',command}
               return
 
-            if reply?.match /^-ERR/
+            if reply?.match /^-/
               @_debug? {when:'api response failed', reply, command}
               reject new Error util.inspect {when:'api response',reply,command}
-            else
-              resolve reply
+              return
+
+            resolve reply
+            return
 
           @write "api #{command}"
 
@@ -134,8 +139,10 @@ The promise will receive the Job UUID (instead of the usual response).
 
             if r? and r[1]?
               resolve r[1]
+              return
             else
               reject new Error "bgapi #{command} did not provide a Job-UUID."
+              return
 
         p.bind this
 
