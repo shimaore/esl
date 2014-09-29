@@ -29,7 +29,7 @@ echo "****** Ready *******"
 # Give FreeSwitch some time to settle
 # Give docker-dns some time to figure out there are new hosts (pollinterval = 17).
 sleep 20
-../node_modules/.bin/mocha -t 25000 --compilers coffee.md:coffee-script/register -R spec .
+../node_modules/.bin/mocha --compilers coffee.md:coffee-script/register -R spec .
 
 echo "---------------------------------------------------------------------------"
 dig esl-test-0001-server.local.localhost.docker-local @172.17.42.1

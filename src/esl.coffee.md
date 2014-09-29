@@ -8,8 +8,10 @@ Connection Listener (socket events handler)
 -------------------------------------------
 
 This is modelled after Node.js' http.js
+We use the same connection-listener for both client (FreeSwitch "inbound" socket) and server (FreeSwitch "outound" socket).
 
     connectionListener = (call) ->
+      call._trace? 'connectionListener'
       call.stats ?= {}
 
       call.socket.setEncoding('ascii')
@@ -19,10 +21,11 @@ This is modelled after Node.js' http.js
 
 Make the command responses somewhat unique.
 
-      call.socket.on 'CHANNEL_EXECUTE_COMPLETE', (call) ->
-        application = call.body['Application']
-        application_data = call.body['Application-Data'] ? ''
-        call.socket.emit "CHANNEL_EXECUTE_COMPLETE #{application} #{application_data}", call
+      call.on 'CHANNEL_EXECUTE_COMPLETE'
+      .then (res) ->
+        application = res.body['Application']
+        application_data = res.body['Application-Data'] ? ''
+        call.emit "CHANNEL_EXECUTE_COMPLETE #{application} #{application_data}", res
 
       parser.process = (headers,body) ->
 
@@ -86,13 +89,12 @@ Rewrite headers as needed to work around some weirdnesses in the protocol; and a
             call.stats.unhandled ?= 0
             call.stats.unhandled++
 
-        call.headers = headers
-        call.body = body
+        msg = {headers,body}
 
-        call.socket.emit event, call
+        outcome = call.emit event, msg
 
       # Get things started
-      call.socket.emit 'freeswitch_connect', call
+      call.emit 'freeswitch_connect'
 
 ESL Server
 ----------
@@ -103,39 +105,47 @@ ESL Server
         @on 'connection', (socket) ->
           @stats.connections ?= 0
           @stats.connections++
-          socket.on 'freeswitch_connect', (call) ->
+          call = new FreeSwitchResponse socket
+          call.on 'freeswitch_connect'
+          .then ->
             try
-              requestListener call
+              requestListener.call call
             catch error
-              socket.emit 'error', error
-          connectionListener new FreeSwitchResponse socket
+              call.socket.emit 'error', error
+          connectionListener call
 
         super()
 
 The callback will receive a FreeSwitchResponse object.
 
-    exports.server = (handler) ->
-      assert.ok handler?, "server handler is required"
+    exports.server = (options = {}, handler) ->
+      if typeof options is 'function'
+        [options,handler] = [{},options]
 
-      server = new FreeSwitchServer (call) ->
+      assert.ok handler?, "server handler is required"
+      assert.strictEqual typeof handler, 'function', "server handler must be a function"
+
+      server = new FreeSwitchServer ->
+        @trace options.early_trace
         Unique_ID = 'Unique-ID'
         server.stats.connecting ?= 0
         server.stats.connecting++
-        call.connect()
-        .then ->
-          @data = @body
-          unique_id = @body[Unique_ID]
+        @connect()
+        .then (res) ->
+          @data = res.body
+          unique_id = @data[Unique_ID]
+
+`filter` is required so that `event_json` will only obtain our events.
+
           @filter Unique_ID, unique_id
         .then ->
           @auto_cleanup()
-          # "verbose_events" will send us channel data after each "command".
-          @command 'verbose_events' # FIXME why can't we return the value of @command ?
-          null
-        .then -> @event_json 'ALL'
-        .then ->
           server.stats.handler ?= 0
           server.stats.handler++
-          this
+
+`event_json 'ALL'` is required to e.g. obtain `CHANNEL_EXECUTE_COMPLETE`
+
+        .then -> @event_json 'ALL'
         .then handler
       return server
 
@@ -143,10 +153,10 @@ ESL client
 ----------
 
     class FreeSwitchClient extends net.Socket
-      constructor: () ->
-        @on 'connect', ->
-          connectionListener new FreeSwitchResponse this
-
+      constructor: ->
+        @call = new FreeSwitchResponse this
+        @on 'connect', =>
+          connectionListener @call
         super()
 
     exports.client = (options = {}, handler) ->
@@ -155,10 +165,17 @@ ESL client
       options.password ?= 'ClueCon'
 
       assert.ok handler?, "client handler is required"
+      assert.strictEqual typeof handler, 'function', "client handler must be a function"
 
       client = new FreeSwitchClient()
-      client.once 'freeswitch_auth_request', (call) ->
-        call.auth options.password
+      client.call.trace options.early_trace
+      client.call.once 'freeswitch_auth_request'
+      .then ->
+        @_trace? 'client on auth_request'
+        @auth options.password
         .then -> @auto_cleanup()
         .then handler
       return client
+
+Please note that the client is not started with `event_json` since by default this will mean obtaining all events from FreeSwitch.
+You must manually run `@event_json` and an optional `@filter` command.

@@ -3,11 +3,43 @@ ESL response and associated API
 
     Promise = require 'bluebird'
     util = require 'util'
+    {EventEmitter} = require 'events'
+
+    class FreeSwitchError extends Error
+      constructor: (@args) ->
+
+      toString: ->
+        JSON.stringify @args
 
     module.exports = class FreeSwitchResponse
       constructor: (@socket) ->
+        @ev = new EventEmitter()
 
-### Tracing and debugging
+      emit: ->
+        @_trace? {emit:arguments[0],headers:arguments[1]?.headers,body:arguments[1]?.body}
+        outcome = @ev.emit arguments...
+        @_trace? {emit:arguments[0],had_listeners:outcome}
+        outcome
+
+      once: (event) ->
+        @_trace? {create_once:event}
+        p = new Promise (resolve,reject) =>
+          @ev.once event, =>
+            @_trace? {once:event,once_data:arguments[0]}
+            resolve arguments...
+            return
+        p.bind this
+
+      on: (event) ->
+        @_trace? {create_on:event}
+        p = new Promise (resolve,reject) =>
+          @ev.on event, =>
+            @_trace? {on:event,on_data:arguments[0]}
+            resolve arguments...
+            return
+        p.bind this
+
+### Tracing
 
 The trace method will trace exchanges with the FreeSwitch server.
 
@@ -25,32 +57,8 @@ The trace method will trace exchanges with the FreeSwitch server.
           @_trace = (o) ->
             util.log logger + util.inspect o
 
-The debug method will provide tracing inside the module's code. (The trace method must have been called first.)
-
-      debug: (status) ->
-        if status
-          @_debug = (o) -> @_trace? o
-        else
-          delete @_debug
-
-      once: (event) ->
-        p = new Promise (resolve,reject) =>
-          @socket.once event, =>
-            @_trace? {once:event,headers:@headers,body:@body}
-            resolve event
-            return
-        p.bind this
-
-      on: (event) ->
-        p = new Promise (resolve,reject) =>
-          @socket.on event, =>
-            @_trace? {on:event,headers:@headers,body:@body}
-            resolve event
-            return
-        p.bind this
-
       write: (command,args) ->
-        @_trace? command: command, args: args
+        @_trace? write_command: command, write_args: args
 
         text = "#{command}\n"
         if args?
@@ -71,20 +79,20 @@ This is normally not used directly.
 Typically `command/reply` will contain the status in the `Reply-Text` header while `api/response` will contain the status in the body.
 
           @once 'freeswitch_command_reply'
-          .then ->
-            @_debug? {when:'command reply', command, args, call:this}
-            reply = @headers['Reply-Text']
+          .then (res) ->
+            @_trace? {when:'send: reply', res, command, args}
+            reply = res.headers['Reply-Text']
             if not reply?
-              @_debug? {when:'command failed', why:'no reply', command, args}
-              reject new Error util.inspect {when:'no reply to command',command,args}
+              @_trace? {when:'send: failed', why:'no reply', command, args}
+              reject new FreeSwitchError {when:'no reply to command',command,args}
               return
 
-            if reply?.match /^-/
-              @_debug? {when:'command failed', reply}
-              reject new Error util.inspect {when:'command reply',reply,command,args}
+            if reply.match /^-/
+              @_trace? {when:'send: failed', reply}
+              reject new FreeSwitchError {when:'command reply',reply,command,args}
               return
 
-            resolve reply
+            resolve res
             return
 
           @write command, args
@@ -92,7 +100,7 @@ Typically `command/reply` will contain the status in the `Reply-Text` header whi
         p.bind this
 
       end: () ->
-        @_debug? when:'end'
+        @_trace? when:'end'
         @socket.end()
         this
 
@@ -101,24 +109,24 @@ Typically `command/reply` will contain the status in the `Reply-Text` header whi
 Send an API command, see [Mod commands](http://wiki.freeswitch.org/wiki/Mod_commands)
 
       api: (command) ->
-        @_debug? when:'api', command: command
+        @_trace? when:'api', command: command
 
         p = new Promise (resolve,reject) =>
           @once 'freeswitch_api_response'
-          .then ->
-            @_debug? {when: 'api response', command, call:this}
-            reply = @body
+          .then (res) ->
+            @_trace? {when: 'api: response', command}
+            reply = res.body
             if not reply?
-              @_debug? {when:'api failed', why:'no reply', command}
-              reject new Error util.inspect {when:'no reply to api',command}
+              @_trace? {when:'api: failed', why:'no reply', command}
+              reject new FreeSwitchError {when:'no reply to api',command}
               return
 
-            if reply?.match /^-/
-              @_debug? {when:'api response failed', reply, command}
-              reject new Error util.inspect {when:'api response',reply,command}
+            if reply.match /^-/
+              @_trace? {when:'api response failed', reply, command}
+              reject new FreeSwitchError {when:'api response',reply,command}
               return
 
-            resolve reply
+            resolve res, reply
             return
 
           @write "api #{command}"
@@ -138,7 +146,7 @@ Send an API command in the background.
 The promise will receive the Job UUID (instead of the usual response).
 
             if r? and r[1]?
-              resolve r[1]
+              resolve res, r[1]
               return
             else
               reject new Error "bgapi #{command} did not provide a Job-UUID."
@@ -151,7 +159,6 @@ The promise will receive the Job UUID (instead of the usual response).
       event_json: (events...) ->
 
 Request that the server send us events in JSON format.
-(For all useful purposes this is the only supported format in this module.)
 For example: `res.event_json 'HEARTBEAT'`
 
         @send "event json #{events.join(' ')}"
@@ -283,23 +290,27 @@ Clean-up at the end of the connection.
 
       auto_cleanup: ->
         @once 'freeswitch_disconnect_notice'
-        .then ->
-          @_debug? "Received ESL disconnection notice"
-          switch @headers['Content-Disposition']
+        .then (res) =>
+          @_trace? "auto_cleanup: Received ESL disconnection notice":res
+          switch res.headers['Content-Disposition']
             when 'linger'
-              @_debug? "Sending freeswitch_linger"
-              @socket.emit 'freeswitch_linger', this
+              @_trace? "Sending freeswitch_linger"
+              @emit 'freeswitch_linger'
             when 'disconnect'
-              @_debug? "Sending freeswitch_disconnect"
-              @socket.emit 'freeswitch_disconnect', this
+              @_trace? "Sending freeswitch_disconnect"
+              @emit 'freeswitch_disconnect'
+            else # Header might be absent?
+              @_trace? "Sending freeswitch_disconnect"
+              @emit 'freeswitch_disconnect'
 
 #### Linger
 The default behavior in linger mode is to disconnect the call (which is roughly equivalent to not using linger mode).
 
         @once 'freeswitch_linger'
         .then ->
-          @_debug? when:'auto_cleanup/linger: exit'
+          @_trace? when:'auto_cleanup/linger: exit'
           @exit()
+          @emit 'cleanup_linger'
 
 Use `call.once("freeswitch_linger",...)` to capture the end of the call. In this case you are responsible for calling `call.exit()`. If you do not do it, the calls will leak.
 
@@ -309,7 +320,8 @@ Normal behavior on disconnect is to end the call.  (However you may capture the 
 
         @once 'freeswitch_disconnect'
         .then ->
-          @_debug? when:'auto_cleanup/disconnect: end'
+          @_trace? when:'auto_cleanup/disconnect: end'
           @end()
+          @emit 'cleanup_disconnect', this
 
         return
