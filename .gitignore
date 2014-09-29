@@ -3,3 +3,4 @@ docs/esl.html
 node_modules/
 test/log/
 test/*.log
+test/routes/
