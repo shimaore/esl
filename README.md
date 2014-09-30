@@ -1,73 +1,50 @@
-[![Build Status](https://travis-ci.org/shimaore/esl.png?branch=master)](https://travis-ci.org/shimaore/esl)
+[![Build Status](https://travis-ci.org/shimaore/esl.png?branch=co)](https://travis-ci.org/shimaore/esl)
 
-Promise-aware client and server for FreeSwitch events socket.
-
-This file documents the new, promise-based API of the package, version 1.x, which is under development.
-
-The old, callback-based API is still available in the 0.3 packages. It uses `createClient` and `createCallServer` instead of `client` and `server`, so that there is no ambiguity which version you expect / are using. If your existing code uses the old API make sure that your `package.json` contains
-
-    "esl": "~0.3.2"
+ESL 2.x is a promise-based client ('inbound' event socket) and server ('outbound' event socket) for FreeSwitch, written entirely in Javascript with no dependencies on the libesl library.
+This module is actively maintained and used in production systems.
 
 Client Usage
 ------------
 
 The following code does the equivalent of `fs_cli -x`: it connects to the Event Socket, runs a single command, then disconnects.
 
-    var fs_command = function(cmd) {
-
-      var call_manager = function(call) {
-
-        var outcome = call.sequence([
-          function(){ this.api(cmd) }
-        , function(){ this.exit()   }
-        ]);
-
-      };
-
-      require('esl').client(call_manager).connect(8021, '127.0.0.1');
-    };
-
-    fs_command("reloadxml");
-
-`call.sequence` is a shorthand for the longer version:
+    FS = require('esl');
 
     var fs_command = function(cmd) {
 
-      var call_manager = function(call) {
-        call
-        .api(cmd)                 // send the command
-        .then(function(call) {
-          return call.exit();     // tell FreeSwitch we're disconnecting
+      var client = FS.client(function(){
+        this.api(cmd)
+        .then( function(res) {
+          // res basically contains the headers and body of FreeSwitch's response.
+          res.body.should.match(/\+OK/);
         })
-      };
+        .then( function(){
+          this.exit();
+        })
+        .then( function(){
+          client.end();
+        })
+      });
+      client.connect(8021,'127.0.0.1');
 
-      require('esl').client(call_manager).connect(8021, '127.0.0.1');
     };
 
     fs_command("reloadxml");
 
-The API methods return [Q promises](http://documentup.com/kriskowal/q/). If you are not using `call.sequence` make sure you return a promise for the `call` object at the end of your callbacks.
-
-If you need to collect data back from an API call, use `this.body` in the next call:
-
-        var outcome = call.sequence([
-          function(){ this.api(cmd) }
-          function(){ console.log("API said: "+this.body) }
-        ]);
+The API methods return [promises](https://github.com/petkaantonov/bluebird/blob/master/API.md).
 
 The original example as CoffeeScript:
 
+    FS = require 'esl'
+
     fs_command = (cmd) ->
-      call_manager = (call) ->
 
-        outcome = call.sequence [
-          -> @api cmd
-          -> @exit()
-        ]
+      client = FS.client ->
+        @api cmd
+        .then -> @exit()
+        .then -> client.end()
 
-      require('esl')
-      .client(call_manager)
-      .connect 8021, '127.0.0.1'
+      client.connect 8021, '127.0.0.1'
 
     fs_command 'reloadxml'
 
@@ -80,11 +57,11 @@ From the FreeSwitch XML dialplan, you can connect to an Event Socket server usin
 
 Here is a simplistic event server:
 
-    var call_handler = function(call) {
-      call
+    var call_handler = function() {
+      this
       .command('play-file', 'voicemail/vm-hello')
-      .then(function(call) {
-         var foo = call.body.variable_foo;
+      .then(function(res) {
+         var foo = res.body.variable_foo;
       })
       .hangup() // hang-up the call
       .exit()   // tell FreeSwitch we're disconnecting
@@ -107,22 +84,17 @@ will stop it. Also
 
     call.trace("my prefix")
 
-will print out the specified string each time.
-
-You may also provide your own tracing function instead of `true`; it will receive an object containing either `command` and `args` when sending messages to FreeSwitch, or `headers` and `body` when receiving messages from FreeSwitch.
-
-Note: the `headers` and `body` are the ones you might see inside your call-handling functions. They may differ from on-wire headers and body; use `FS.debug = true` to trace those.
+will print out the specified prefix each time.
 
 Install
 -------
 
-For the new, promise-based API:
+    npm install esl@^2
 
-    npm install esl@1.0
+Examples
+--------
 
-For the old, callback-based API:
-
-    npm install esl@0.3
+The tests in `test/0001.coffee.md` provide many examples.
 
 Overview
 --------
@@ -151,8 +123,8 @@ Server Notes
 
 For some applications you might want to capture channel events instead of using the `command()` / callback pattern:
 
-    var call_handler = function(call) {
-      var uri = call.body.variable_sip_req_uri
+    var call_handler = function() {
+      var uri = this.data.variable_sip_req_uri
 
       # These are called asynchronously.
       call
@@ -167,5 +139,5 @@ For some applications you might want to capture channel events instead of using 
 Alternative
 -----------
 
-The present module should be more convenient if you've already coded for Node.js and are used to its [`http` interface](http://nodejs.org/api/http.html) and the `EventEmitter` pattern.
+The present module should be more convenient if you've already coded for Node.js and are used to promises and events.
 If you are coming from the world of FreeSwitch and are used to the Event Socket Library API, you might want to try [node-esl](https://github.com/englercj/node-esl).
