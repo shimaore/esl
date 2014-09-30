@@ -6,7 +6,7 @@ ESL response and associated API
     {EventEmitter} = require 'events'
 
     class FreeSwitchError extends Error
-      constructor: (@args) ->
+      constructor: (@res,@args) ->
 
       toString: ->
         JSON.stringify @args
@@ -84,12 +84,12 @@ Typically `command/reply` will contain the status in the `Reply-Text` header whi
             reply = res.headers['Reply-Text']
             if not reply?
               @_trace? {when:'send: failed', why:'no reply', command, args}
-              reject new FreeSwitchError {when:'no reply to command',command,args}
+              reject new FreeSwitchError res, {when:'no reply to command',command,args}
               return
 
             if reply.match /^-/
               @_trace? {when:'send: failed', reply}
-              reject new FreeSwitchError {when:'command reply',reply,command,args}
+              reject new FreeSwitchError res, {when:'command reply',reply,command,args}
               return
 
             resolve res
@@ -118,12 +118,12 @@ Send an API command, see [Mod commands](http://wiki.freeswitch.org/wiki/Mod_comm
             reply = res.body
             if not reply?
               @_trace? {when:'api: failed', why:'no reply', command}
-              reject new FreeSwitchError {when:'no reply to api',command}
+              reject new FreeSwitchError res, {when:'no reply to api',command}
               return
 
             if reply.match /^-/
               @_trace? {when:'api response failed', reply, command}
-              reject new FreeSwitchError {when:'api response',reply,command}
+              reject new FreeSwitchError res, {when:'api response',reply,command}
               return
 
             resolve res, reply
@@ -149,7 +149,7 @@ The promise will receive the Job UUID (instead of the usual response).
               resolve res, r[1]
               return
             else
-              reject new Error "bgapi #{command} did not provide a Job-UUID."
+              reject new FreeSwitchError res, {when:"bgapi did not provide a Job-UUID",command}
               return
 
         p.bind this
