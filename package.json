@@ -45,7 +45,7 @@
   },
   "scripts": {
     "prepublish": "cake build",
-    "test": "mocha --compilers coffee.md:coffee-script --reporter spec"
+    "test": "cd test && ./docker-dns.sh && ./0001.sh"
   },
   "publishConfig": {
     "tag": "development"
