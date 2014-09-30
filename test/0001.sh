@@ -32,7 +32,7 @@ sleep 20
 ../node_modules/.bin/mocha --compilers coffee.md:coffee-script/register -R spec .
 
 echo "---------------------------------------------------------------------------"
-dig esl-test-0001-server.local.localhost.docker-local @172.17.42.1
+# dig esl-test-0001-server.local.localhost.docker-local @172.17.42.1
 
 # Postmortem
 for t in client server; do
@@ -41,7 +41,6 @@ for t in client server; do
   echo "---------------------------------------------------------------------------"
   docker logs $IMG-$t > $IMG-$t.log;
 done
-exit
 for t in client server; do
   echo "---------------------------------------------------------------------------"
   echo "----------------- $t --------------------------------------------------"
