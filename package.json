@@ -40,7 +40,8 @@
     "coffee-script": "git+https://github.com/jashkenas/coffeescript.git",
     "mocha": "~1.17.0",
     "pouchdb": "^3.0.6",
-    "should": "~2.1.1"
+    "should": "~2.1.1",
+    "uuid": "^2.0.1"
   },
   "scripts": {
     "prepublish": "cake build",
