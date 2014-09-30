@@ -70,26 +70,26 @@
         </condition>
       </extension>
       <extension name="automaton">
-        <condition field="destination_number" expression="^wait-(\d+)$/">
+        <condition field="destination_number" expression="^wait-(\d+)$">
           <action application="answer"/>
           <action application="sleep" data="$1"/>
           <action application="hangup"/>
         </condition>
       </extension>
       <extension name="automaton">
-        <condition field="destination_number" expression="^just-wait-(\d+)$/">
+        <condition field="destination_number" expression="^just-wait-(\d+)$">
           <action application="sleep" data="$1"/>
         </condition>
       </extension>
       <extension name="automaton">
-        <condition field="destination_number" expression="^pre-answer-wait-(\d+)$/">
+        <condition field="destination_number" expression="^pre-answer-wait-(\d+)$">
           <action application="sleep" data="$1"/>
           <action application="pre_answer"/>
           <action application="sleep" data="9999"/>
         </condition>
       </extension>
       <extension name="automaton">
-        <condition field="destination_number" expression="^ring-ready-wait-(\d+)$/">
+        <condition field="destination_number" expression="^ring-ready-wait-(\d+)$">
           <action application="sleep" data="$1"/>
           <action application="ring_ready"/>
           <action application="sleep" data="9999"/>
