@@ -94,6 +94,10 @@
 
     <!--<param name="disable-srv" value="false" />-->
     <!--<param name="disable-naptr" value="false" />-->
+    <param name="timer-T1" value="250" />
+    <param name="timer-T1X64" value="2000" />
+    <param name="timer-T2" value="2000" />
+    <param name="timer-T4" value="4000" />
 
   </settings>
 </profile>
