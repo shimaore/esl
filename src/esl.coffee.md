@@ -1,5 +1,6 @@
     net = require 'net'
     assert = require 'assert'
+    {error} = require 'util'
 
     FreeSwitchParser = require './parser'
     FreeSwitchResponse = require './response'
@@ -54,10 +55,10 @@ Rewrite headers as needed to work around some weirdnesses in the protocol; and a
           when 'text/event-json'
             try
               body = JSON.parse(body)
-            catch error
+            catch exception
               call.stats.json_parse_errors ?= 0
               call.stats.json_parse_errors++
-              call.socket.emit 'error', when:'JSON error', error:error, body:body
+              call.socket.emit 'error', when:'JSON error', error:exception, body:body
               return
             event = body['Event-Name']
 
@@ -110,15 +111,15 @@ ESL Server
           .then ->
             try
               requestListener.call call
-            catch error
-              call.socket.emit 'error', error
+            catch exception
+              call.socket.emit 'error', exception
           connectionListener call
 
         super()
 
 The callback will receive a FreeSwitchResponse object.
 
-    exports.server = (options = {}, handler) ->
+    exports.server = (options = {}, handler, report = error) ->
       if typeof options is 'function'
         [options,handler] = [{},options]
 
@@ -126,27 +127,31 @@ The callback will receive a FreeSwitchResponse object.
       assert.strictEqual typeof handler, 'function', "server handler must be a function"
 
       server = new FreeSwitchServer ->
-        @trace options.early_trace
-        Unique_ID = 'Unique-ID'
-        server.stats.connecting ?= 0
-        server.stats.connecting++
-        @connect()
-        .then (res) ->
-          @data = res.body
-          unique_id = @data[Unique_ID]
+        try
+          @trace options.early_trace
+          Unique_ID = 'Unique-ID'
+          server.stats.connecting ?= 0
+          server.stats.connecting++
+          @connect()
+          .then (res) ->
+            @data = res.body
+            unique_id = @data[Unique_ID]
 
 `filter` is required so that `event_json` will only obtain our events.
 
-          @filter Unique_ID, unique_id
-        .then ->
-          @auto_cleanup()
-          server.stats.handler ?= 0
-          server.stats.handler++
+            @filter Unique_ID, unique_id
+          .then ->
+            @auto_cleanup()
+            server.stats.handler ?= 0
+            server.stats.handler++
 
 `event_json 'ALL'` is required to e.g. obtain `CHANNEL_EXECUTE_COMPLETE`
 
-        .then -> @event_json 'ALL'
-        .then handler
+          .then -> @event_json 'ALL'
+          .then handler
+
+        catch exception
+          report exception
       return server
 
 ESL client
