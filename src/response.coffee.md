@@ -24,19 +24,25 @@ ESL response and associated API
       once: (event) ->
         @_trace? {create_once:event}
         p = new Promise (resolve,reject) =>
-          @ev.once event, =>
-            @_trace? {once:event,once_data:arguments[0]}
-            resolve arguments...
-            return
+          try
+            @ev.once event, =>
+              @_trace? {once:event,once_data:arguments[0]}
+              resolve arguments...
+              return
+          catch exception
+            reject exception
         p.bind this
 
       on: (event) ->
         @_trace? {create_on:event}
         p = new Promise (resolve,reject) =>
-          @ev.on event, =>
-            @_trace? {on:event,on_data:arguments[0]}
-            resolve arguments...
-            return
+          try
+            @ev.on event, =>
+              @_trace? {on:event,on_data:arguments[0]}
+              resolve arguments...
+              return
+          catch exception
+            reject exception
         p.bind this
 
 ### Tracing
@@ -78,24 +84,27 @@ This is normally not used directly.
 
 Typically `command/reply` will contain the status in the `Reply-Text` header while `api/response` will contain the status in the body.
 
-          @once 'freeswitch_command_reply'
-          .then (res) ->
-            @_trace? {when:'send: reply', res, command, args}
-            reply = res.headers['Reply-Text']
-            if not reply?
-              @_trace? {when:'send: failed', why:'no reply', command, args}
-              reject new FreeSwitchError res, {when:'no reply to command',command,args}
+          try
+            @once 'freeswitch_command_reply'
+            .then (res) ->
+              @_trace? {when:'send: reply', res, command, args}
+              reply = res.headers['Reply-Text']
+              if not reply?
+                @_trace? {when:'send: failed', why:'no reply', command, args}
+                reject new FreeSwitchError res, {when:'no reply to command',command,args}
+                return
+
+              if reply.match /^-/
+                @_trace? {when:'send: failed', reply}
+                reject new FreeSwitchError res, {when:'command reply',reply,command,args}
+                return
+
+              resolve res
               return
 
-            if reply.match /^-/
-              @_trace? {when:'send: failed', reply}
-              reject new FreeSwitchError res, {when:'command reply',reply,command,args}
-              return
-
-            resolve res
-            return
-
-          @write command, args
+            @write command, args
+          catch exception
+            reject exception
 
         p.bind this
 
@@ -112,24 +121,27 @@ Send an API command, see [Mod commands](http://wiki.freeswitch.org/wiki/Mod_comm
         @_trace? when:'api', command: command
 
         p = new Promise (resolve,reject) =>
-          @once 'freeswitch_api_response'
-          .then (res) ->
-            @_trace? {when: 'api: response', command}
-            reply = res.body
-            if not reply?
-              @_trace? {when:'api: failed', why:'no reply', command}
-              reject new FreeSwitchError res, {when:'no reply to api',command}
+          try
+            @once 'freeswitch_api_response'
+            .then (res) ->
+              @_trace? {when: 'api: response', command}
+              reply = res.body
+              if not reply?
+                @_trace? {when:'api: failed', why:'no reply', command}
+                reject new FreeSwitchError res, {when:'no reply to api',command}
+                return
+
+              if reply.match /^-/
+                @_trace? {when:'api response failed', reply, command}
+                reject new FreeSwitchError res, {when:'api response',reply,command}
+                return
+
+              resolve res, reply
               return
 
-            if reply.match /^-/
-              @_trace? {when:'api response failed', reply, command}
-              reject new FreeSwitchError res, {when:'api response',reply,command}
-              return
-
-            resolve res, reply
-            return
-
-          @write "api #{command}"
+            @write "api #{command}"
+          catch exception
+            reject exception
 
         p.bind this
 
@@ -138,19 +150,22 @@ Send an API command in the background.
       bgapi: (command) ->
 
         p = new Promise (resolve,reject) =>
-          @send "bgapi #{command}"
-          .then (res) ->
-            reply = res.headers['Reply-Text']
-            r = reply?.match /\+OK Job-UUID: (.+)$/
+          try
+            @send "bgapi #{command}"
+            .then (res) ->
+              reply = res.headers['Reply-Text']
+              r = reply?.match /\+OK Job-UUID: (.+)$/
 
 The promise will receive the Job UUID (instead of the usual response).
 
-            if r? and r[1]?
-              resolve res, r[1]
-              return
-            else
-              reject new FreeSwitchError res, {when:"bgapi did not provide a Job-UUID",command}
-              return
+              if r? and r[1]?
+                resolve res, r[1]
+                return
+              else
+                reject new FreeSwitchError res, {when:"bgapi did not provide a Job-UUID",command}
+                return
+          catch exception
+            reject exception
 
         p.bind this
 
