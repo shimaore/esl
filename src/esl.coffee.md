@@ -33,6 +33,12 @@ Make the command responses somewhat unique.
 Rewrite headers as needed to work around some weirdnesses in the protocol; and assign unified event IDs to the ESL Content-Types.
 
         content_type = headers['Content-Type']
+        if not content_type?
+          call.stats.missing_content_type ?= 0
+          call.stats.missing_content_type++
+          call.socket.emit 'error', {when: 'Missing Content-Type', headers, body}
+          return
+
         switch content_type
 
           when 'auth/request'
