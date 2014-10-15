@@ -89,7 +89,7 @@ will print out the specified prefix each time.
 Install
 -------
 
-    npm install esl@^2
+    npm install esl
 
 Examples
 --------
