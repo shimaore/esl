@@ -47,7 +47,7 @@
     "test": "cd test && ./docker-dns.sh && ./0001.sh"
   },
   "publishConfig": {
-    "tag": "development"
+    "tag": "latest"
   },
   "ok": true
 }
