@@ -123,18 +123,28 @@ Server Notes
 
 For some applications you might want to capture channel events instead of using the `command()` / callback pattern:
 
+    var esl = require('esl'),
+        util = require('util);
+    
     var call_handler = function() {
-      var uri = this.data.variable_sip_req_uri
+    
+      # for debugging
+      this.trace(true);
 
       # These are called asynchronously.
-      call
-      .once('CHANNEL_ANSWER', function(call) {
+      this.once('CHANNEL_ANSWER').then( function (call) {
         util.log('Call was answered');
-      })
-      .once('CHANNEL_HANGUP_COMPLETE', function(call) {
+      });
+      this.once('CHANNEL_HANGUP').then(  function (call) {
+        util.log('Call hangup');
+      });
+      this.once('CHANNEL_HANGUP_COMPLETE').then(  function (call) {
         util.log('Call was disconnected');
-      }
+      });
     };
+    
+    var server = esl.server(call_handler)
+    server.listen(3232);
 
 Alternative
 -----------
