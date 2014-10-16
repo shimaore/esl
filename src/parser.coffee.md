@@ -129,3 +129,5 @@ Decode headers: in the case of the "connect" command, the headers are all URI-en
           headers[name] = querystring.unescape(headers[name])
 
       return headers
+
+    module.exports.parse_header_text = parse_header_text

@@ -4,6 +4,7 @@
 
     FreeSwitchParser = require './parser'
     FreeSwitchResponse = require './response'
+    {parse_header_text} = FreeSwitchParser
 
 Connection Listener (socket events handler)
 -------------------------------------------
@@ -17,8 +18,6 @@ We use the same connection-listener for both client (FreeSwitch "inbound" socket
 
       call.socket.setEncoding('ascii')
       parser = new FreeSwitchParser call.socket
-      # call.socket.on 'data', (data) ->  parser.on_data(data)
-      # call.socket.on 'end',  ()     ->  parser.on_end()
 
 Make the command responses somewhat unique.
 
