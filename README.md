@@ -94,7 +94,7 @@ Install
 Examples
 --------
 
-The tests in `test/0001.coffee.md` provide many examples.
+The tests in [`test/0001.coffee.md`](https://github.com/shimaore/esl/blob/master/test/0001.coffee.md) provide many examples.
 
 Overview
 --------
