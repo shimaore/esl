@@ -1,4 +1,4 @@
-[![Build Status](https://travis-ci.org/shimaore/esl.png?branch=co)](https://travis-ci.org/shimaore/esl)
+[![GratiPay](https://img.shields.io/gratipay/shimaore.svg)](https://gratipay.com/shimaore/)
 
 ESL 2.x is a promise-based client ('inbound' event socket) and server ('outbound' event socket) for FreeSwitch, written entirely in Javascript with no dependencies on the libesl library.
 This module is actively maintained and used in production systems.
