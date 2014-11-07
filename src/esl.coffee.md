@@ -21,8 +21,7 @@ We use the same connection-listener for both client (FreeSwitch "inbound" socket
 
 Make the command responses somewhat unique.
 
-      call.on 'CHANNEL_EXECUTE_COMPLETE'
-      .then (res) ->
+      call.on 'CHANNEL_EXECUTE_COMPLETE', (res) ->
         application = res.body['Application']
         application_data = res.body['Application-Data'] ? ''
         call.emit "CHANNEL_EXECUTE_COMPLETE #{application} #{application_data}", res
@@ -112,7 +111,7 @@ ESL Server
           @stats.connections ?= 0
           @stats.connections++
           call = new FreeSwitchResponse socket
-          call.on 'freeswitch_connect'
+          call.once 'freeswitch_connect'
           .then ->
             try
               requestListener.call call

@@ -33,17 +33,9 @@ ESL response and associated API
             reject exception
         p.bind this
 
-      on: (event) ->
+      on: (event,callback) ->
         @_trace? {create_on:event}
-        p = new Promise (resolve,reject) =>
-          try
-            @ev.on event, =>
-              @_trace? {on:event,on_data:arguments[0]}
-              resolve arguments...
-              return
-          catch exception
-            reject exception
-        p.bind this
+        @ev.on event, -> callback.apply this, arguments
 
 ### Tracing
 

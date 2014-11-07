@@ -125,24 +125,29 @@ For some applications you might want to capture channel events instead of using 
 
     var esl = require('esl'),
         util = require('util);
-    
+
     var call_handler = function() {
-    
+
       # for debugging
       this.trace(true);
 
       # These are called asynchronously.
-      this.once('CHANNEL_ANSWER').then( function (call) {
+      this.once('CHANNEL_ANSWER').then( function () {
         util.log('Call was answered');
       });
-      this.once('CHANNEL_HANGUP').then(  function (call) {
+      this.once('CHANNEL_HANGUP').then(  function () {
         util.log('Call hangup');
       });
-      this.once('CHANNEL_HANGUP_COMPLETE').then(  function (call) {
+      this.once('CHANNEL_HANGUP_COMPLETE').then(  function () {
         util.log('Call was disconnected');
       });
+      # However note that `on` cannot use a Promise (since it only would
+      # get resolved once).
+      this.on('SOME_MESSAGE', function(call) {
+        util.log('Got Some Message');
+      });
     };
-    
+
     var server = esl.server(call_handler)
     server.listen(3232);
 
