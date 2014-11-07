@@ -1,6 +1,6 @@
 FROM shimaore/freeswitch
-ADD conf/ /usr/local/freeswitch/conf
-CMD ["/usr/local/freeswitch/bin/freeswitch","-nf","-nosql","-nonat","-nonatmap","-nocal","-nort","-c"]
+ADD conf/ /opt/freeswitch/conf
+CMD ["/opt/freeswitch/bin/freeswitch","-nf","-nosql","-nonat","-nonatmap","-nocal","-nort","-c"]
 EXPOSE 5062/udp 5062/tcp 8022/tcp
 
 # These are the optional arguments you can pass to freeswitch:

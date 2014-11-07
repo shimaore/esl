@@ -9,11 +9,11 @@
     <param name="bind-params" value="transport=udp,tcp"/>
 
     <X-PRE-PROCESS cmd="set" data="local_ip=auto"/>
-    <param name="sip-ip" value="$${local_ip}"/>
-    <param name="ext-sip-ip" value="$${local_ip}"/>
+    <param name="sip-ip" value="0.0.0.0"/>
+    <param name="ext-sip-ip" value="0.0.0.0"/>
 
-    <param name="rtp-ip" value="$${local_ip}"/>
-    <param name="ext-rtp-ip" value="$${local_ip}"/>
+    <param name="rtp-ip" value="0.0.0.0"/>
+    <param name="ext-rtp-ip" value="0.0.0.0"/>
 
     <param name="apply-inbound-acl" value="any"/>
     <!--<param name="apply-register-acl" value="domains"/>-->

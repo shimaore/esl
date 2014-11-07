@@ -7,9 +7,7 @@ ESL response and associated API
 
     class FreeSwitchError extends Error
       constructor: (@res,@args) ->
-
-      toString: ->
-        JSON.stringify @args
+        super JSON.stringify @args
 
     module.exports = class FreeSwitchResponse
       constructor: (@socket) ->
