@@ -139,7 +139,7 @@ For some applications you might want to capture channel events instead of using 
 
 ```javascript
 var esl = require('esl'),
-    util = require('util);
+    util = require('util');
 
 var call_handler = function() {
 
