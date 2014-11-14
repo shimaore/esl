@@ -23,6 +23,10 @@
     {
       "name": "Akash Deep Verma",
       "email": "akashdeep@flexydial.com"
+    },
+    {
+      "name": "Tobias Bieniek",
+      "email": "Tobias.Bieniek@gmx.de"
     }
   ],
   "main": "lib/esl.js",
