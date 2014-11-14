@@ -8,81 +8,95 @@ Client Usage
 
 The following code does the equivalent of `fs_cli -x`: it connects to the Event Socket, runs a single command, then disconnects.
 
-    FS = require('esl');
+```javascript
+FS = require('esl');
 
-    var fs_command = function(cmd) {
+var fs_command = function(cmd) {
 
-      var client = FS.client(function(){
-        this.api(cmd)
-        .then( function(res) {
-          // res basically contains the headers and body of FreeSwitch's response.
-          res.body.should.match(/\+OK/);
-        })
-        .then( function(){
-          this.exit();
-        })
-        .then( function(){
-          client.end();
-        })
-      });
-      client.connect(8021,'127.0.0.1');
+  var client = FS.client(function(){
+    this.api(cmd)
+    .then( function(res) {
+      // res basically contains the headers and body of FreeSwitch's response.
+      res.body.should.match(/\+OK/);
+    })
+    .then( function(){
+      this.exit();
+    })
+    .then( function(){
+      client.end();
+    })
+  });
+  client.connect(8021,'127.0.0.1');
 
-    };
+};
 
-    fs_command("reloadxml");
+fs_command("reloadxml");
+```
 
 The API methods return [promises](https://github.com/petkaantonov/bluebird/blob/master/API.md).
 
 The original example as CoffeeScript:
 
-    FS = require 'esl'
+```coffeescript
+FS = require 'esl'
 
-    fs_command = (cmd) ->
+fs_command = (cmd) ->
 
-      client = FS.client ->
-        @api cmd
-        .then -> @exit()
-        .then -> client.end()
+  client = FS.client ->
+    @api cmd
+    .then -> @exit()
+    .then -> client.end()
 
-      client.connect 8021, '127.0.0.1'
+  client.connect 8021, '127.0.0.1'
 
-    fs_command 'reloadxml'
+fs_command 'reloadxml'
+```
 
 Server Usage
 ------------
 
 From the FreeSwitch XML dialplan, you can connect to an Event Socket server using for example:
 
-    <action application="socket" data="127.0.0.1:7000 async full"/>
+```xml
+<action application="socket" data="127.0.0.1:7000 async full"/>
+```
 
 Here is a simplistic event server:
 
-    var call_handler = function() {
-      this
-      .command('play-file', 'voicemail/vm-hello')
-      .then(function(res) {
-         var foo = res.body.variable_foo;
-      })
-      .hangup() // hang-up the call
-      .exit()   // tell FreeSwitch we're disconnecting
-    };
+```javascript
+var call_handler = function() {
+  this
+  .command('play-file', 'voicemail/vm-hello')
+  .then(function(res) {
+     var foo = res.body.variable_foo;
+  })
+  .hangup() // hang-up the call
+  .exit()   // tell FreeSwitch we're disconnecting
+};
 
-    require('esl').server(call_handler).listen(7000);
+require('esl').server(call_handler).listen(7000);
+```
 
 Message tracing
 ---------------
 
 During development it is often useful to be able to see what messages are sent to FreeSwitch or received from FreeSwitch.
 
-    call.trace(true)
+```javascript
+call.trace(true)
+```
 
 will start a default tracing logger, while
 
-    call.trace(false)
+```javascript
+call.trace(false)
+```
 
 will stop it. Also
 
-    call.trace("my prefix")
+```javascript
+call.trace("my prefix")
+```
 
 will print out the specified prefix each time.
 
@@ -123,33 +137,35 @@ Server Notes
 
 For some applications you might want to capture channel events instead of using the `command()` / callback pattern:
 
-    var esl = require('esl'),
-        util = require('util);
+```javascript
+var esl = require('esl'),
+    util = require('util);
 
-    var call_handler = function() {
+var call_handler = function() {
 
-      # for debugging
-      this.trace(true);
+  # for debugging
+  this.trace(true);
 
-      # These are called asynchronously.
-      this.once('CHANNEL_ANSWER').then( function () {
-        util.log('Call was answered');
-      });
-      this.once('CHANNEL_HANGUP').then(  function () {
-        util.log('Call hangup');
-      });
-      this.once('CHANNEL_HANGUP_COMPLETE').then(  function () {
-        util.log('Call was disconnected');
-      });
-      # However note that `on` cannot use a Promise (since it only would
-      # get resolved once).
-      this.on('SOME_MESSAGE', function(call) {
-        util.log('Got Some Message');
-      });
-    };
+  # These are called asynchronously.
+  this.once('CHANNEL_ANSWER').then( function () {
+    util.log('Call was answered');
+  });
+  this.once('CHANNEL_HANGUP').then(  function () {
+    util.log('Call hangup');
+  });
+  this.once('CHANNEL_HANGUP_COMPLETE').then(  function () {
+    util.log('Call was disconnected');
+  });
+  # However note that `on` cannot use a Promise (since it only would
+  # get resolved once).
+  this.on('SOME_MESSAGE', function(call) {
+    util.log('Got Some Message');
+  });
+};
 
-    var server = esl.server(call_handler)
-    server.listen(3232);
+var server = esl.server(call_handler)
+server.listen(3232);
+```
 
 Alternative
 -----------
