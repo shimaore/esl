@@ -126,6 +126,8 @@ Send an API command, see [Mod commands](http://wiki.freeswitch.org/wiki/Mod_comm
                 reject new FreeSwitchError res, {when:'api response',reply,command}
                 return
 
+              res.uuid = (reply.match /^\+OK ([\da-f-]{36})/)?[1]
+
               resolve res, reply
               return
 
