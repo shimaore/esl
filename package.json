@@ -48,7 +48,7 @@
   },
   "scripts": {
     "prepublish": "cake build",
-    "test": "cd test && ./docker-dns.sh && ./0001.sh"
+    "test": "(cd test && ./docker-dns.sh && ./setup.sh) && mocha && (cd test && ./cleanup.sh)"
   },
   "publishConfig": {
     "tag": "latest"
