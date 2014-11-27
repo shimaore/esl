@@ -261,7 +261,8 @@ The callback is only called when the command has completed.
         event = "CHANNEL_EXECUTE_COMPLETE #{app_name} #{app_arg}"
         result = @once event
         @execute_uuid uuid,app_name,app_arg
-        result
+        .then ->
+          result
 
 Hangup a call
 
