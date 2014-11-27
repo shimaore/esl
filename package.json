@@ -36,14 +36,14 @@
     "lib/response.js"
   ],
   "dependencies": {
-    "bluebird": "^2.3.2"
+    "bluebird": "^2.3.11"
   },
   "devDependencies": {
     "async": "^0.9.0",
-    "coffee-script": "git+https://github.com/jashkenas/coffeescript.git",
-    "mocha": "~1.17.0",
-    "pouchdb": "^3.0.6",
-    "should": "~2.1.1",
+    "coffee-script": "^1.8.0",
+    "mocha": "~2.0.1",
+    "pouchdb": "^3.1.0",
+    "should": "~4.3.0",
     "uuid": "^2.0.1"
   },
   "scripts": {
