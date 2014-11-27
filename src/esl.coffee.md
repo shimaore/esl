@@ -25,6 +25,9 @@ Make the command responses somewhat unique.
         application = res.body['Application']
         application_data = res.body['Application-Data'] ? ''
         call.emit "CHANNEL_EXECUTE_COMPLETE #{application} #{application_data}", res
+        unique_id = res.body['Unique-ID']
+        if unique_id?
+          call.emit "CHANNEL_EXECUTE_COMPLETE #{unique_id} #{application} #{application_data}", res
 
       parser.process = (headers,body) ->
 

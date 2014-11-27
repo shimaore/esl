@@ -258,7 +258,7 @@ The callback is only called when the command has completed.
 
       command_uuid: (uuid,app_name,app_arg) ->
         app_arg ?= ''
-        event = "CHANNEL_EXECUTE_COMPLETE #{app_name} #{app_arg}"
+        event = "CHANNEL_EXECUTE_COMPLETE #{uuid} #{app_name} #{app_arg}"
         result = @once event
         @execute_uuid uuid,app_name,app_arg
         .then ->
