@@ -153,6 +153,9 @@ The promise will receive the Job UUID (instead of the usual response).
               if r? and r[1]?
                 resolve res, r[1]
                 return
+              else if (res.headers['Job-UUID']?)
+                resolve(res, res.headers['Job-UUID'])
+                return
               else
                 reject new FreeSwitchError res, {when:"bgapi did not provide a Job-UUID",command}
                 return
