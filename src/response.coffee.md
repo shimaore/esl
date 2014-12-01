@@ -146,15 +146,14 @@ Send an API command in the background.
             @send "bgapi #{command}"
             .then (res) ->
               reply = res.headers['Reply-Text']
-              r = reply?.match /\+OK Job-UUID: (.+)$/
+              r = reply?.match(/\+OK Job-UUID: (.+)$/)?[1]
+              r ?= res.headers['Job-UUID']
 
 The promise will receive the Job UUID (instead of the usual response).
 
-              if r? and r[1]?
-                resolve res, r[1]
-                return
-              else if (res.headers['Job-UUID']?)
-                resolve(res, res.headers['Job-UUID'])
+              if r?
+                res.uuid = r
+                resolve res, r
                 return
               else
                 reject new FreeSwitchError res, {when:"bgapi did not provide a Job-UUID",command}
