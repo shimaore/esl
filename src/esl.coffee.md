@@ -142,11 +142,11 @@ The callback will receive a FreeSwitchResponse object.
           @connect()
           .then (res) ->
             @data = res.body
-            unique_id = @data[Unique_ID]
+            @uuid = @data[Unique_ID]
 
 `filter` is required so that `event_json` will only obtain our events.
 
-            @filter Unique_ID, unique_id
+            @filter Unique_ID, @uuid
           .then ->
             @auto_cleanup()
             server.stats.handler ?= 0
