@@ -368,7 +368,7 @@ Execute an application for the given UUID (in client mode).
         options =
           'execute-app-name': app_name
           'execute-app-arg':  app_arg
-          'loops': loops
+        options.loops = loops if loops?
         @sendmsg_uuid uuid, 'execute', options
 
 TODO: Support the alternate format (with no `execute-app-arg` header but instead a `text/plain` body containing the argument).
