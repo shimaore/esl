@@ -12,6 +12,7 @@ ESL response and associated API
     module.exports = class FreeSwitchResponse
       constructor: (@socket) ->
         @ev = new EventEmitter()
+        @queue ?= new Promise.resolve null
 
       emit: ->
         @_trace? {emit:arguments[0],headers:arguments[1]?.headers,body:arguments[1]?.body}
@@ -338,3 +339,24 @@ Normal behavior on disconnect is to end the call.  (However you may capture the 
           @emit 'cleanup_disconnect', this
 
         return
+
+Make the following methods queue-able.
+
+    queueable = ['api']
+
+    for method in queueable
+      FreeSwitchResponse.prototype["queue_#{method}"] = (args...) ->
+
+Add the function call.
+
+        instance = @queue.then =>
+          this[method].apply this, args
+
+Do not fail the queue if a given command fails.
+
+        @queue = instance.catch (error) =>
+          @_trace? {when:"queued #{method}", error}
+
+Return the (uncaught) command so that the user can do error handling.
+
+        instance
