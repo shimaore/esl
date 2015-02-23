@@ -169,6 +169,8 @@ The server is used when FreeSwitch needs to be able to initiate a connection to 
 
 We inherit from the `Server` class of Node.js' `net` module. This way any method from `Server` may be re-used (although in most cases only `listen` is used).
 
+    net = require 'net'
+
     class FreeSwitchServer extends net.Server
       constructor: (requestListener) ->
 
@@ -298,7 +300,6 @@ You must manually run `@event_json` and an optional `@filter` command.
 Toolbox
 -------
 
-    net = require 'net'
     assert = require 'assert'
     {error} = require 'util'
 
