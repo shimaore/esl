@@ -1,5 +1,5 @@
 Event Socket stream parser
---------------------------
+==========================
 
     querystring = require 'querystring'
     util = require 'util'
@@ -37,7 +37,7 @@ Consume the body once it has been fully received.
         @buffer = @buffer.substring(@body_length)
         @body_length = 0
 
-process the content
+Process the content at each step.
 
         @process @headers, body
         @headers = {}
@@ -101,14 +101,13 @@ Capture the body as needed
           return @capture_headers data
 
 For completeness provide an `on_end()` method.
-TODO: it probably should make sure the buffer is empty?
 
       on_end: () ->
         if @buffer.length > 0
           @socket.emit 'error', new Error util.inspect error:'Buffer is not empty at end of stream', buffer:@buffer
 
 Headers parser
---------------
+==============
 
 Event Socket framing contains headers and a body.
 The header must be decoded first to learn the presence and length of the body.

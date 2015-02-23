@@ -1,5 +1,5 @@
 Connection Listener (socket events handler)
--------------------------------------------
+===========================================
 
 We use the same connection-listener for both client (FreeSwitch "inbound" socket) and server (FreeSwitch "outound" socket).
 This is modelled after Node.js' http.js; the connection-listener is called either when FreeSwitch connects to our server, or when we connect to FreeSwitch from our client.
@@ -32,7 +32,7 @@ The parser is responsible for de-framing messages coming from FreeSwitch and spl
 
       parser.process = (headers,body) ->
 
-Rewrite headers as needed to work around some weirdnesses in the protocol; and assign unified event IDs to the ESL Content-Types.
+Rewrite headers as needed to work around some weirdnesses in the protocol; and assign unified event IDs to the Event Socket's Content-Types.
 
         content_type = headers['Content-Type']
         if not content_type?
@@ -45,10 +45,22 @@ Notice how all our (internal) event names are lower-cased; FreeSwitch always use
 
         switch content_type
 
+auth/request
+------------
+
+FreeSwitch sends an authentication request when a client connect to the Event Socket.
+Normally caught by the client code, there is no need for your code to monitor this event.
+
           when 'auth/request'
             event = 'freeswitch_auth_request'
             call.stats.auth_request ?= 0
             call.stats.auth_request++
+
+command/reply
+-------------
+
+Commands trigger this type of event when they are submitted.
+Normally caught by `send`, there is no need for your code to monitor this event.
 
           when 'command/reply'
             event = 'freeswitch_command_reply'
@@ -64,6 +76,11 @@ Apparently a bug in the response to `connect` causes FreeSwitch to send the head
             call.stats.command_reply ?= 0
             call.stats.command_reply++
 
+text/event-json
+---------------
+
+A generic event with a JSON body. We map it to its own Event-Name.
+
           when 'text/event-json'
             try
               body = JSON.parse(body)
@@ -74,26 +91,49 @@ Apparently a bug in the response to `connect` causes FreeSwitch to send the head
               return
             event = body['Event-Name']
 
+text/event-plain
+----------------
+
+Same a `text/event-json` except the body is encoded using plain text. Either way the module provides you with a parsed body (a hash/Object).
+
           when 'text/event-plain'
             body = parse_header_text(body)
             event = body['Event-Name']
             call.stats.events ?= 0
             call.stats.events++
 
+log/data
+--------
+
           when 'log/data'
             event = 'freeswitch_log_data'
             call.stats.log_data ?= 0
             call.stats.log_data++
+
+text/disconnect-notice
+----------------------
+
+FreeSwitch's indication that it is disconnecting the socket.
+You normally do not have to monitor this event; the `autocleanup` methods catches this event and emits either `freeswitch_disconnect` or `freeswitch_linger`, monitor those events instead.
 
           when 'text/disconnect-notice'
             event = 'freeswitch_disconnect_notice'
             call.stats.disconnect ?= 0
             call.stats.disconnect++
 
+api/response
+------------
+
+Triggered when an `api` message returns. Due to the inability to map those responses to requests, you might want to use `queue_api` instead of `api` for concurrent usage.
+You normally do not have to monitor this event, the `api` methods catches it.
+
           when 'api/response'
             event = 'freeswitch_api_response'
             call.stats.api_responses ?= 0
             call.stats.api_responses++
+
+Others?
+-------
 
           else
 
@@ -105,18 +145,24 @@ Ideally other content-types should be individually specified. In any case we pro
             call.stats.unhandled ?= 0
             call.stats.unhandled++
 
+Event content
+-------------
+
 The messages sent at the server- or client-level only contain the headers and the body, possibly modified by the above code.
 
         msg = {headers,body}
 
         outcome = call.emit event, msg
 
+Get things started
+------------------
+
 Get things started: notify the application that the connection is established and that we are ready to send commands to FreeSwitch.
 
       call.emit 'freeswitch_connect'
 
 Server
-------
+======
 
 The server is used when FreeSwitch needs to be able to initiate a connection to us so that we can handle an existing call.
 
@@ -170,7 +216,7 @@ The call handler will receive a `FreeSwitchResponse` object, `options` are optio
 
       server = new FreeSwitchServer ->
 
-This is our default request-listener.
+Here starts our default request-listener.
 
         try
           Unique_ID = 'Unique-ID'
@@ -202,7 +248,7 @@ Subscribing to `event_json 'ALL'` is required to e.g. obtain `CHANNEL_EXECUTE_CO
       return server
 
 Client
-------
+======
 
 Client mode is used to place new calls or take over existing calls.
 
