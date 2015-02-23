@@ -1,24 +1,24 @@
-    net = require 'net'
-    assert = require 'assert'
-    {error} = require 'util'
-
-    FreeSwitchParser = require './parser'
-    FreeSwitchResponse = require './response'
-    {parse_header_text} = FreeSwitchParser
-
 Connection Listener (socket events handler)
 -------------------------------------------
 
-This is modelled after Node.js' http.js
 We use the same connection-listener for both client (FreeSwitch "inbound" socket) and server (FreeSwitch "outound" socket).
+This is modelled after Node.js' http.js; the connection-listener is called either when FreeSwitch connects to our server, or when we connect to FreeSwitch from our client.
 
     connectionListener = (call) ->
+
+The module provides statistics in the `stats` object. You may use it  to collect your own call-related statistics. For example the [tough-rate](https://github.com/shimaore/tough-rate) LCR engine uses this along with the [caring-band](https://github.com/shimaore/caring-band) data collection tool to provide realtime data.
+
       call.stats ?= {}
 
+Make sure Node.js will provide us with strings, not buffers. Also FreeSwitch isn't set up to handle UTF-8, so don't use that.
+
       call.socket.setEncoding('ascii')
+
+The parser will be the one receiving the actual data from the socket. We will process the parser's output below.
+
       parser = new FreeSwitchParser call.socket
 
-Make the command responses somewhat unique.
+Make the command responses somewhat unique. This is required since FreeSwitch doesn't provide us a way to match response with requests.
 
       call.on 'CHANNEL_EXECUTE_COMPLETE', (res) ->
         application = res.body['Application']
@@ -27,6 +27,8 @@ Make the command responses somewhat unique.
         unique_id = res.body['Unique-ID']
         if unique_id?
           call.emit "CHANNEL_EXECUTE_COMPLETE #{unique_id} #{application} #{application_data}", res
+
+The parser is responsible for de-framing messages coming from FreeSwitch and splitting it into headers and a body.
 
       parser.process = (headers,body) ->
 
@@ -39,6 +41,8 @@ Rewrite headers as needed to work around some weirdnesses in the protocol; and a
           call.socket.emit 'error', {when: 'Missing Content-Type', headers, body}
           return
 
+Notice how all our (internal) event names are lower-cased; FreeSwitch always uses full-upper-case event names.
+
         switch content_type
 
           when 'auth/request'
@@ -48,7 +52,9 @@ Rewrite headers as needed to work around some weirdnesses in the protocol; and a
 
           when 'command/reply'
             event = 'freeswitch_command_reply'
-            # Apparently a bug in the response to "connect"
+
+Apparently a bug in the response to `connect` causes FreeSwitch to send the headers in the body.
+
             if headers['Event-Name'] is 'CHANNEL_DATA'
               body = headers
               headers = {}
@@ -90,40 +96,70 @@ Rewrite headers as needed to work around some weirdnesses in the protocol; and a
             call.stats.api_responses++
 
           else
-            # FIXME report when:'unhandled Content-Type', content_type:content_type
+
+Ideally other content-types should be individually specified. In any case we provide a fallback mechanism.
+
+            debug 'Unhandled Content-Type', content_type
             event = "freeswitch_#{content_type.replace /[^a-z]/, '_'}"
             call.socket.emit 'error', when:'Unhandled Content-Type', error:content_type
             call.stats.unhandled ?= 0
             call.stats.unhandled++
 
+The messages sent at the server- or client-level only contain the headers and the body, possibly modified by the above code.
+
         msg = {headers,body}
 
         outcome = call.emit event, msg
 
-      # Get things started
+Get things started: notify the application that the connection is established and that we are ready to send commands to FreeSwitch.
+
       call.emit 'freeswitch_connect'
 
-ESL Server
-----------
+Server
+------
+
+The server is used when FreeSwitch needs to be able to initiate a connection to us so that we can handle an existing call.
+
+
+We inherit from the `Server` class of Node.js' `net` module. This way any method from `Server` may be re-used (although in most cases only `listen` is used).
 
     class FreeSwitchServer extends net.Server
       constructor: (requestListener) ->
+
+The server also contains a `stats` object. It records the number of connections.
+
         @stats = {}
         @on 'connection', (socket) ->
           @stats.connections ?= 0
           @stats.connections++
+
+For every new connection to our server we get a new `Socket` object, which we wrap inside our `FreeSwitchResponse` object. This becomes the `call` object used throughout the application.
+
           call = new FreeSwitchResponse socket
+
+The `freeswitch_connect` event is triggered by our `connectionListener` once the parser is set up and ready.
+
           call.once 'freeswitch_connect'
           .then ->
+
+The request-listener is called within the context of the `FreeSwitchResponse` object.
+
             try
               requestListener.call call
+
+All errors are reported directly on the socket; even though `FreeSwitchResponse` contains an `EventEmitter` we don't use it for error notification.
+
             catch exception
               call.socket.emit 'error', exception
+
+The connection-listener is called last to set the parser up and trigger the request-listener.
+
           connectionListener call
 
         super()
 
-The callback will receive a FreeSwitchResponse object.
+The `server` we export is only slightly more complex. It sets up a filter so that the application only gets its own events, and sets up automatic cleanup which will be used before disconnecting the socket.
+The call handler will receive a `FreeSwitchResponse` object, `options` are optional (and currently unused).
 
     exports.server = (options = {}, handler, report = error) ->
       if typeof options is 'function'
@@ -133,16 +169,22 @@ The callback will receive a FreeSwitchResponse object.
       assert.strictEqual typeof handler, 'function', "server handler must be a function"
 
       server = new FreeSwitchServer ->
+
+This is our default request-listener.
+
         try
           Unique_ID = 'Unique-ID'
           server.stats.connecting ?= 0
           server.stats.connecting++
+
+Confirm connection with FreeSwitch.
+
           @connect()
           .then (res) ->
             @data = res.body
             @uuid = @data[Unique_ID]
 
-`filter` is required so that `event_json` will only obtain our events.
+Restricting events using `filter` is required so that `event_json` will only obtain our events.
 
             @filter Unique_ID, @uuid
           .then ->
@@ -150,7 +192,7 @@ The callback will receive a FreeSwitchResponse object.
             server.stats.handler ?= 0
             server.stats.handler++
 
-`event_json 'ALL'` is required to e.g. obtain `CHANNEL_EXECUTE_COMPLETE`
+Subscribing to `event_json 'ALL'` is required to e.g. obtain `CHANNEL_EXECUTE_COMPLETE`.
 
           .then -> @event_json 'ALL'
           .then handler
@@ -159,25 +201,44 @@ The callback will receive a FreeSwitchResponse object.
           report exception
       return server
 
-ESL client
-----------
+Client
+------
+
+Client mode is used to place new calls or take over existing calls.
+
+We inherit from the `Socket` class of Node.js' `net` module. This way any method from `Socket` may be re-used (although in most cases only `connect` is used).
 
     class FreeSwitchClient extends net.Socket
       constructor: ->
+
+Contrarily to the server which will handle multiple socket connections over its lifetime, a client only handles one socket, so only one `FreeSwitchResponse` object is needed as well.
+
         @call = new FreeSwitchResponse this
+
+Parsing of incoming messages is handled by the connection-listener.
+
         @on 'connect', =>
           connectionListener @call
         super()
 
+The `client` function we provide wraps `FreeSwitchClient` in order to provide some defaults.
+The `handler` will be called in the context of the `FreeSwitchResponse`; the `options` are optional, but may include a `password`.
+
     exports.client = (options = {}, handler) ->
       if typeof options is 'function'
         [options,handler] = [{},options]
+
+If neither `options` not `password` is provided, the default password is assumed.
+
       options.password ?= 'ClueCon'
 
       assert.ok handler?, "client handler is required"
       assert.strictEqual typeof handler, 'function', "client handler must be a function"
 
       client = new FreeSwitchClient()
+
+Normally when the client connects, FreeSwitch will first send us an authentication request. We use it to trigger the remainder of the stack.
+
       client.call.once 'freeswitch_auth_request'
       .then ->
         @auth options.password
@@ -185,5 +246,16 @@ ESL client
         .then handler
       return client
 
-Please note that the client is not started with `event_json` since by default this will mean obtaining all events from FreeSwitch.
+Please note that the client is not started with `event_json` since by default this would mean obtaining all events from FreeSwitch.
 You must manually run `@event_json` and an optional `@filter` command.
+
+Toolbox
+-------
+
+    net = require 'net'
+    assert = require 'assert'
+    {error} = require 'util'
+
+    FreeSwitchParser = require './parser'
+    FreeSwitchResponse = require './response'
+    {parse_header_text} = FreeSwitchParser

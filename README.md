@@ -14,7 +14,7 @@ var fs_command = function(cmd) {
   var client = FS.client(function(){
     this.api(cmd)
     .then( function(res) {
-      // res basically contains the headers and body of FreeSwitch's response.
+      // res contains the headers and body of FreeSwitch's response.
       res.body.should.match(/\+OK/);
     })
     .then( function(){
@@ -96,7 +96,7 @@ Install
 Examples
 --------
 
-The tests in [`test/0001.coffee.md`](https://github.com/shimaore/esl/blob/master/test/0001.coffee.md) provide many examples.
+The test suite in [`test/0001.coffee.md`](https://github.com/shimaore/esl/blob/master/test/0001.coffee.md) provides many examples.
 
 Overview
 --------
