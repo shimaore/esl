@@ -136,11 +136,13 @@ Closes the socket.
 Channel-level commands
 ======================
 
-api
----
+api, queue_api
+--------------
 
 Send an API command, see [Mod commands](http://wiki.freeswitch.org/wiki/Mod_commands) for a list.
-Returns a Promise.
+Returns a Promise that is fulfilled as soon as FreeSwitch sends a reply.
+
+Using `api` in concurrent environment (typically client mode) is not safe, since there is no way to match between requests and responses. Use `queue_api` in that case in order to serialize requests.
 
       api: (command) ->
         debug 'api', {command}

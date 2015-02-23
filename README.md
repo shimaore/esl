@@ -93,10 +93,12 @@ Install
 
     npm install esl
 
-Examples
---------
+Examples and Documentation
+--------------------------
 
 The test suite in [`test/0001.coffee.md`](https://github.com/shimaore/esl/blob/master/test/0001.coffee.md) provides many examples.
+
+The methods available inside the call-handler are those of the [response object](http://shimaore.github.io/esl/docs/response.coffee.html#section-22): `queue_api`, `api`, `bgapi`, `command`, `command_uuid`, etc.
 
 Overview
 --------
