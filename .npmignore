@@ -1,4 +1,5 @@
 src/
-docs/esl.html
+local_docs/
 node_modules/
 test/
+Makefile

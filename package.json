@@ -41,13 +41,14 @@
   },
   "devDependencies": {
     "coffee-script": "^1.9.1",
+    "docco": "^0.7.0",
     "mocha": "~2.1.0",
     "pouchdb": "^3.3.1",
     "should": "~5.0.1",
     "uuid": "^2.0.1"
   },
   "scripts": {
-    "prepublish": "coffee -c -o lib/ src/*",
+    "prepublish": "coffee -c -o lib/ src/* && docco src/*",
     "pretest": "npm install",
     "test": "(cd test && ./docker-dns.sh && ./setup.sh) && mocha && (cd test && ./cleanup.sh)"
   },
