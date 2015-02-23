@@ -6,3 +6,4 @@ test/log/
 test/*.log
 test/routes/
 Makefile
+routes/
