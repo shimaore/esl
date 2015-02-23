@@ -13,7 +13,6 @@ This is modelled after Node.js' http.js
 We use the same connection-listener for both client (FreeSwitch "inbound" socket) and server (FreeSwitch "outound" socket).
 
     connectionListener = (call) ->
-      call._trace? 'connectionListener'
       call.stats ?= {}
 
       call.socket.setEncoding('ascii')
@@ -135,7 +134,6 @@ The callback will receive a FreeSwitchResponse object.
 
       server = new FreeSwitchServer ->
         try
-          @trace options.early_trace
           Unique_ID = 'Unique-ID'
           server.stats.connecting ?= 0
           server.stats.connecting++
@@ -180,10 +178,8 @@ ESL client
       assert.strictEqual typeof handler, 'function', "client handler must be a function"
 
       client = new FreeSwitchClient()
-      client.call.trace options.early_trace
       client.call.once 'freeswitch_auth_request'
       .then ->
-        @_trace? 'client on auth_request'
         @auth options.password
         .then -> @auto_cleanup()
         .then handler

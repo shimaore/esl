@@ -79,24 +79,14 @@ Message tracing
 ---------------
 
 During development it is often useful to be able to see what messages are sent to FreeSwitch or received from FreeSwitch.
+This module uses the [debug](https://github.com/visionmedia/debug) module for tracing; simply call you application with
 
-```javascript
-call.trace(true)
-```
+    DEBUG='esl:*'
 
-will start a default tracing logger, while
+to see traces.
 
-```javascript
-call.trace(false)
-```
+Currently the only name available is `esl:response`.
 
-will stop it. Also
-
-```javascript
-call.trace("my prefix")
-```
-
-will print out the specified prefix each time.
 
 Install
 -------

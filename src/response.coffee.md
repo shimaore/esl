@@ -4,6 +4,7 @@ ESL response and associated API
     Promise = require 'bluebird'
     util = require 'util'
     {EventEmitter} = require 'events'
+    debug = (require 'debug') 'esl:response'
 
     class FreeSwitchError extends Error
       constructor: (@res,@args) ->
@@ -15,17 +16,17 @@ ESL response and associated API
         @queue ?= new Promise.resolve null
 
       emit: ->
-        @_trace? {emit:arguments[0],headers:arguments[1]?.headers,body:arguments[1]?.body}
+        debug 'emit', arguments[0], headers:arguments[1]?.headers, body:arguments[1]?.body
         outcome = @ev.emit arguments...
-        @_trace? {emit:arguments[0],had_listeners:outcome}
+        debug emit:arguments[0], had_listeners:outcome
         outcome
 
       once: (event) ->
-        @_trace? {create_once:event}
+        debug 'create_once', event
         p = new Promise (resolve,reject) =>
           try
             @ev.once event, =>
-              @_trace? {once:event,once_data:arguments[0]}
+              debug 'once', event, data:arguments[0]
               resolve arguments...
               return
           catch exception
@@ -33,29 +34,11 @@ ESL response and associated API
         p.bind this
 
       on: (event,callback) ->
-        @_trace? {create_on:event}
+        debug 'create_on', event
         @ev.on event, -> callback.apply this, arguments
 
-### Tracing
-
-The trace method will trace exchanges with the FreeSwitch server.
-
-      trace: (logger) ->
-        if logger is on
-          @_trace = (o) ->
-            util.log util.inspect o
-          return
-        if logger is off
-          delete @_trace
-          return
-        if typeof logger is 'function'
-          @_trace = logger
-        if typeof logger is 'string'
-          @_trace = (o) ->
-            util.log logger + util.inspect o
-
       write: (command,args) ->
-        @_trace? write_command: command, write_args: args
+        debug 'write', {command,args}
 
         text = "#{command}\n"
         if args?
@@ -78,15 +61,15 @@ Typically `command/reply` will contain the status in the `Reply-Text` header whi
           try
             @once 'freeswitch_command_reply'
             .then (res) ->
-              @_trace? {when:'send: reply', res, command, args}
+              debug 'send: reply', res, {command,args}
               reply = res.headers['Reply-Text']
               if not reply?
-                @_trace? {when:'send: failed', why:'no reply', command, args}
+                debug 'send: no reply', {command, args}
                 reject new FreeSwitchError res, {when:'no reply to command',command,args}
                 return
 
               if reply.match /^-/
-                @_trace? {when:'send: failed', reply}
+                debug 'send: failed', reply
                 reject new FreeSwitchError res, {when:'command reply',reply,command,args}
                 return
 
@@ -100,7 +83,7 @@ Typically `command/reply` will contain the status in the `Reply-Text` header whi
         p.bind this
 
       end: () ->
-        @_trace? when:'end'
+        debug 'end'
         @socket.end()
         this
 
@@ -109,21 +92,21 @@ Typically `command/reply` will contain the status in the `Reply-Text` header whi
 Send an API command, see [Mod commands](http://wiki.freeswitch.org/wiki/Mod_commands)
 
       api: (command) ->
-        @_trace? when:'api', command: command
+        debug 'api', {command}
 
         p = new Promise (resolve,reject) =>
           try
             @once 'freeswitch_api_response'
             .then (res) ->
-              @_trace? {when: 'api: response', command}
+              debug 'api: response', {command}
               reply = res.body
               if not reply?
-                @_trace? {when:'api: failed', why:'no reply', command}
+                debug 'api: no reply', {command}
                 reject new FreeSwitchError res, {when:'no reply to api',command}
                 return
 
               if reply.match /^-/
-                @_trace? {when:'api response failed', reply, command}
+                debug 'api response failed', {reply, command}
                 reject new FreeSwitchError res, {when:'api response',reply,command}
                 return
 
@@ -305,16 +288,16 @@ Clean-up at the end of the connection.
       auto_cleanup: ->
         @once 'freeswitch_disconnect_notice'
         .then (res) =>
-          @_trace? "auto_cleanup: Received ESL disconnection notice":res
+          debug 'auto_cleanup: Received ESL disconnection notice', res
           switch res.headers['Content-Disposition']
             when 'linger'
-              @_trace? "Sending freeswitch_linger"
+              debug 'Sending freeswitch_linger'
               @emit 'freeswitch_linger'
             when 'disconnect'
-              @_trace? "Sending freeswitch_disconnect"
+              debug 'Sending freeswitch_disconnect'
               @emit 'freeswitch_disconnect'
             else # Header might be absent?
-              @_trace? "Sending freeswitch_disconnect"
+              debug 'Sending freeswitch_disconnect'
               @emit 'freeswitch_disconnect'
 
 #### Linger
@@ -322,7 +305,7 @@ The default behavior in linger mode is to disconnect the call (which is roughly 
 
         @once 'freeswitch_linger'
         .then ->
-          @_trace? when:'auto_cleanup/linger: exit'
+          debug 'auto_cleanup/linger: exit'
           @exit()
           @emit 'cleanup_linger'
 
@@ -334,7 +317,7 @@ Normal behavior on disconnect is to end the call.  (However you may capture the 
 
         @once 'freeswitch_disconnect'
         .then ->
-          @_trace? when:'auto_cleanup/disconnect: end'
+          debug 'auto_cleanup/disconnect: end'
           @end()
           @emit 'cleanup_disconnect', this
 
@@ -355,7 +338,7 @@ Add the function call.
 Do not fail the queue if a given command fails.
 
         @queue = instance.catch (error) =>
-          @_trace? {when:"queued #{method}", error}
+          debug "queued #{method} failed", {error}
 
 Return the (uncaught) command so that the user can do error handling.
 

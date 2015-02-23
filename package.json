@@ -36,7 +36,8 @@
     "lib/response.js"
   ],
   "dependencies": {
-    "bluebird": "^2.9.12"
+    "bluebird": "^2.9.12",
+    "debug": "^2.1.1"
   },
   "devDependencies": {
     "coffee-script": "^1.9.1",
