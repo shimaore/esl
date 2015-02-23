@@ -247,6 +247,8 @@ Subscribing to `event_json 'ALL'` is required to e.g. obtain `CHANNEL_EXECUTE_CO
 
         catch exception
           report exception
+
+      debug "Ready to start #{pkg.name} #{pkg.version} server."
       return server
 
 Client
@@ -292,6 +294,8 @@ Normally when the client connects, FreeSwitch will first send us an authenticati
         @auth options.password
         .then -> @auto_cleanup()
         .then handler
+
+      debug "Ready to start #{pkg.name} #{pkg.version} client."
       return client
 
 Please note that the client is not started with `event_json` since by default this would mean obtaining all events from FreeSwitch.
@@ -306,3 +310,6 @@ Toolbox
     FreeSwitchParser = require './parser'
     FreeSwitchResponse = require './response'
     {parse_header_text} = FreeSwitchParser
+
+    pkg = require '../package.json'
+    debug = (require 'debug') 'esl:main'

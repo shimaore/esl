@@ -85,7 +85,7 @@ This module uses the [debug](https://github.com/visionmedia/debug) module for tr
 
 to see traces.
 
-Currently the only name available is `esl:response`.
+The name available are `esl:response` and `esl:main`.
 
 
 Install
