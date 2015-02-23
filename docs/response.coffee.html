@@ -416,7 +416,7 @@
               <div class="pilwrap ">
                 <a class="pilcrow" href="#section-23">&#182;</a>
               </div>
-              <h2 id="api">api</h2>
+              <h2 id="api-queue_api">api, queue_api</h2>
 
             </div>
             
@@ -430,7 +430,8 @@
                 <a class="pilcrow" href="#section-24">&#182;</a>
               </div>
               <p>Send an API command, see <a href="http://wiki.freeswitch.org/wiki/Mod_commands">Mod commands</a> for a list.
-Returns a Promise.</p>
+Returns a Promise that is fulfilled as soon as FreeSwitch sends a reply.</p>
+<p>Using <code>api</code> in concurrent environment (typically client mode) is not safe, since there is no way to match between requests and responses. Use <code>queue_api</code> in that case in order to serialize requests.</p>
 
             </div>
             
