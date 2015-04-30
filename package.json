@@ -27,6 +27,10 @@
     {
       "name": "Tobias Bieniek",
       "email": "Tobias.Bieniek@gmx.de"
+    },
+    {
+      "name": "James Criscuolo",
+      "email": "james@onsip.com"
     }
   ],
   "main": "lib/esl.js",

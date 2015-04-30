@@ -83,12 +83,25 @@ A generic event with a JSON body. We map it to its own Event-Name.
 
           when 'text/event-json'
             try
+
+Strip control characters that might be emitted by FreeSwitch.
+
+              body = body.replace /[\x00-\x1F\x7F-\x9F]/g, ''
+
+Parse the JSON body.
+
               body = JSON.parse(body)
+
+In case of error report it as an error.
+
             catch exception
               call.stats.json_parse_errors ?= 0
               call.stats.json_parse_errors++
               call.socket.emit 'error', when:'JSON error', error:exception, body:body
               return
+
+Otherwise trigger the proper event.
+
             event = body['Event-Name']
 
 text/event-plain
