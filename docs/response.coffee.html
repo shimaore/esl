@@ -1084,7 +1084,7 @@ You normally do not need to call <code>@exit</code> directly.</p>
     options =
       <span class="hljs-string">'execute-app-name'</span>: app_name
       <span class="hljs-string">'execute-app-arg'</span>:  app_arg
-      <span class="hljs-string">'loops'</span>: loops
+    options.loops = loops <span class="hljs-keyword">if</span> loops?
     <span class="hljs-property">@sendmsg_uuid</span> uuid, <span class="hljs-string">'execute'</span>, options</pre></div></div>
             
         </li>
