@@ -1,4 +1,4 @@
-FROM shimaore/freeswitch
+FROM shimaore/freeswitch:2.1.0
 ADD conf/ /opt/freeswitch/conf
 USER root
 CMD ["/opt/freeswitch/bin/freeswitch","-nf","-nosql","-nonat","-nonatmap","-nocal","-nort","-c"]
