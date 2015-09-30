@@ -287,7 +287,7 @@ Parsing of incoming messages is handled by the connection-listener.
 The `client` function we provide wraps `FreeSwitchClient` in order to provide some defaults.
 The `handler` will be called in the context of the `FreeSwitchResponse`; the `options` are optional, but may include a `password`.
 
-    exports.client = (options = {}, handler) ->
+    exports.client = (options = {}, handler, errorHandler) ->
       if typeof options is 'function'
         [options,handler] = [{},options]
 
@@ -305,8 +305,8 @@ Normally when the client connects, FreeSwitch will first send us an authenticati
       client.call.once 'freeswitch_auth_request'
       .then ->
         @auth options.password
-        .then -> @auto_cleanup()
-        .then handler
+      .then -> @auto_cleanup()
+      .then handler, errorHandler
 
       debug "Ready to start #{pkg.name} #{pkg.version} client."
       return client
