@@ -287,13 +287,15 @@ Parsing of incoming messages is handled by the connection-listener.
 The `client` function we provide wraps `FreeSwitchClient` in order to provide some defaults.
 The `handler` will be called in the context of the `FreeSwitchResponse`; the `options` are optional, but may include a `password`.
 
+    exports.default_password = 'ClueCon'
+
     exports.client = (options = {}, handler, errorHandler) ->
       if typeof options is 'function'
-        [options,handler] = [{},options]
+        [options,handler,errorHandler] = [{},options,handler]
 
 If neither `options` not `password` is provided, the default password is assumed.
 
-      options.password ?= 'ClueCon'
+      options.password ?= exports.default_password
 
       assert.ok handler?, "client handler is required"
       assert.strictEqual typeof handler, 'function', "client handler must be a function"
