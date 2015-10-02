@@ -96,6 +96,8 @@ Typically `command/reply` will contain the status in the `Reply-Text` header whi
 
           try
             @once 'freeswitch_command_reply'
+            .catch (error) ->
+              reject error
             .then (res) ->
               debug 'send: reply', res, {command,args}
               reply = res.headers['Reply-Text']
@@ -150,6 +152,8 @@ Using `api` in concurrent environment (typically client mode) is not safe, since
         p = new Promise (resolve,reject) =>
           try
             @once 'freeswitch_api_response'
+            .catch (error) ->
+              reject error
             .then (res) ->
               debug 'api: response', {command}
               reply = res.body
