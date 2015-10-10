@@ -119,7 +119,9 @@ Typically `command/reply` will contain the status in the `Reply-Text` header whi
             @once 'freeswitch_command_reply'
             .catch (error) ->
               reject error
+              null
             .then (res) ->
+              return if not res?
               debug 'send: reply', res, {command,args}
               reply = res.headers['Reply-Text']
 
@@ -141,6 +143,8 @@ The promise will be fulfilled with the `{headers,body}` object provided by the p
               return
 
             @write command, args
+            .catch (error) ->
+              reject error
           catch exception
             reject exception
 
@@ -180,7 +184,9 @@ Using `api` in concurrent environment (typically client mode) is not safe, since
             @once 'freeswitch_api_response'
             .catch (error) ->
               reject error
+              null
             .then (res) ->
+              return if not res?
               debug 'api: response', {command}
               reply = res.body
 
@@ -204,6 +210,8 @@ The Promise that will be fulfilled with `{headers,body,uuid}` from the parser; u
               return
 
             @write "api #{command}"
+            .catch (error) ->
+              reject error
           catch exception
             reject exception
 
@@ -223,7 +231,11 @@ Send an API command in the background. Wraps it inside a Promise.
         p = new Promise (resolve,reject) =>
           try
             @send "bgapi #{command}"
+            .catch (error) ->
+              reject error
+              null
             .then (res) ->
+              return if not res?
               reply = res.headers['Reply-Text']
               r = reply?.match(/\+OK Job-UUID: (.+)$/)?[1]
               r ?= res.headers['Job-UUID']
