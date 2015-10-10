@@ -74,14 +74,21 @@ write
 Send a single command to FreeSwitch; `args` is a hash of headers sent with the command.
 
       write: (command,args) ->
-        debug 'write', {command,args}
+        p = new Promise (resolve,reject) =>
+          try
+            debug 'write', {command,args}
 
-        text = "#{command}\n"
-        if args?
-          for key, value of args
-            text += "#{key}: #{value}\n"
-        text += "\n"
-        @socket.write text
+            text = "#{command}\n"
+            if args?
+              for key, value of args
+                text += "#{key}: #{value}\n"
+            text += "\n"
+            @socket.write text
+
+          catch error
+            reject error
+
+        p.bind this
 
 send
 ----
