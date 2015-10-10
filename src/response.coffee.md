@@ -512,7 +512,7 @@ Make the following methods queue-able.
 
     queueable = ['api']
 
-    for method in queueable
+    queueable.forEach (method) ->
       FreeSwitchResponse.prototype["queue_#{method}"] = (args...) ->
 
 Add the function call.
@@ -528,6 +528,8 @@ Do not fail the queue if a given command fails.
 Return the (uncaught) command so that the user can do error handling.
 
         instance
+
+    null
 
 Toolbox
 =======
