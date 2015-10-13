@@ -10,10 +10,6 @@ The module provides statistics in the `stats` object. You may use it  to collect
 
       call.stats ?= {}
 
-Make sure Node.js will provide us with strings, not buffers. Also FreeSwitch isn't set up to handle UTF-8, so don't use that.
-
-      call.socket.setEncoding('ascii')
-
 The parser will be the one receiving the actual data from the socket. We will process the parser's output below.
 
       parser = new FreeSwitchParser call.socket

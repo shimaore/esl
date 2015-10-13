@@ -93,7 +93,7 @@ Send a single command to FreeSwitch; `args` is a hash of headers sent with the c
               for key, value of args
                 text += "#{key}: #{value}\n"
             text += "\n"
-            @socket.write text
+            @socket.write text, 'utf8'
 
           catch error
             reject error

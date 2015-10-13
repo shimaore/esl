@@ -10,7 +10,8 @@ The Event Socket parser will parse an incoming ES stream, whether your code is a
 
       constructor: (@socket) ->
         @body_length = 0
-        @buffer = ""
+        @buffer = new Buffer 0
+        @buffer_length = 0
 
         @socket.on 'data', (data) =>
           @on_data data
@@ -24,17 +25,19 @@ The Event Socket parser will parse an incoming ES stream, whether your code is a
 
 When capturing the body, `buffer` contains the current data (text), and `body_length` contains how many bytes are expected to be read in the body.
 
-        @buffer += data
+        @buffer_length += data.length
+        @buffer = Buffer.concat [@buffer, data], @buffer_length
 
 As long as the whole body hasn't been received, keep adding the new data into the buffer.
 
-        if @buffer.length < @body_length
+        if @buffer_length < @body_length
           return
 
 Consume the body once it has been fully received.
 
-        body = @buffer.substring(0,@body_length)
-        @buffer = @buffer.substring(@body_length)
+        body = @buffer.toString 'utf8', 0, @body_length
+        @buffer = @buffer.slice @body_length
+        @buffer_length -= @body_length
         @body_length = 0
 
 Process the content at each step.
@@ -44,7 +47,7 @@ Process the content at each step.
 
 Re-parse whatever data was left after the body was fully consumed.
 
-        @capture_headers ''
+        @capture_headers new Buffer 0
 
 ### Capture headers
 
@@ -52,22 +55,24 @@ Re-parse whatever data was left after the body was fully consumed.
 
 Capture headers, meaning up to the first blank line.
 
-        @buffer += data
+        @buffer_length += data.length
+        @buffer = Buffer.concat [@buffer, data], @buffer_length
 
 Wait until we reach the end of the header.
 
-        header_end = @buffer.indexOf("\n\n")
+        header_end = @buffer.indexOf '\n\n'
         if header_end < 0
           return
 
 Consume the headers
 
-        header_text = @buffer.substring(0,header_end)
-        @buffer = @buffer.substring(header_end+2)
+        header_text = @buffer.toString 'utf8', 0, header_end
+        @buffer = @buffer.slice header_end+2
+        @buffer_length -= header_end+2
 
 Parse the header lines
 
-        @headers = parse_header_text(header_text)
+        @headers = parse_header_text header_text
 
 Figure out whether a body is expected
 
@@ -76,7 +81,7 @@ Figure out whether a body is expected
 
 Parse the body (and eventually process)
 
-          @capture_body ''
+          @capture_body new Buffer 0
 
         else
 
@@ -87,7 +92,7 @@ Process the (header-only) content
 
 Re-parse whatever data was left after these headers were fully consumed.
 
-          @capture_headers ''
+          @capture_headers new Buffer 0
 
 ### Dispatch incoming data into the header or body parsers.
 
@@ -103,7 +108,7 @@ Capture the body as needed
 For completeness provide an `on_end()` method.
 
       on_end: () ->
-        if @buffer.length > 0
+        if @buffer_length > 0
           @socket.emit 'error', new Error util.inspect error:'Buffer is not empty at end of stream', buffer:@buffer
 
 Headers parser
@@ -114,7 +119,7 @@ The header must be decoded first to learn the presence and length of the body.
 
     parse_header_text = (header_text) ->
 
-      header_lines = header_text.split("\n")
+      header_lines = header_text.split '\n'
       headers = {}
       for line in header_lines
         do (line) ->
