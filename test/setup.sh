@@ -23,5 +23,4 @@ docker run \
 echo "****** Ready *******"
 
 # Give FreeSwitch some time to settle
-# Give docker-dns some time to figure out there are new hosts (pollinterval = 17).
 sleep 20
