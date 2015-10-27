@@ -10,10 +10,6 @@ The module provides statistics in the `stats` object. You may use it  to collect
 
       call.stats ?= {}
 
-Make sure Node.js will provide us with strings, not buffers. Also FreeSwitch isn't set up to handle UTF-8, so don't use that.
-
-      call.socket.setEncoding('ascii')
-
 The parser will be the one receiving the actual data from the socket. We will process the parser's output below.
 
       parser = new FreeSwitchParser call.socket
@@ -287,13 +283,15 @@ Parsing of incoming messages is handled by the connection-listener.
 The `client` function we provide wraps `FreeSwitchClient` in order to provide some defaults.
 The `handler` will be called in the context of the `FreeSwitchResponse`; the `options` are optional, but may include a `password`.
 
-    exports.client = (options = {}, handler) ->
+    exports.default_password = 'ClueCon'
+
+    exports.client = (options = {}, handler, errorHandler) ->
       if typeof options is 'function'
-        [options,handler] = [{},options]
+        [options,handler,errorHandler] = [{},options,handler]
 
 If neither `options` not `password` is provided, the default password is assumed.
 
-      options.password ?= 'ClueCon'
+      options.password ?= exports.default_password
 
       assert.ok handler?, "client handler is required"
       assert.strictEqual typeof handler, 'function', "client handler must be a function"
@@ -305,8 +303,8 @@ Normally when the client connects, FreeSwitch will first send us an authenticati
       client.call.once 'freeswitch_auth_request'
       .then ->
         @auth options.password
-        .then -> @auto_cleanup()
-        .then handler
+      .then -> @auto_cleanup()
+      .then handler, errorHandler
 
       debug "Ready to start #{pkg.name} #{pkg.version} client."
       return client

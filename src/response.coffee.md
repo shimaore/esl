@@ -19,6 +19,12 @@ The object also provides a queue for operations which need to be submitted one a
 
         @queue ?= new Promise.resolve null
 
+We also must track connection close in order to prevent writing to a closed socket.
+
+        @closed = false
+        @socket.on 'close', =>
+          @closed = true
+
 Event Emitter
 =============
 
@@ -74,14 +80,25 @@ write
 Send a single command to FreeSwitch; `args` is a hash of headers sent with the command.
 
       write: (command,args) ->
-        debug 'write', {command,args}
+        if @closed
+          p = Promise.reject new FreeSwitchError {}, {when:'write on closed socket',command,args}
+          return p.bind this
 
-        text = "#{command}\n"
-        if args?
-          for key, value of args
-            text += "#{key}: #{value}\n"
-        text += "\n"
-        @socket.write text
+        p = new Promise (resolve,reject) =>
+          try
+            debug 'write', {command,args}
+
+            text = "#{command}\n"
+            if args?
+              for key, value of args
+                text += "#{key}: #{value}\n"
+            text += "\n"
+            @socket.write text, 'utf8'
+
+          catch error
+            reject error
+
+        p.bind this
 
 send
 ----
@@ -90,13 +107,21 @@ A generic way of sending commands to FreeSwitch, wrapping `write` into a Promise
 
       send: (command,args) ->
 
+        if @closed
+          p = Promise.reject new FreeSwitchError {}, {when:'send on closed socket',command,args}
+          return p.bind this
+
         p = new Promise (resolve,reject) =>
 
 Typically `command/reply` will contain the status in the `Reply-Text` header while `api/response` will contain the status in the body.
 
           try
             @once 'freeswitch_command_reply'
+            .catch (error) ->
+              reject error
+              null
             .then (res) ->
+              return if not res?
               debug 'send: reply', res, {command,args}
               reply = res.headers['Reply-Text']
 
@@ -118,6 +143,8 @@ The promise will be fulfilled with the `{headers,body}` object provided by the p
               return
 
             @write command, args
+            .catch (error) ->
+              reject error
           catch exception
             reject exception
 
@@ -130,6 +157,7 @@ Closes the socket.
 
       end: () ->
         debug 'end'
+        @closed = true
         @socket.end()
         this
 
@@ -147,10 +175,18 @@ Using `api` in concurrent environment (typically client mode) is not safe, since
       api: (command) ->
         debug 'api', {command}
 
+        if @closed
+          p = Promise.reject new FreeSwitchError {}, {when:'api on closed socket',command,args}
+          return p.bind this
+
         p = new Promise (resolve,reject) =>
           try
             @once 'freeswitch_api_response'
+            .catch (error) ->
+              reject error
+              null
             .then (res) ->
+              return if not res?
               debug 'api: response', {command}
               reply = res.body
 
@@ -174,6 +210,8 @@ The Promise that will be fulfilled with `{headers,body,uuid}` from the parser; u
               return
 
             @write "api #{command}"
+            .catch (error) ->
+              reject error
           catch exception
             reject exception
 
@@ -186,10 +224,18 @@ Send an API command in the background. Wraps it inside a Promise.
 
       bgapi: (command) ->
 
+        if @closed
+          p = Promise.reject new FreeSwitchError {}, {when:'bgapi on closed socket',command,args}
+          return p.bind this
+
         p = new Promise (resolve,reject) =>
           try
             @send "bgapi #{command}"
+            .catch (error) ->
+              reject error
+              null
             .then (res) ->
+              return if not res?
               reply = res.headers['Reply-Text']
               r = reply?.match(/\+OK Job-UUID: (.+)$/)?[1]
               r ?= res.headers['Job-UUID']
@@ -508,7 +554,7 @@ Make the following methods queue-able.
 
     queueable = ['api']
 
-    for method in queueable
+    queueable.forEach (method) ->
       FreeSwitchResponse.prototype["queue_#{method}"] = (args...) ->
 
 Add the function call.
@@ -524,6 +570,8 @@ Do not fail the queue if a given command fails.
 Return the (uncaught) command so that the user can do error handling.
 
         instance
+
+    null
 
 Toolbox
 =======

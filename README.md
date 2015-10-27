@@ -1,4 +1,4 @@
-ESL is a promise-based, chainable, client ('inbound' event socket) and server ('outbound' event socket) for FreeSwitch, written entirely in Javascript with no dependencies on the libesl library.
+This module is a promise-based, chainable, client ('inbound' event socket) and server ('outbound' event socket) for FreeSwitch, written entirely in Javascript with no dependencies on the libesl library.
 This module is actively maintained and used in production systems.
 
 Client Usage
@@ -56,7 +56,9 @@ Server Usage
 From the FreeSwitch XML dialplan, you can connect to an Event Socket server using for example:
 
 ```xml
+<action application="set" data="socket_resume=true"/>
 <action application="socket" data="127.0.0.1:7000 async full"/>
+<action application="respond" data="500 socket failure"/>
 ```
 
 Here is a simplistic event server:
@@ -79,13 +81,13 @@ Message tracing
 ---------------
 
 During development it is often useful to be able to see what messages are sent to FreeSwitch or received from FreeSwitch.
-This module uses the [debug](https://github.com/visionmedia/debug) module for tracing; simply call you application with
+This module uses the [debug](https://github.com/visionmedia/debug) module for tracing; simply call your application with
 
     DEBUG='esl:*'
 
 to see traces.
 
-The name available are `esl:response` and `esl:main`.
+The names available are `esl:response` and `esl:main`.
 
 
 Install
@@ -98,7 +100,7 @@ Examples and Documentation
 
 The test suite in [`test/0001.coffee.md`](https://github.com/shimaore/esl/blob/master/test/0001.coffee.md) provides many examples.
 
-The methods available inside the call-handler are those of the [response object](http://shimaore.github.io/esl/docs/response.coffee.html#section-22): `queue_api`, `api`, `bgapi`, `command`, `command_uuid`, etc.
+The methods available inside the call-handler are those of the [response object](https://github.com/shimaore/esl/blob/master/src/response.coffee.md#channel-level-commands): `queue_api`, `api`, `bgapi`, `command`, `command_uuid`, etc.
 
 Overview
 --------
@@ -114,8 +116,7 @@ A server will handle calls sent to it using the "socket" diaplan application (ca
 Support
 -------
 
-Mailing list: <carrierclass@googlegroups.com>
-Subscribe: <https://groups.google.com/d/forum/carrierclass>
+Please use [GitHub issues](https://github.com/shimaore/esl/issues).
 
 Client Notes
 ------------
@@ -162,3 +163,9 @@ Alternative
 
 The present module should be more convenient if you've already coded for Node.js and are used to promises and events.
 If you are coming from the world of FreeSwitch and are used to the Event Socket Library API, you might want to try [node-esl](https://github.com/englercj/node-esl).
+
+Projects using this module
+--------------------------
+
+* [tough-rate](https://github.com/shimaore/tough-rate) is a dynamic LCR engine for FreeSwitch that uses a middleware stack to process calls.
+* [useful-wind](https://github.com/shimaore/useful-wind) is a middleware-based framework for FreeSwitch call-handling. (Think of it as ExpressJS for FreeSwitch.)
