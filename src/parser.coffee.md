@@ -4,6 +4,10 @@ Event Socket stream parser
     querystring = require 'querystring'
     util = require 'util'
 
+    class FreeSwitchParserError extends Error
+      constructor: (@error,@buffer) ->
+        super JSON.stringify {error:@error,buffer:@buffer}
+
     module.exports = class FreeSwitchParser
 
 The Event Socket parser will parse an incoming ES stream, whether your code is acting as a client (connected to the FreeSwitch ES server) or as a server (called back by FreeSwitch due to the "socket" application command).
@@ -109,7 +113,7 @@ For completeness provide an `on_end()` method.
 
       on_end: () ->
         if @buffer_length > 0
-          @socket.emit 'error', new Error util.inspect error:'Buffer is not empty at end of stream', buffer:@buffer
+          @socket.emit 'error', new FreeSwitchParserError 'Buffer is not empty at end of stream', @buffer
 
 Headers parser
 ==============
