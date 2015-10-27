@@ -125,9 +125,13 @@
               <div class="pilwrap ">
                 <a class="pilcrow" href="#section-6">&#182;</a>
               </div>
-              <h1 id="event-emitter">Event Emitter</h1>
+              <p>We also must track connection close in order to prevent writing to a closed socket.</p>
 
             </div>
+            
+            <div class="content"><div class='highlight'><pre>    <span class="hljs-property">@closed</span> = <span class="hljs-literal">false</span>
+    <span class="hljs-property">@socket</span>.<span class="hljs-literal">on</span> <span class="hljs-string">'close'</span>, <span class="hljs-function">=&gt;</span>
+      <span class="hljs-property">@closed</span> = <span class="hljs-literal">true</span></pre></div></div>
             
         </li>
         
@@ -138,7 +142,7 @@
               <div class="pilwrap ">
                 <a class="pilcrow" href="#section-7">&#182;</a>
               </div>
-              <h2 id="emit">emit</h2>
+              <h1 id="event-emitter">Event Emitter</h1>
 
             </div>
             
@@ -150,6 +154,19 @@
               
               <div class="pilwrap ">
                 <a class="pilcrow" href="#section-8">&#182;</a>
+              </div>
+              <h2 id="emit">emit</h2>
+
+            </div>
+            
+        </li>
+        
+        
+        <li id="section-9">
+            <div class="annotation">
+              
+              <div class="pilwrap ">
+                <a class="pilcrow" href="#section-9">&#182;</a>
               </div>
               <p>A single wrapper for EventEmitter.emit().</p>
 
@@ -164,11 +181,11 @@
         </li>
         
         
-        <li id="section-9">
+        <li id="section-10">
             <div class="annotation">
               
               <div class="pilwrap ">
-                <a class="pilcrow" href="#section-9">&#182;</a>
+                <a class="pilcrow" href="#section-10">&#182;</a>
               </div>
               <h2 id="once">once</h2>
 
@@ -177,11 +194,11 @@
         </li>
         
         
-        <li id="section-10">
+        <li id="section-11">
             <div class="annotation">
               
               <div class="pilwrap ">
-                <a class="pilcrow" href="#section-10">&#182;</a>
+                <a class="pilcrow" href="#section-11">&#182;</a>
               </div>
               <p>Wraps EventEmitter.once() into a Promise; this allows you to write for example</p>
 <pre><code class="lang-javascript"><span class="hljs-keyword">this</span>.once(<span class="hljs-string">'CHANNEL_COMPLETE'</span>).then(save_cdr).then(stop_recording);
@@ -204,11 +221,11 @@
         </li>
         
         
-        <li id="section-11">
+        <li id="section-12">
             <div class="annotation">
               
               <div class="pilwrap ">
-                <a class="pilcrow" href="#section-11">&#182;</a>
+                <a class="pilcrow" href="#section-12">&#182;</a>
               </div>
               <h2 id="on">on</h2>
 <p>A simple wrapper for EventEmitter.on().</p>
@@ -222,27 +239,13 @@
         </li>
         
         
-        <li id="section-12">
-            <div class="annotation">
-              
-              <div class="pilwrap ">
-                <a class="pilcrow" href="#section-12">&#182;</a>
-              </div>
-              <h1 id="low-level-sending">Low-level sending</h1>
-
-            </div>
-            
-        </li>
-        
-        
         <li id="section-13">
             <div class="annotation">
               
               <div class="pilwrap ">
                 <a class="pilcrow" href="#section-13">&#182;</a>
               </div>
-              <p>These methods are normally not used directly.</p>
-<h2 id="write">write</h2>
+              <h1 id="low-level-sending">Low-level sending</h1>
 
             </div>
             
@@ -255,19 +258,10 @@
               <div class="pilwrap ">
                 <a class="pilcrow" href="#section-14">&#182;</a>
               </div>
-              <p>Send a single command to FreeSwitch; <code>args</code> is a hash of headers sent with the command.</p>
+              <p>These methods are normally not used directly.</p>
+<h2 id="write">write</h2>
 
             </div>
-            
-            <div class="content"><div class='highlight'><pre>  <span class="hljs-attribute">write</span>: <span class="hljs-function"><span class="hljs-params">(command,args)</span> -&gt;</span>
-    debug <span class="hljs-string">'write'</span>, {command,args}
-
-    text = <span class="hljs-string">"<span class="hljs-subst">#{command}</span>\n"</span>
-    <span class="hljs-keyword">if</span> args?
-      <span class="hljs-keyword">for</span> key, value <span class="hljs-keyword">of</span> args
-        text += <span class="hljs-string">"<span class="hljs-subst">#{key}</span>: <span class="hljs-subst">#{value}</span>\n"</span>
-    text += <span class="hljs-string">"\n"</span>
-    <span class="hljs-property">@socket</span>.write text</pre></div></div>
             
         </li>
         
@@ -278,9 +272,30 @@
               <div class="pilwrap ">
                 <a class="pilcrow" href="#section-15">&#182;</a>
               </div>
-              <h2 id="send">send</h2>
+              <p>Send a single command to FreeSwitch; <code>args</code> is a hash of headers sent with the command.</p>
 
             </div>
+            
+            <div class="content"><div class='highlight'><pre>  <span class="hljs-attribute">write</span>: <span class="hljs-function"><span class="hljs-params">(command,args)</span> -&gt;</span>
+    <span class="hljs-keyword">if</span> <span class="hljs-property">@closed</span>
+      p = Promise.reject <span class="hljs-keyword">new</span> FreeSwitchError {}, {<span class="hljs-attribute">when</span>:<span class="hljs-string">'write on closed socket'</span>,command,args}
+      <span class="hljs-keyword">return</span> p.bind <span class="hljs-keyword">this</span>
+
+    p = <span class="hljs-keyword">new</span> Promise (resolve,reject) =&gt;
+      <span class="hljs-keyword">try</span>
+        debug <span class="hljs-string">'write'</span>, {command,args}
+
+        text = <span class="hljs-string">"<span class="hljs-subst">#{command}</span>\n"</span>
+        <span class="hljs-keyword">if</span> args?
+          <span class="hljs-keyword">for</span> key, value <span class="hljs-keyword">of</span> args
+            text += <span class="hljs-string">"<span class="hljs-subst">#{key}</span>: <span class="hljs-subst">#{value}</span>\n"</span>
+        text += <span class="hljs-string">"\n"</span>
+        <span class="hljs-property">@socket</span>.write text, <span class="hljs-string">'utf8'</span>
+
+      <span class="hljs-keyword">catch</span> error
+        reject error
+
+    p.bind <span class="hljs-keyword">this</span></pre></div></div>
             
         </li>
         
@@ -291,13 +306,9 @@
               <div class="pilwrap ">
                 <a class="pilcrow" href="#section-16">&#182;</a>
               </div>
-              <p>A generic way of sending commands to FreeSwitch, wrapping <code>write</code> into a Promise that waits for FreeSwitch’s notification that the command completed.</p>
+              <h2 id="send">send</h2>
 
             </div>
-            
-            <div class="content"><div class='highlight'><pre>  <span class="hljs-attribute">send</span>: <span class="hljs-function"><span class="hljs-params">(command,args)</span> -&gt;</span>
-
-    p = <span class="hljs-keyword">new</span> Promise (resolve,reject) =&gt;</pre></div></div>
             
         </li>
         
@@ -308,15 +319,17 @@
               <div class="pilwrap ">
                 <a class="pilcrow" href="#section-17">&#182;</a>
               </div>
-              <p>Typically <code>command/reply</code> will contain the status in the <code>Reply-Text</code> header while <code>api/response</code> will contain the status in the body.</p>
+              <p>A generic way of sending commands to FreeSwitch, wrapping <code>write</code> into a Promise that waits for FreeSwitch’s notification that the command completed.</p>
 
             </div>
             
-            <div class="content"><div class='highlight'><pre>      <span class="hljs-keyword">try</span>
-        <span class="hljs-property">@once</span> <span class="hljs-string">'freeswitch_command_reply'</span>
-        .<span class="hljs-keyword">then</span> (res) -&gt;
-          debug <span class="hljs-string">'send: reply'</span>, res, {command,args}
-          reply = res.headers[<span class="hljs-string">'Reply-Text'</span>]</pre></div></div>
+            <div class="content"><div class='highlight'><pre>  <span class="hljs-attribute">send</span>: <span class="hljs-function"><span class="hljs-params">(command,args)</span> -&gt;</span>
+
+    <span class="hljs-keyword">if</span> <span class="hljs-property">@closed</span>
+      p = Promise.reject <span class="hljs-keyword">new</span> FreeSwitchError {}, {<span class="hljs-attribute">when</span>:<span class="hljs-string">'send on closed socket'</span>,command,args}
+      <span class="hljs-keyword">return</span> p.bind <span class="hljs-keyword">this</span>
+
+    p = <span class="hljs-keyword">new</span> Promise (resolve,reject) =&gt;</pre></div></div>
             
         </li>
         
@@ -326,6 +339,29 @@
               
               <div class="pilwrap ">
                 <a class="pilcrow" href="#section-18">&#182;</a>
+              </div>
+              <p>Typically <code>command/reply</code> will contain the status in the <code>Reply-Text</code> header while <code>api/response</code> will contain the status in the body.</p>
+
+            </div>
+            
+            <div class="content"><div class='highlight'><pre>      <span class="hljs-keyword">try</span>
+        <span class="hljs-property">@once</span> <span class="hljs-string">'freeswitch_command_reply'</span>
+        .<span class="hljs-keyword">catch</span> (error) -&gt;
+          reject error
+          <span class="hljs-literal">null</span>
+        .<span class="hljs-keyword">then</span> (res) -&gt;
+          <span class="hljs-keyword">return</span> <span class="hljs-keyword">if</span> <span class="hljs-keyword">not</span> res?
+          debug <span class="hljs-string">'send: reply'</span>, res, {command,args}
+          reply = res.headers[<span class="hljs-string">'Reply-Text'</span>]</pre></div></div>
+            
+        </li>
+        
+        
+        <li id="section-19">
+            <div class="annotation">
+              
+              <div class="pilwrap ">
+                <a class="pilcrow" href="#section-19">&#182;</a>
               </div>
               <p>The Promise might fail if FreeSwitch’s notification indicates an error.</p>
 
@@ -344,11 +380,11 @@
         </li>
         
         
-        <li id="section-19">
+        <li id="section-20">
             <div class="annotation">
               
               <div class="pilwrap ">
-                <a class="pilcrow" href="#section-19">&#182;</a>
+                <a class="pilcrow" href="#section-20">&#182;</a>
               </div>
               <p>The promise will be fulfilled with the <code>{headers,body}</code> object provided by the parser.</p>
 
@@ -358,23 +394,12 @@
           <span class="hljs-keyword">return</span>
 
         <span class="hljs-property">@write</span> command, args
+        .<span class="hljs-keyword">catch</span> (error) -&gt;
+          reject error
       <span class="hljs-keyword">catch</span> exception
         reject exception
 
     p.bind <span class="hljs-keyword">this</span></pre></div></div>
-            
-        </li>
-        
-        
-        <li id="section-20">
-            <div class="annotation">
-              
-              <div class="pilwrap ">
-                <a class="pilcrow" href="#section-20">&#182;</a>
-              </div>
-              <h2 id="end">end</h2>
-
-            </div>
             
         </li>
         
@@ -385,14 +410,9 @@
               <div class="pilwrap ">
                 <a class="pilcrow" href="#section-21">&#182;</a>
               </div>
-              <p>Closes the socket.</p>
+              <h2 id="end">end</h2>
 
             </div>
-            
-            <div class="content"><div class='highlight'><pre>  <span class="hljs-attribute">end</span>: <span class="hljs-function"><span class="hljs-params">()</span> -&gt;</span>
-    debug <span class="hljs-string">'end'</span>
-    <span class="hljs-property">@socket</span>.end()
-    <span class="hljs-keyword">this</span></pre></div></div>
             
         </li>
         
@@ -403,9 +423,15 @@
               <div class="pilwrap ">
                 <a class="pilcrow" href="#section-22">&#182;</a>
               </div>
-              <h1 id="channel-level-commands">Channel-level commands</h1>
+              <p>Closes the socket.</p>
 
             </div>
+            
+            <div class="content"><div class='highlight'><pre>  <span class="hljs-attribute">end</span>: <span class="hljs-function"><span class="hljs-params">()</span> -&gt;</span>
+    debug <span class="hljs-string">'end'</span>
+    <span class="hljs-property">@closed</span> = <span class="hljs-literal">true</span>
+    <span class="hljs-property">@socket</span>.end()
+    <span class="hljs-keyword">this</span></pre></div></div>
             
         </li>
         
@@ -416,7 +442,7 @@
               <div class="pilwrap ">
                 <a class="pilcrow" href="#section-23">&#182;</a>
               </div>
-              <h2 id="api-queue_api">api, queue_api</h2>
+              <h1 id="channel-level-commands">Channel-level commands</h1>
 
             </div>
             
@@ -429,21 +455,9 @@
               <div class="pilwrap ">
                 <a class="pilcrow" href="#section-24">&#182;</a>
               </div>
-              <p>Send an API command, see <a href="http://wiki.freeswitch.org/wiki/Mod_commands">Mod commands</a> for a list.
-Returns a Promise that is fulfilled as soon as FreeSwitch sends a reply.</p>
-<p>Using <code>api</code> in concurrent environment (typically client mode) is not safe, since there is no way to match between requests and responses. Use <code>queue_api</code> in that case in order to serialize requests.</p>
+              <h2 id="api-queue_api">api, queue_api</h2>
 
             </div>
-            
-            <div class="content"><div class='highlight'><pre>  <span class="hljs-attribute">api</span>: <span class="hljs-function"><span class="hljs-params">(command)</span> -&gt;</span>
-    debug <span class="hljs-string">'api'</span>, {command}
-
-    p = <span class="hljs-keyword">new</span> Promise (resolve,reject) =&gt;
-      <span class="hljs-keyword">try</span>
-        <span class="hljs-property">@once</span> <span class="hljs-string">'freeswitch_api_response'</span>
-        .<span class="hljs-keyword">then</span> (res) -&gt;
-          debug <span class="hljs-string">'api: response'</span>, {command}
-          reply = res.body</pre></div></div>
             
         </li>
         
@@ -453,6 +467,39 @@ Returns a Promise that is fulfilled as soon as FreeSwitch sends a reply.</p>
               
               <div class="pilwrap ">
                 <a class="pilcrow" href="#section-25">&#182;</a>
+              </div>
+              <p>Send an API command, see <a href="http://wiki.freeswitch.org/wiki/Mod_commands">Mod commands</a> for a list.
+Returns a Promise that is fulfilled as soon as FreeSwitch sends a reply.</p>
+<p>Using <code>api</code> in concurrent environment (typically client mode) is not safe, since there is no way to match between requests and responses. Use <code>queue_api</code> in that case in order to serialize requests.</p>
+
+            </div>
+            
+            <div class="content"><div class='highlight'><pre>  <span class="hljs-attribute">api</span>: <span class="hljs-function"><span class="hljs-params">(command)</span> -&gt;</span>
+    debug <span class="hljs-string">'api'</span>, {command}
+
+    <span class="hljs-keyword">if</span> <span class="hljs-property">@closed</span>
+      p = Promise.reject <span class="hljs-keyword">new</span> FreeSwitchError {}, {<span class="hljs-attribute">when</span>:<span class="hljs-string">'api on closed socket'</span>,command,args}
+      <span class="hljs-keyword">return</span> p.bind <span class="hljs-keyword">this</span>
+
+    p = <span class="hljs-keyword">new</span> Promise (resolve,reject) =&gt;
+      <span class="hljs-keyword">try</span>
+        <span class="hljs-property">@once</span> <span class="hljs-string">'freeswitch_api_response'</span>
+        .<span class="hljs-keyword">catch</span> (error) -&gt;
+          reject error
+          <span class="hljs-literal">null</span>
+        .<span class="hljs-keyword">then</span> (res) -&gt;
+          <span class="hljs-keyword">return</span> <span class="hljs-keyword">if</span> <span class="hljs-keyword">not</span> res?
+          debug <span class="hljs-string">'api: response'</span>, {command}
+          reply = res.body</pre></div></div>
+            
+        </li>
+        
+        
+        <li id="section-26">
+            <div class="annotation">
+              
+              <div class="pilwrap ">
+                <a class="pilcrow" href="#section-26">&#182;</a>
               </div>
               <p>The Promise might fail if FreeSwitch indicates there was an error.</p>
 
@@ -471,11 +518,11 @@ Returns a Promise that is fulfilled as soon as FreeSwitch sends a reply.</p>
         </li>
         
         
-        <li id="section-26">
+        <li id="section-27">
             <div class="annotation">
               
               <div class="pilwrap ">
-                <a class="pilcrow" href="#section-26">&#182;</a>
+                <a class="pilcrow" href="#section-27">&#182;</a>
               </div>
               <p>The Promise that will be fulfilled with <code>{headers,body,uuid}</code> from the parser; uuid is the API UUID if one is provided by FreeSwitch.</p>
 
@@ -487,23 +534,12 @@ Returns a Promise that is fulfilled as soon as FreeSwitch sends a reply.</p>
           <span class="hljs-keyword">return</span>
 
         <span class="hljs-property">@write</span> <span class="hljs-string">"api <span class="hljs-subst">#{command}</span>"</span>
+        .<span class="hljs-keyword">catch</span> (error) -&gt;
+          reject error
       <span class="hljs-keyword">catch</span> exception
         reject exception
 
     p.bind <span class="hljs-keyword">this</span></pre></div></div>
-            
-        </li>
-        
-        
-        <li id="section-27">
-            <div class="annotation">
-              
-              <div class="pilwrap ">
-                <a class="pilcrow" href="#section-27">&#182;</a>
-              </div>
-              <h2 id="bgapi">bgapi</h2>
-
-            </div>
             
         </li>
         
@@ -514,19 +550,9 @@ Returns a Promise that is fulfilled as soon as FreeSwitch sends a reply.</p>
               <div class="pilwrap ">
                 <a class="pilcrow" href="#section-28">&#182;</a>
               </div>
-              <p>Send an API command in the background. Wraps it inside a Promise.</p>
+              <h2 id="bgapi">bgapi</h2>
 
             </div>
-            
-            <div class="content"><div class='highlight'><pre>  <span class="hljs-attribute">bgapi</span>: <span class="hljs-function"><span class="hljs-params">(command)</span> -&gt;</span>
-
-    p = <span class="hljs-keyword">new</span> Promise (resolve,reject) =&gt;
-      <span class="hljs-keyword">try</span>
-        <span class="hljs-property">@send</span> <span class="hljs-string">"bgapi <span class="hljs-subst">#{command}</span>"</span>
-        .<span class="hljs-keyword">then</span> (res) -&gt;
-          reply = res.headers[<span class="hljs-string">'Reply-Text'</span>]
-          r = reply?.match(<span class="hljs-regexp">/\+OK Job-UUID: (.+)$/</span>)?[<span class="hljs-number">1</span>]
-          r ?= res.headers[<span class="hljs-string">'Job-UUID'</span>]</pre></div></div>
             
         </li>
         
@@ -536,6 +562,37 @@ Returns a Promise that is fulfilled as soon as FreeSwitch sends a reply.</p>
               
               <div class="pilwrap ">
                 <a class="pilcrow" href="#section-29">&#182;</a>
+              </div>
+              <p>Send an API command in the background. Wraps it inside a Promise.</p>
+
+            </div>
+            
+            <div class="content"><div class='highlight'><pre>  <span class="hljs-attribute">bgapi</span>: <span class="hljs-function"><span class="hljs-params">(command)</span> -&gt;</span>
+
+    <span class="hljs-keyword">if</span> <span class="hljs-property">@closed</span>
+      p = Promise.reject <span class="hljs-keyword">new</span> FreeSwitchError {}, {<span class="hljs-attribute">when</span>:<span class="hljs-string">'bgapi on closed socket'</span>,command,args}
+      <span class="hljs-keyword">return</span> p.bind <span class="hljs-keyword">this</span>
+
+    p = <span class="hljs-keyword">new</span> Promise (resolve,reject) =&gt;
+      <span class="hljs-keyword">try</span>
+        <span class="hljs-property">@send</span> <span class="hljs-string">"bgapi <span class="hljs-subst">#{command}</span>"</span>
+        .<span class="hljs-keyword">catch</span> (error) -&gt;
+          reject error
+          <span class="hljs-literal">null</span>
+        .<span class="hljs-keyword">then</span> (res) -&gt;
+          <span class="hljs-keyword">return</span> <span class="hljs-keyword">if</span> <span class="hljs-keyword">not</span> res?
+          reply = res.headers[<span class="hljs-string">'Reply-Text'</span>]
+          r = reply?.match(<span class="hljs-regexp">/\+OK Job-UUID: (.+)$/</span>)?[<span class="hljs-number">1</span>]
+          r ?= res.headers[<span class="hljs-string">'Job-UUID'</span>]</pre></div></div>
+            
+        </li>
+        
+        
+        <li id="section-30">
+            <div class="annotation">
+              
+              <div class="pilwrap ">
+                <a class="pilcrow" href="#section-30">&#182;</a>
               </div>
               <p>The Promise will be fulfilled with <code>{headers,body,uuid}</code> from the parser; uuid is the Job UUID if one is provided by FreeSwitch.</p>
 
@@ -549,11 +606,11 @@ Returns a Promise that is fulfilled as soon as FreeSwitch sends a reply.</p>
         </li>
         
         
-        <li id="section-30">
+        <li id="section-31">
             <div class="annotation">
               
               <div class="pilwrap ">
-                <a class="pilcrow" href="#section-30">&#182;</a>
+                <a class="pilcrow" href="#section-31">&#182;</a>
               </div>
               <p>The Promise might fail if FreeSwitch indicates an issue.</p>
 
@@ -570,27 +627,14 @@ Returns a Promise that is fulfilled as soon as FreeSwitch sends a reply.</p>
         </li>
         
         
-        <li id="section-31">
-            <div class="annotation">
-              
-              <div class="pilwrap ">
-                <a class="pilcrow" href="#section-31">&#182;</a>
-              </div>
-              <p>Please note that it is up to you to monitor events coming from the background job. Since a lot of base API commands do not generate any events there is no generic way to know whether a background API call was successful or not.</p>
-<h1 id="event-reception-and-filtering">Event reception and filtering</h1>
-
-            </div>
-            
-        </li>
-        
-        
         <li id="section-32">
             <div class="annotation">
               
               <div class="pilwrap ">
                 <a class="pilcrow" href="#section-32">&#182;</a>
               </div>
-              <h2 id="event_json">event_json</h2>
+              <p>Please note that it is up to you to monitor events coming from the background job. Since a lot of base API commands do not generate any events there is no generic way to know whether a background API call was successful or not.</p>
+<h1 id="event-reception-and-filtering">Event reception and filtering</h1>
 
             </div>
             
@@ -602,6 +646,19 @@ Returns a Promise that is fulfilled as soon as FreeSwitch sends a reply.</p>
               
               <div class="pilwrap ">
                 <a class="pilcrow" href="#section-33">&#182;</a>
+              </div>
+              <h2 id="event_json">event_json</h2>
+
+            </div>
+            
+        </li>
+        
+        
+        <li id="section-34">
+            <div class="annotation">
+              
+              <div class="pilwrap ">
+                <a class="pilcrow" href="#section-34">&#182;</a>
               </div>
               <p>Request that the server send us events in JSON format.
 For example: <code>res.event_json &#39;HEARTBEAT&#39;</code></p>
@@ -615,11 +672,11 @@ For example: <code>res.event_json &#39;HEARTBEAT&#39;</code></p>
         </li>
         
         
-        <li id="section-34">
+        <li id="section-35">
             <div class="annotation">
               
               <div class="pilwrap ">
-                <a class="pilcrow" href="#section-34">&#182;</a>
+                <a class="pilcrow" href="#section-35">&#182;</a>
               </div>
               <h2 id="nixevents">nixevents</h2>
 
@@ -628,11 +685,11 @@ For example: <code>res.event_json &#39;HEARTBEAT&#39;</code></p>
         </li>
         
         
-        <li id="section-35">
+        <li id="section-36">
             <div class="annotation">
               
               <div class="pilwrap ">
-                <a class="pilcrow" href="#section-35">&#182;</a>
+                <a class="pilcrow" href="#section-36">&#182;</a>
               </div>
               <p>Remove the given event types from the events ACL.</p>
 
@@ -645,11 +702,11 @@ For example: <code>res.event_json &#39;HEARTBEAT&#39;</code></p>
         </li>
         
         
-        <li id="section-36">
+        <li id="section-37">
             <div class="annotation">
               
               <div class="pilwrap ">
-                <a class="pilcrow" href="#section-36">&#182;</a>
+                <a class="pilcrow" href="#section-37">&#182;</a>
               </div>
               <h2 id="noevents">noevents</h2>
 
@@ -658,11 +715,11 @@ For example: <code>res.event_json &#39;HEARTBEAT&#39;</code></p>
         </li>
         
         
-        <li id="section-37">
+        <li id="section-38">
             <div class="annotation">
               
               <div class="pilwrap ">
-                <a class="pilcrow" href="#section-37">&#182;</a>
+                <a class="pilcrow" href="#section-38">&#182;</a>
               </div>
               <p>Remove all events types.</p>
 
@@ -675,11 +732,11 @@ For example: <code>res.event_json &#39;HEARTBEAT&#39;</code></p>
         </li>
         
         
-        <li id="section-38">
+        <li id="section-39">
             <div class="annotation">
               
               <div class="pilwrap ">
-                <a class="pilcrow" href="#section-38">&#182;</a>
+                <a class="pilcrow" href="#section-39">&#182;</a>
               </div>
               <h2 id="filter">filter</h2>
 
@@ -688,11 +745,11 @@ For example: <code>res.event_json &#39;HEARTBEAT&#39;</code></p>
         </li>
         
         
-        <li id="section-39">
+        <li id="section-40">
             <div class="annotation">
               
               <div class="pilwrap ">
-                <a class="pilcrow" href="#section-39">&#182;</a>
+                <a class="pilcrow" href="#section-40">&#182;</a>
               </div>
               <p>Generic event filtering</p>
 
@@ -705,11 +762,11 @@ For example: <code>res.event_json &#39;HEARTBEAT&#39;</code></p>
         </li>
         
         
-        <li id="section-40">
+        <li id="section-41">
             <div class="annotation">
               
               <div class="pilwrap ">
-                <a class="pilcrow" href="#section-40">&#182;</a>
+                <a class="pilcrow" href="#section-41">&#182;</a>
               </div>
               <h2 id="filter_delete">filter_delete</h2>
 
@@ -718,11 +775,11 @@ For example: <code>res.event_json &#39;HEARTBEAT&#39;</code></p>
         </li>
         
         
-        <li id="section-41">
+        <li id="section-42">
             <div class="annotation">
               
               <div class="pilwrap ">
-                <a class="pilcrow" href="#section-41">&#182;</a>
+                <a class="pilcrow" href="#section-42">&#182;</a>
               </div>
               <p>Remove a filter.</p>
 
@@ -737,11 +794,11 @@ For example: <code>res.event_json &#39;HEARTBEAT&#39;</code></p>
         </li>
         
         
-        <li id="section-42">
+        <li id="section-43">
             <div class="annotation">
               
               <div class="pilwrap ">
-                <a class="pilcrow" href="#section-42">&#182;</a>
+                <a class="pilcrow" href="#section-43">&#182;</a>
               </div>
               <h2 id="sendevent">sendevent</h2>
 
@@ -750,11 +807,11 @@ For example: <code>res.event_json &#39;HEARTBEAT&#39;</code></p>
         </li>
         
         
-        <li id="section-43">
+        <li id="section-44">
             <div class="annotation">
               
               <div class="pilwrap ">
-                <a class="pilcrow" href="#section-43">&#182;</a>
+                <a class="pilcrow" href="#section-44">&#182;</a>
               </div>
               <p>Send an event into the FreeSwitch event queue.</p>
 
@@ -767,26 +824,13 @@ For example: <code>res.event_json &#39;HEARTBEAT&#39;</code></p>
         </li>
         
         
-        <li id="section-44">
-            <div class="annotation">
-              
-              <div class="pilwrap ">
-                <a class="pilcrow" href="#section-44">&#182;</a>
-              </div>
-              <h1 id="connection-handling">Connection handling</h1>
-
-            </div>
-            
-        </li>
-        
-        
         <li id="section-45">
             <div class="annotation">
               
               <div class="pilwrap ">
                 <a class="pilcrow" href="#section-45">&#182;</a>
               </div>
-              <h2 id="auth">auth</h2>
+              <h1 id="connection-handling">Connection handling</h1>
 
             </div>
             
@@ -799,12 +843,9 @@ For example: <code>res.event_json &#39;HEARTBEAT&#39;</code></p>
               <div class="pilwrap ">
                 <a class="pilcrow" href="#section-46">&#182;</a>
               </div>
-              <p>Authenticate with FreeSwitch.</p>
-<p>This normally not needed since in outbound (server) mode authentication is not required, and for inbound (client) mode the module authenticates automatically when requested.</p>
+              <h2 id="auth">auth</h2>
 
             </div>
-            
-            <div class="content"><div class='highlight'><pre>  <span class="hljs-attribute">auth</span>: <span class="hljs-function"><span class="hljs-params">(password)</span>       -&gt;</span> <span class="hljs-property">@send</span> <span class="hljs-string">"auth <span class="hljs-subst">#{password}</span>"</span></pre></div></div>
             
         </li>
         
@@ -815,9 +856,12 @@ For example: <code>res.event_json &#39;HEARTBEAT&#39;</code></p>
               <div class="pilwrap ">
                 <a class="pilcrow" href="#section-47">&#182;</a>
               </div>
-              <h2 id="connect">connect</h2>
+              <p>Authenticate with FreeSwitch.</p>
+<p>This normally not needed since in outbound (server) mode authentication is not required, and for inbound (client) mode the module authenticates automatically when requested.</p>
 
             </div>
+            
+            <div class="content"><div class='highlight'><pre>  <span class="hljs-attribute">auth</span>: <span class="hljs-function"><span class="hljs-params">(password)</span>       -&gt;</span> <span class="hljs-property">@send</span> <span class="hljs-string">"auth <span class="hljs-subst">#{password}</span>"</span></pre></div></div>
             
         </li>
         
@@ -827,6 +871,19 @@ For example: <code>res.event_json &#39;HEARTBEAT&#39;</code></p>
               
               <div class="pilwrap ">
                 <a class="pilcrow" href="#section-48">&#182;</a>
+              </div>
+              <h2 id="connect">connect</h2>
+
+            </div>
+            
+        </li>
+        
+        
+        <li id="section-49">
+            <div class="annotation">
+              
+              <div class="pilwrap ">
+                <a class="pilcrow" href="#section-49">&#182;</a>
               </div>
               <p>Used in server mode to start the conversation with FreeSwitch.</p>
 <p>Normally not needed, triggered automatically by the module.</p>
@@ -838,30 +895,15 @@ For example: <code>res.event_json &#39;HEARTBEAT&#39;</code></p>
         </li>
         
         
-        <li id="section-49">
-            <div class="annotation">
-              
-              <div class="pilwrap ">
-                <a class="pilcrow" href="#section-49">&#182;</a>
-              </div>
-              <h2 id="linger">linger</h2>
-
-            </div>
-            
-        </li>
-        
-        
         <li id="section-50">
             <div class="annotation">
               
               <div class="pilwrap ">
                 <a class="pilcrow" href="#section-50">&#182;</a>
               </div>
-              <p>Used in server mode, requests FreeSwitch to not close the socket as soon as the call is over, allowing us to do some post-processing on the call.</p>
+              <h2 id="linger">linger</h2>
 
             </div>
-            
-            <div class="content"><div class='highlight'><pre>  <span class="hljs-attribute">linger</span>: <span class="hljs-function">-&gt;</span> <span class="hljs-property">@send</span> <span class="hljs-string">"linger"</span>     <span class="hljs-comment"># Outbound mode</span></pre></div></div>
             
         </li>
         
@@ -872,9 +914,11 @@ For example: <code>res.event_json &#39;HEARTBEAT&#39;</code></p>
               <div class="pilwrap ">
                 <a class="pilcrow" href="#section-51">&#182;</a>
               </div>
-              <h2 id="exit">exit</h2>
+              <p>Used in server mode, requests FreeSwitch to not close the socket as soon as the call is over, allowing us to do some post-processing on the call.</p>
 
             </div>
+            
+            <div class="content"><div class='highlight'><pre>  <span class="hljs-attribute">linger</span>: <span class="hljs-function">-&gt;</span> <span class="hljs-property">@send</span> <span class="hljs-string">"linger"</span>     <span class="hljs-comment"># Outbound mode</span></pre></div></div>
             
         </li>
         
@@ -884,6 +928,19 @@ For example: <code>res.event_json &#39;HEARTBEAT&#39;</code></p>
               
               <div class="pilwrap ">
                 <a class="pilcrow" href="#section-52">&#182;</a>
+              </div>
+              <h2 id="exit">exit</h2>
+
+            </div>
+            
+        </li>
+        
+        
+        <li id="section-53">
+            <div class="annotation">
+              
+              <div class="pilwrap ">
+                <a class="pilcrow" href="#section-53">&#182;</a>
               </div>
               <p>Send the <code>exit</code> command to the FreeSwitch socket.
 FreeSwitch will respond with “+OK bye” followed by a <code>disconnect-notice</code> message, which gets translated into a <code>freeswitch_disconnect_notice</code> event internally, which in turn gets translated into either <code>freeswitch_disconnect</code> or <code>freeswitch_linger</code> depending on whether <code>linger</code> was called on the socket.
@@ -896,26 +953,13 @@ You normally do not need to call <code>@exit</code> directly.</p>
         </li>
         
         
-        <li id="section-53">
-            <div class="annotation">
-              
-              <div class="pilwrap ">
-                <a class="pilcrow" href="#section-53">&#182;</a>
-              </div>
-              <h1 id="event-logging">Event logging</h1>
-
-            </div>
-            
-        </li>
-        
-        
         <li id="section-54">
             <div class="annotation">
               
               <div class="pilwrap ">
                 <a class="pilcrow" href="#section-54">&#182;</a>
               </div>
-              <h2 id="log">log</h2>
+              <h1 id="event-logging">Event logging</h1>
 
             </div>
             
@@ -927,6 +971,19 @@ You normally do not need to call <code>@exit</code> directly.</p>
               
               <div class="pilwrap ">
                 <a class="pilcrow" href="#section-55">&#182;</a>
+              </div>
+              <h2 id="log">log</h2>
+
+            </div>
+            
+        </li>
+        
+        
+        <li id="section-56">
+            <div class="annotation">
+              
+              <div class="pilwrap ">
+                <a class="pilcrow" href="#section-56">&#182;</a>
               </div>
               <p>Enable logging on the socket, optionnally setting the log level.</p>
 
@@ -941,30 +998,15 @@ You normally do not need to call <code>@exit</code> directly.</p>
         </li>
         
         
-        <li id="section-56">
-            <div class="annotation">
-              
-              <div class="pilwrap ">
-                <a class="pilcrow" href="#section-56">&#182;</a>
-              </div>
-              <h2 id="nolog">nolog</h2>
-
-            </div>
-            
-        </li>
-        
-        
         <li id="section-57">
             <div class="annotation">
               
               <div class="pilwrap ">
                 <a class="pilcrow" href="#section-57">&#182;</a>
               </div>
-              <p>Disable logging on the socket.</p>
+              <h2 id="nolog">nolog</h2>
 
             </div>
-            
-            <div class="content"><div class='highlight'><pre>  <span class="hljs-attribute">nolog</span>: <span class="hljs-function">-&gt;</span> <span class="hljs-property">@send</span> <span class="hljs-string">"nolog"</span></pre></div></div>
             
         </li>
         
@@ -975,9 +1017,11 @@ You normally do not need to call <code>@exit</code> directly.</p>
               <div class="pilwrap ">
                 <a class="pilcrow" href="#section-58">&#182;</a>
               </div>
-              <h1 id="message-sending">Message sending</h1>
+              <p>Disable logging on the socket.</p>
 
             </div>
+            
+            <div class="content"><div class='highlight'><pre>  <span class="hljs-attribute">nolog</span>: <span class="hljs-function">-&gt;</span> <span class="hljs-property">@send</span> <span class="hljs-string">"nolog"</span></pre></div></div>
             
         </li>
         
@@ -988,7 +1032,7 @@ You normally do not need to call <code>@exit</code> directly.</p>
               <div class="pilwrap ">
                 <a class="pilcrow" href="#section-59">&#182;</a>
               </div>
-              <h2 id="sendmsg_uuid">sendmsg_uuid</h2>
+              <h1 id="message-sending">Message sending</h1>
 
             </div>
             
@@ -1000,6 +1044,19 @@ You normally do not need to call <code>@exit</code> directly.</p>
               
               <div class="pilwrap ">
                 <a class="pilcrow" href="#section-60">&#182;</a>
+              </div>
+              <h2 id="sendmsg_uuid">sendmsg_uuid</h2>
+
+            </div>
+            
+        </li>
+        
+        
+        <li id="section-61">
+            <div class="annotation">
+              
+              <div class="pilwrap ">
+                <a class="pilcrow" href="#section-61">&#182;</a>
               </div>
               <p>Send a command to a given UUID.</p>
 
@@ -1015,30 +1072,15 @@ You normally do not need to call <code>@exit</code> directly.</p>
         </li>
         
         
-        <li id="section-61">
-            <div class="annotation">
-              
-              <div class="pilwrap ">
-                <a class="pilcrow" href="#section-61">&#182;</a>
-              </div>
-              <h2 id="sendmsg">sendmsg</h2>
-
-            </div>
-            
-        </li>
-        
-        
         <li id="section-62">
             <div class="annotation">
               
               <div class="pilwrap ">
                 <a class="pilcrow" href="#section-62">&#182;</a>
               </div>
-              <p>Send Message, assuming server/outbound ESL mode (in which case the UUID is not required).</p>
+              <h2 id="sendmsg">sendmsg</h2>
 
             </div>
-            
-            <div class="content"><div class='highlight'><pre>  <span class="hljs-attribute">sendmsg</span>: <span class="hljs-function"><span class="hljs-params">(command,args)</span> -&gt;</span> <span class="hljs-property">@sendmsg_uuid</span> <span class="hljs-literal">null</span>, command, args</pre></div></div>
             
         </li>
         
@@ -1049,9 +1091,11 @@ You normally do not need to call <code>@exit</code> directly.</p>
               <div class="pilwrap ">
                 <a class="pilcrow" href="#section-63">&#182;</a>
               </div>
-              <h1 id="client-mode-inbound-commands">Client-mode (“inbound”) commands</h1>
+              <p>Send Message, assuming server/outbound ESL mode (in which case the UUID is not required).</p>
 
             </div>
+            
+            <div class="content"><div class='highlight'><pre>  <span class="hljs-attribute">sendmsg</span>: <span class="hljs-function"><span class="hljs-params">(command,args)</span> -&gt;</span> <span class="hljs-property">@sendmsg_uuid</span> <span class="hljs-literal">null</span>, command, args</pre></div></div>
             
         </li>
         
@@ -1062,8 +1106,7 @@ You normally do not need to call <code>@exit</code> directly.</p>
               <div class="pilwrap ">
                 <a class="pilcrow" href="#section-64">&#182;</a>
               </div>
-              <p>The target UUID must be specified.</p>
-<h2 id="execute_uuid">execute_uuid</h2>
+              <h1 id="client-mode-inbound-commands">Client-mode (“inbound”) commands</h1>
 
             </div>
             
@@ -1075,6 +1118,20 @@ You normally do not need to call <code>@exit</code> directly.</p>
               
               <div class="pilwrap ">
                 <a class="pilcrow" href="#section-65">&#182;</a>
+              </div>
+              <p>The target UUID must be specified.</p>
+<h2 id="execute_uuid">execute_uuid</h2>
+
+            </div>
+            
+        </li>
+        
+        
+        <li id="section-66">
+            <div class="annotation">
+              
+              <div class="pilwrap ">
+                <a class="pilcrow" href="#section-66">&#182;</a>
               </div>
               <p>Execute an application for the given UUID (in client mode).</p>
 
@@ -1090,11 +1147,11 @@ You normally do not need to call <code>@exit</code> directly.</p>
         </li>
         
         
-        <li id="section-66">
+        <li id="section-67">
             <div class="annotation">
               
               <div class="pilwrap ">
-                <a class="pilcrow" href="#section-66">&#182;</a>
+                <a class="pilcrow" href="#section-67">&#182;</a>
               </div>
               <p>TODO: Support the alternate format (with no <code>execute-app-arg</code> header but instead a <code>text/plain</code> body containing the argument).</p>
 <h2 id="command_uuid">command_uuid</h2>
@@ -1104,11 +1161,11 @@ You normally do not need to call <code>@exit</code> directly.</p>
         </li>
         
         
-        <li id="section-67">
+        <li id="section-68">
             <div class="annotation">
               
               <div class="pilwrap ">
-                <a class="pilcrow" href="#section-67">&#182;</a>
+                <a class="pilcrow" href="#section-68">&#182;</a>
               </div>
               <p>Execute an application synchronously. Return a Promise.</p>
 
@@ -1124,11 +1181,11 @@ You normally do not need to call <code>@exit</code> directly.</p>
         </li>
         
         
-        <li id="section-68">
+        <li id="section-69">
             <div class="annotation">
               
               <div class="pilwrap ">
-                <a class="pilcrow" href="#section-68">&#182;</a>
+                <a class="pilcrow" href="#section-69">&#182;</a>
               </div>
               <p>The Promise is only fulfilled when the command has completed.</p>
 
@@ -1142,11 +1199,11 @@ You normally do not need to call <code>@exit</code> directly.</p>
         </li>
         
         
-        <li id="section-69">
+        <li id="section-70">
             <div class="annotation">
               
               <div class="pilwrap ">
-                <a class="pilcrow" href="#section-69">&#182;</a>
+                <a class="pilcrow" href="#section-70">&#182;</a>
               </div>
               <h2 id="hangup_uuid">hangup_uuid</h2>
 
@@ -1155,11 +1212,11 @@ You normally do not need to call <code>@exit</code> directly.</p>
         </li>
         
         
-        <li id="section-70">
+        <li id="section-71">
             <div class="annotation">
               
               <div class="pilwrap ">
-                <a class="pilcrow" href="#section-70">&#182;</a>
+                <a class="pilcrow" href="#section-71">&#182;</a>
               </div>
               <p>Hangup the call referenced by the given UUID with an optional (FreeSwitch) cause code.</p>
 
@@ -1174,11 +1231,11 @@ You normally do not need to call <code>@exit</code> directly.</p>
         </li>
         
         
-        <li id="section-71">
+        <li id="section-72">
             <div class="annotation">
               
               <div class="pilwrap ">
-                <a class="pilcrow" href="#section-71">&#182;</a>
+                <a class="pilcrow" href="#section-72">&#182;</a>
               </div>
               <h2 id="unicast_uuid">unicast_uuid</h2>
 
@@ -1187,11 +1244,11 @@ You normally do not need to call <code>@exit</code> directly.</p>
         </li>
         
         
-        <li id="section-72">
+        <li id="section-73">
             <div class="annotation">
               
               <div class="pilwrap ">
-                <a class="pilcrow" href="#section-72">&#182;</a>
+                <a class="pilcrow" href="#section-73">&#182;</a>
               </div>
               <p>Forwards the media to and from a given socket.</p>
 <p>Arguments:</p>
@@ -1212,27 +1269,13 @@ You normally do not need to call <code>@exit</code> directly.</p>
         </li>
         
         
-        <li id="section-73">
-            <div class="annotation">
-              
-              <div class="pilwrap ">
-                <a class="pilcrow" href="#section-73">&#182;</a>
-              </div>
-              <h2 id="nomedia_uuid">nomedia_uuid</h2>
-
-            </div>
-            
-        </li>
-        
-        
         <li id="section-74">
             <div class="annotation">
               
               <div class="pilwrap ">
                 <a class="pilcrow" href="#section-74">&#182;</a>
               </div>
-              <p>Not implemented yet (TODO).</p>
-<h1 id="server-mode-commands">Server-mode commands</h1>
+              <h2 id="nomedia_uuid">nomedia_uuid</h2>
 
             </div>
             
@@ -1245,8 +1288,8 @@ You normally do not need to call <code>@exit</code> directly.</p>
               <div class="pilwrap ">
                 <a class="pilcrow" href="#section-75">&#182;</a>
               </div>
-              <p>In server (outbound) mode, the target UUID is always our (own) call UUID, so it does not need to be specified.</p>
-<h2 id="execute">execute</h2>
+              <p>Not implemented yet (TODO).</p>
+<h1 id="server-mode-commands">Server-mode commands</h1>
 
             </div>
             
@@ -1259,11 +1302,10 @@ You normally do not need to call <code>@exit</code> directly.</p>
               <div class="pilwrap ">
                 <a class="pilcrow" href="#section-76">&#182;</a>
               </div>
-              <p>Execute an application for the current UUID (in server/outbound mode)</p>
+              <p>In server (outbound) mode, the target UUID is always our (own) call UUID, so it does not need to be specified.</p>
+<h2 id="execute">execute</h2>
 
             </div>
-            
-            <div class="content"><div class='highlight'><pre>  <span class="hljs-attribute">execute</span>: <span class="hljs-function"><span class="hljs-params">(app_name,app_arg)</span>  -&gt;</span> <span class="hljs-property">@execute_uuid</span> <span class="hljs-literal">null</span>, app_name, app_arg</pre></div></div>
             
         </li>
         
@@ -1274,9 +1316,11 @@ You normally do not need to call <code>@exit</code> directly.</p>
               <div class="pilwrap ">
                 <a class="pilcrow" href="#section-77">&#182;</a>
               </div>
-              <h2 id="command">command</h2>
+              <p>Execute an application for the current UUID (in server/outbound mode)</p>
 
             </div>
+            
+            <div class="content"><div class='highlight'><pre>  <span class="hljs-attribute">execute</span>: <span class="hljs-function"><span class="hljs-params">(app_name,app_arg)</span>  -&gt;</span> <span class="hljs-property">@execute_uuid</span> <span class="hljs-literal">null</span>, app_name, app_arg</pre></div></div>
             
         </li>
         
@@ -1287,10 +1331,9 @@ You normally do not need to call <code>@exit</code> directly.</p>
               <div class="pilwrap ">
                 <a class="pilcrow" href="#section-78">&#182;</a>
               </div>
-              
+              <h2 id="command">command</h2>
+
             </div>
-            
-            <div class="content"><div class='highlight'><pre>  <span class="hljs-attribute">command</span>: <span class="hljs-function"><span class="hljs-params">(app_name,app_arg)</span>  -&gt;</span> <span class="hljs-property">@command_uuid</span> <span class="hljs-literal">null</span>, app_name, app_arg</pre></div></div>
             
         </li>
         
@@ -1301,9 +1344,10 @@ You normally do not need to call <code>@exit</code> directly.</p>
               <div class="pilwrap ">
                 <a class="pilcrow" href="#section-79">&#182;</a>
               </div>
-              <h2 id="hangup">hangup</h2>
-
+              
             </div>
+            
+            <div class="content"><div class='highlight'><pre>  <span class="hljs-attribute">command</span>: <span class="hljs-function"><span class="hljs-params">(app_name,app_arg)</span>  -&gt;</span> <span class="hljs-property">@command_uuid</span> <span class="hljs-literal">null</span>, app_name, app_arg</pre></div></div>
             
         </li>
         
@@ -1314,10 +1358,9 @@ You normally do not need to call <code>@exit</code> directly.</p>
               <div class="pilwrap ">
                 <a class="pilcrow" href="#section-80">&#182;</a>
               </div>
-              
+              <h2 id="hangup">hangup</h2>
+
             </div>
-            
-            <div class="content"><div class='highlight'><pre>  <span class="hljs-attribute">hangup</span>: <span class="hljs-function"><span class="hljs-params">(hangup_cause)</span>       -&gt;</span> <span class="hljs-property">@hangup_uuid</span>  <span class="hljs-literal">null</span>, hangup_cause</pre></div></div>
             
         </li>
         
@@ -1328,9 +1371,10 @@ You normally do not need to call <code>@exit</code> directly.</p>
               <div class="pilwrap ">
                 <a class="pilcrow" href="#section-81">&#182;</a>
               </div>
-              <h2 id="unicast">unicast</h2>
-
+              
             </div>
+            
+            <div class="content"><div class='highlight'><pre>  <span class="hljs-attribute">hangup</span>: <span class="hljs-function"><span class="hljs-params">(hangup_cause)</span>       -&gt;</span> <span class="hljs-property">@hangup_uuid</span>  <span class="hljs-literal">null</span>, hangup_cause</pre></div></div>
             
         </li>
         
@@ -1341,10 +1385,9 @@ You normally do not need to call <code>@exit</code> directly.</p>
               <div class="pilwrap ">
                 <a class="pilcrow" href="#section-82">&#182;</a>
               </div>
-              
+              <h2 id="unicast">unicast</h2>
+
             </div>
-            
-            <div class="content"><div class='highlight'><pre>  <span class="hljs-attribute">unicast</span>: <span class="hljs-function"><span class="hljs-params">(args)</span>              -&gt;</span> <span class="hljs-property">@unicast_uuid</span> <span class="hljs-literal">null</span>, args</pre></div></div>
             
         </li>
         
@@ -1355,10 +1398,10 @@ You normally do not need to call <code>@exit</code> directly.</p>
               <div class="pilwrap ">
                 <a class="pilcrow" href="#section-83">&#182;</a>
               </div>
-              <p>TODO: <code>nomedia</code></p>
-<h1 id="cleanup-at-end-of-call">Cleanup at end of call</h1>
-
+              
             </div>
+            
+            <div class="content"><div class='highlight'><pre>  <span class="hljs-attribute">unicast</span>: <span class="hljs-function"><span class="hljs-params">(args)</span>              -&gt;</span> <span class="hljs-property">@unicast_uuid</span> <span class="hljs-literal">null</span>, args</pre></div></div>
             
         </li>
         
@@ -1369,7 +1412,8 @@ You normally do not need to call <code>@exit</code> directly.</p>
               <div class="pilwrap ">
                 <a class="pilcrow" href="#section-84">&#182;</a>
               </div>
-              <h2 id="auto_cleanup">auto_cleanup</h2>
+              <p>TODO: <code>nomedia</code></p>
+<h1 id="cleanup-at-end-of-call">Cleanup at end of call</h1>
 
             </div>
             
@@ -1381,6 +1425,19 @@ You normally do not need to call <code>@exit</code> directly.</p>
               
               <div class="pilwrap ">
                 <a class="pilcrow" href="#section-85">&#182;</a>
+              </div>
+              <h2 id="auto_cleanup">auto_cleanup</h2>
+
+            </div>
+            
+        </li>
+        
+        
+        <li id="section-86">
+            <div class="annotation">
+              
+              <div class="pilwrap ">
+                <a class="pilcrow" href="#section-86">&#182;</a>
               </div>
               <p>Clean-up at the end of the connection.
 Automatically called by the client and server.</p>
@@ -1405,11 +1462,11 @@ Automatically called by the client and server.</p>
         </li>
         
         
-        <li id="section-86">
+        <li id="section-87">
             <div class="annotation">
               
               <div class="pilwrap ">
-                <a class="pilcrow" href="#section-86">&#182;</a>
+                <a class="pilcrow" href="#section-87">&#182;</a>
               </div>
               <h3 id="linger">Linger</h3>
 <p>The default behavior in linger mode is to disconnect the call (which is roughly equivalent to not using linger mode).</p>
@@ -1425,11 +1482,11 @@ Automatically called by the client and server.</p>
         </li>
         
         
-        <li id="section-87">
+        <li id="section-88">
             <div class="annotation">
               
               <div class="pilwrap ">
-                <a class="pilcrow" href="#section-87">&#182;</a>
+                <a class="pilcrow" href="#section-88">&#182;</a>
               </div>
               <p>Use <code>call.once(&quot;freeswitch_linger&quot;,...)</code> to capture the end of the call. In this case you are responsible for calling <code>call.exit()</code>. If you do not do it, the calls will leak.</p>
 <h3 id="disconnect">Disconnect</h3>
@@ -1448,33 +1505,15 @@ Automatically called by the client and server.</p>
         </li>
         
         
-        <li id="section-88">
-            <div class="annotation">
-              
-              <div class="pilwrap ">
-                <a class="pilcrow" href="#section-88">&#182;</a>
-              </div>
-              <h1 id="queueing">Queueing</h1>
-
-            </div>
-            
-        </li>
-        
-        
         <li id="section-89">
             <div class="annotation">
               
               <div class="pilwrap ">
                 <a class="pilcrow" href="#section-89">&#182;</a>
               </div>
-              <p>Make the following methods queue-able.</p>
+              <h1 id="queueing">Queueing</h1>
 
             </div>
-            
-            <div class="content"><div class='highlight'><pre>queueable = [<span class="hljs-string">'api'</span>]
-
-<span class="hljs-keyword">for</span> method <span class="hljs-keyword">in</span> queueable
-  FreeSwitchResponse.prototype[<span class="hljs-string">"queue_<span class="hljs-subst">#{method}</span>"</span>] = <span class="hljs-function"><span class="hljs-params">(args...)</span> -&gt;</span></pre></div></div>
             
         </li>
         
@@ -1484,6 +1523,24 @@ Automatically called by the client and server.</p>
               
               <div class="pilwrap ">
                 <a class="pilcrow" href="#section-90">&#182;</a>
+              </div>
+              <p>Make the following methods queue-able.</p>
+
+            </div>
+            
+            <div class="content"><div class='highlight'><pre>queueable = [<span class="hljs-string">'api'</span>]
+
+queueable.forEach (method) -&gt;
+  FreeSwitchResponse.prototype[<span class="hljs-string">"queue_<span class="hljs-subst">#{method}</span>"</span>] = <span class="hljs-function"><span class="hljs-params">(args...)</span> -&gt;</span></pre></div></div>
+            
+        </li>
+        
+        
+        <li id="section-91">
+            <div class="annotation">
+              
+              <div class="pilwrap ">
+                <a class="pilcrow" href="#section-91">&#182;</a>
               </div>
               <p>Add the function call.</p>
 
@@ -1495,11 +1552,11 @@ Automatically called by the client and server.</p>
         </li>
         
         
-        <li id="section-91">
+        <li id="section-92">
             <div class="annotation">
               
               <div class="pilwrap ">
-                <a class="pilcrow" href="#section-91">&#182;</a>
+                <a class="pilcrow" href="#section-92">&#182;</a>
               </div>
               <p>Do not fail the queue if a given command fails.</p>
 
@@ -1511,30 +1568,19 @@ Automatically called by the client and server.</p>
         </li>
         
         
-        <li id="section-92">
-            <div class="annotation">
-              
-              <div class="pilwrap ">
-                <a class="pilcrow" href="#section-92">&#182;</a>
-              </div>
-              <p>Return the (uncaught) command so that the user can do error handling.</p>
-
-            </div>
-            
-            <div class="content"><div class='highlight'><pre>    instance</pre></div></div>
-            
-        </li>
-        
-        
         <li id="section-93">
             <div class="annotation">
               
               <div class="pilwrap ">
                 <a class="pilcrow" href="#section-93">&#182;</a>
               </div>
-              <h1 id="toolbox">Toolbox</h1>
+              <p>Return the (uncaught) command so that the user can do error handling.</p>
 
             </div>
+            
+            <div class="content"><div class='highlight'><pre>    instance
+
+<span class="hljs-literal">null</span></pre></div></div>
             
         </li>
         
@@ -1544,6 +1590,19 @@ Automatically called by the client and server.</p>
               
               <div class="pilwrap ">
                 <a class="pilcrow" href="#section-94">&#182;</a>
+              </div>
+              <h1 id="toolbox">Toolbox</h1>
+
+            </div>
+            
+        </li>
+        
+        
+        <li id="section-95">
+            <div class="annotation">
+              
+              <div class="pilwrap ">
+                <a class="pilcrow" href="#section-95">&#182;</a>
               </div>
               
             </div>
