@@ -1,5 +1,6 @@
     FS = require '../src/esl'
-    debug = (require 'debug') 'buffer-at-end'
+    pkg = require '../package'
+    debug = (require 'debug') "#{pkg.name}:test:buffer-at-end"
     net = require 'net'
 
     describe 'The buffer', ->
@@ -25,7 +26,7 @@
             '''
         client = FS.client ->
           client.end()
-        client.on 'error', (error) ->
+        client.call.on 'socket-error', (error) ->
           debug "Got error #{error}", error
           if error.error is 'Buffer is not empty at end of stream'
             done()
