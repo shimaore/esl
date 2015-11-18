@@ -25,6 +25,11 @@ We also must track connection close in order to prevent writing to a closed sock
         @socket.on 'close', =>
           @closed = true
 
+Default handler for `error` events to prevent `Unhandled 'error' event` reports.
+
+        @socket.on 'error', (data) =>
+          debug 'Socket Error', {data}
+
 Event Emitter
 =============
 
