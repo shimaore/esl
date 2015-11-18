@@ -24,6 +24,14 @@ We also must track connection close in order to prevent writing to a closed sock
         @closed = false
         @socket.on 'close', =>
           @closed = true
+          debug 'Socket closed'
+          @emit 'socket-close'
+
+Default handler for `error` events to prevent `Unhandled 'error' event` reports.
+
+        @socket.on 'error', (err) =>
+          debug 'Socket Error', {err}
+          @emit 'socket-error', err
 
 Event Emitter
 =============
@@ -67,7 +75,10 @@ A simple wrapper for EventEmitter.on().
 
       on: (event,callback) ->
         debug 'create_on', event
-        @ev.on event, -> callback.apply this, arguments
+        @ev.on event, =>
+          debug 'on', event, data:arguments[0]
+          callback.apply this, arguments
+          return
 
 Low-level sending
 =================

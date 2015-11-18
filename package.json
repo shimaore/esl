@@ -1,6 +1,6 @@
 {
   "name": "esl",
-  "version": "4.1.0",
+  "version": "4.3.0",
   "description": "Client and Server for FreeSwitch Event System",
   "keywords": [
     "freeswitch",
@@ -40,7 +40,7 @@
     "lib/response.js"
   ],
   "dependencies": {
-    "bluebird": "^2.10.2",
+    "bluebird": "^3.0.5",
     "debug": "^2.2.0"
   },
   "devDependencies": {
@@ -48,8 +48,8 @@
     "docco": "^0.7.0",
     "memdown": "^1.1.0",
     "mocha": "^2.3.3",
-    "pouchdb": "^5.0.0",
-    "should": "^7.1.0",
+    "pouchdb": "^5.1.0",
+    "should": "^7.1.1",
     "uuid": "^2.0.1"
   },
   "scripts": {
