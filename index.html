@@ -1,0 +1,50 @@
+<!doctype html>
+<html>
+  <head>
+    <meta charset="utf-8">
+    <meta http-equiv="X-UA-Compatible" content="chrome=1">
+    <title>Esl by shimaore</title>
+
+    <link rel="stylesheet" href="stylesheets/styles.css">
+    <link rel="stylesheet" href="stylesheets/github-light.css">
+    <meta name="viewport" content="width=device-width">
+    <!--[if lt IE 9]>
+    <script src="//html5shiv.googlecode.com/svn/trunk/html5.js"></script>
+    <![endif]-->
+  </head>
+  <body>
+    <div class="wrapper">
+      <header>
+        <h1>Esl</h1>
+        <p>Node.js client and server for FreeSwitch Event Socket</p>
+
+        <p class="view"><a href="https://github.com/shimaore/esl">View the Project on GitHub <small>shimaore/esl</small></a></p>
+
+
+        <ul>
+          <li><a href="https://github.com/shimaore/esl/zipball/master">Download <strong>ZIP File</strong></a></li>
+          <li><a href="https://github.com/shimaore/esl/tarball/master">Download <strong>TAR Ball</strong></a></li>
+          <li><a href="https://github.com/shimaore/esl">View On <strong>GitHub</strong></a></li>
+        </ul>
+      </header>
+      <section>
+        <div class="highlight highlight-source-coffee"><pre><span class="pl-v"><span class="pl-v">call_handler <span class="pl-k">=</span></span></span> <span class="pl-c1">require</span><span class="pl-smi">('seem')</span> <span class="pl-k">-&gt;</span>
+  <span class="pl-v"><span class="pl-v">caller <span class="pl-k">=</span></span></span> <span class="pl-smi">@data</span>[<span class="pl-s"><span class="pl-pds">'</span>Channel-Caller-ID-Number<span class="pl-pds">'</span></span>]
+  <span class="pl-v"><span class="pl-v">callee <span class="pl-k">=</span></span></span> <span class="pl-smi">@data</span>[<span class="pl-s"><span class="pl-pds">'</span>Channel-Destination-Number<span class="pl-pds">'</span></span>]
+  <span class="pl-v"><span class="pl-v">new_caller <span class="pl-k">=</span></span></span> <span class="pl-k">yield</span> db.<span class="pl-en">getAsync </span><span class="pl-s"><span class="pl-pds">"</span>new_caller_for_<span class="pl-s1"><span class="pl-pse">#{</span>caller<span class="pl-pse">}</span></span><span class="pl-pds">"</span></span>
+  <span class="pl-k">yield</span> <span class="pl-en">@command </span><span class="pl-s"><span class="pl-pds">'</span>answer<span class="pl-pds">'</span></span>
+  <span class="pl-k">yield</span> <span class="pl-en">@command </span><span class="pl-s"><span class="pl-pds">'</span>play-file<span class="pl-pds">'</span></span>, <span class="pl-s"><span class="pl-pds">'</span>voicemail/vm-hello<span class="pl-pds">'</span></span>
+  <span class="pl-k">yield</span> <span class="pl-en">@command </span><span class="pl-s"><span class="pl-pds">'</span>set<span class="pl-pds">'</span></span>, <span class="pl-s"><span class="pl-pds">"</span>effective_caller_id_number=<span class="pl-s1"><span class="pl-pse">#{</span>new_caller<span class="pl-pse">}</span></span><span class="pl-pds">"</span></span>
+  <span class="pl-k">yield</span> <span class="pl-en">@command </span><span class="pl-s"><span class="pl-pds">'</span>bridge<span class="pl-pds">'</span></span>, <span class="pl-s"><span class="pl-pds">"</span>sofia/egress/<span class="pl-s1"><span class="pl-pse">#{</span>callee<span class="pl-pse">}</span></span>@example.net<span class="pl-pds">"</span></span>
+
+<span class="pl-c1">require</span>(<span class="pl-s"><span class="pl-pds">'</span>esl<span class="pl-pds">'</span></span>).<span class="pl-en">server</span>(call_handler).<span class="pl-en">listen</span>(<span class="pl-c1">7000</span>)</pre></div>
+      </section>
+      <footer>
+        <p>This project is maintained by <a href="https://github.com/shimaore">shimaore</a></p>
+        <p><small>Hosted on GitHub Pages &mdash; Theme by <a href="https://github.com/orderedlist">orderedlist</a></small></p>
+      </footer>
+    </div>
+    <script src="javascripts/scale.fix.js"></script>
+    
+  </body>
+</html>
