@@ -100,6 +100,8 @@ Examples and Documentation
 
 The test suite in [`test/0001.coffee.md`](https://github.com/shimaore/esl/blob/master/test/0001.coffee.md) provides many examples.
 
+The [API](http://shimaore.github.io/esl/) provides a summary of usage.
+
 The methods available inside the call-handler are those of the [response object](https://github.com/shimaore/esl/blob/master/src/response.coffee.md#channel-level-commands): `queue_api`, `api`, `bgapi`, `command`, `command_uuid`, etc.
 
 Overview
