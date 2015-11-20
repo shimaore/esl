@@ -1,34 +1,25 @@
-<!doctype html>
-<html>
+<!DOCTYPE html>
+<html lang="en-us">
   <head>
-    <meta charset="utf-8">
-    <meta http-equiv="X-UA-Compatible" content="chrome=1">
+    <meta charset="UTF-8">
     <title>Esl by shimaore</title>
-
-    <link rel="stylesheet" href="stylesheets/styles.css">
-    <link rel="stylesheet" href="stylesheets/github-light.css">
-    <meta name="viewport" content="width=device-width">
-    <!--[if lt IE 9]>
-    <script src="//html5shiv.googlecode.com/svn/trunk/html5.js"></script>
-    <![endif]-->
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <link rel="stylesheet" type="text/css" href="stylesheets/normalize.css" media="screen">
+    <link href='https://fonts.googleapis.com/css?family=Open+Sans:400,700' rel='stylesheet' type='text/css'>
+    <link rel="stylesheet" type="text/css" href="stylesheets/stylesheet.css" media="screen">
+    <link rel="stylesheet" type="text/css" href="stylesheets/github-light.css" media="screen">
   </head>
   <body>
-    <div class="wrapper">
-      <header>
-        <h1>Esl</h1>
-        <p>Node.js client and server for FreeSwitch Event Socket</p>
+    <section class="page-header">
+      <h1 class="project-name">Esl</h1>
+      <h2 class="project-tagline">Node.js client and server for FreeSwitch Event Socket</h2>
+      <a href="https://github.com/shimaore/esl" class="btn">View on GitHub</a>
+      <a href="https://github.com/shimaore/esl/zipball/master" class="btn">Download .zip</a>
+      <a href="https://github.com/shimaore/esl/tarball/master" class="btn">Download .tar.gz</a>
+    </section>
 
-        <p class="view"><a href="https://github.com/shimaore/esl">View the Project on GitHub <small>shimaore/esl</small></a></p>
-
-
-        <ul>
-          <li><a href="https://github.com/shimaore/esl/zipball/master">Download <strong>ZIP File</strong></a></li>
-          <li><a href="https://github.com/shimaore/esl/tarball/master">Download <strong>TAR Ball</strong></a></li>
-          <li><a href="https://github.com/shimaore/esl">View On <strong>GitHub</strong></a></li>
-        </ul>
-      </header>
-      <section>
-        <div class="highlight highlight-source-coffee"><pre><span class="pl-v"><span class="pl-v">call_handler <span class="pl-k">=</span></span></span> <span class="pl-c1">require</span><span class="pl-smi">('seem')</span> <span class="pl-k">-&gt;</span>
+    <section class="main-content">
+      <div class="highlight highlight-source-coffee"><pre><span class="pl-v"><span class="pl-v">call_handler <span class="pl-k">=</span></span></span> <span class="pl-c1">require</span><span class="pl-smi">('seem')</span> <span class="pl-k">-&gt;</span>
   <span class="pl-v"><span class="pl-v">caller <span class="pl-k">=</span></span></span> <span class="pl-smi">@data</span>[<span class="pl-s"><span class="pl-pds">'</span>Channel-Caller-ID-Number<span class="pl-pds">'</span></span>]
   <span class="pl-v"><span class="pl-v">callee <span class="pl-k">=</span></span></span> <span class="pl-smi">@data</span>[<span class="pl-s"><span class="pl-pds">'</span>Channel-Destination-Number<span class="pl-pds">'</span></span>]
   <span class="pl-v"><span class="pl-v">new_caller <span class="pl-k">=</span></span></span> <span class="pl-k">yield</span> db.<span class="pl-en">getAsync </span><span class="pl-s"><span class="pl-pds">"</span>new_caller_for_<span class="pl-s1"><span class="pl-pse">#{</span>caller<span class="pl-pse">}</span></span><span class="pl-pds">"</span></span>
@@ -38,13 +29,202 @@
   <span class="pl-k">yield</span> <span class="pl-en">@command </span><span class="pl-s"><span class="pl-pds">'</span>bridge<span class="pl-pds">'</span></span>, <span class="pl-s"><span class="pl-pds">"</span>sofia/egress/<span class="pl-s1"><span class="pl-pse">#{</span>callee<span class="pl-pse">}</span></span>@example.net<span class="pl-pds">"</span></span>
 
 <span class="pl-c1">require</span>(<span class="pl-s"><span class="pl-pds">'</span>esl<span class="pl-pds">'</span></span>).<span class="pl-en">server</span>(call_handler).<span class="pl-en">listen</span>(<span class="pl-c1">7000</span>)</pre></div>
-      </section>
-      <footer>
-        <p>This project is maintained by <a href="https://github.com/shimaore">shimaore</a></p>
-        <p><small>Hosted on GitHub Pages &mdash; Theme by <a href="https://github.com/orderedlist">orderedlist</a></small></p>
+
+<h1>
+<a id="load" class="anchor" href="#load" aria-hidden="true"><span class="octicon octicon-link"></span></a>Load</h1>
+
+<pre><code>FS = require('esl')
+</code></pre>
+
+<h1>
+<a id="server" class="anchor" href="#server" aria-hidden="true"><span class="octicon octicon-link"></span></a>Server</h1>
+
+<pre><code>FS.server(handler,report).listen(port)
+</code></pre>
+
+<p>The <code>handler</code> is required; it is called once for every connection from FreeSwitch (i.e. once for each call). A filter is set up so that the handler only receives events pertaining to the call it handles, and cleanup procedures are automatically called at the end of the connection.</p>
+
+<p><code>report(Error)</code> is called when the handler fails for any reason. This prevents the server from crashing if the handler crashes. It is optional.</p>
+
+<p>The value returned by <code>FS.server()</code> is a <a href="https://nodejs.org/api/net.html#net_class_net_server">net.Server</a>, that's why you can (for example) call <code>.listen()</code> on it.</p>
+
+<h1>
+<a id="client" class="anchor" href="#client" aria-hidden="true"><span class="octicon octicon-link"></span></a>Client</h1>
+
+<pre><code>FS.client(options,handler).connect(port,host)
+</code></pre>
+
+<p>The only option available is <code>.password</code>, which defaults to <code>ClueCon</code>. The <code>options</code> object is optional.</p>
+
+<p>The <code>handler</code> is required; it is called after authentication with FreeSwitch is successful. Cleanup procedures are automatically called at the end of the connection.</p>
+
+<p>The value returned by <code>FS.client()</code> is a <a href="https://nodejs.org/api/net.html#net_class_net_socket">net.Socket</a>, that's why you can call <code>.connect()</code> on it.</p>
+
+<h1>
+<a id="handler-context" class="anchor" href="#handler-context" aria-hidden="true"><span class="octicon octicon-link"></span></a>Handler Context</h1>
+
+<p>The handler function is called with its context (the <code>this</code> object) containing methods and values described in the following sections.</p>
+
+<h1>
+<a id="using-freeswitch-commands" class="anchor" href="#using-freeswitch-commands" aria-hidden="true"><span class="octicon octicon-link"></span></a>Using FreeSwitch commands</h1>
+
+<h2>
+<a id="commandappargs--command_uuiduuidappargs" class="anchor" href="#commandappargs--command_uuiduuidappargs" aria-hidden="true"><span class="octicon octicon-link"></span></a>command(app,args) / command_uuid(uuid,app,args)</h2>
+
+<p>Send the application command to FreeSwitch and return a Promise that is only fulfilled once the command completes. For long-running commands such as <code>bridge</code> this could be until the call is established.
+The Promise is fulfilled with the header and body of the <code>CHANNEL_EXECUTE_COMPLETE</code> event from FreeSwitch.</p>
+
+<pre><code>this.command('bridge','sofia/client/6215@example.net')
+.then(function(res){
+   var headers = res.headers;
+   var body = res.body;
+})
+</code></pre>
+
+<h2>
+<a id="executeappargs--execute_uuiduuidappargs" class="anchor" href="#executeappargs--execute_uuiduuidappargs" aria-hidden="true"><span class="octicon octicon-link"></span></a>execute(app,args) / execute_uuid(uuid,app,args)</h2>
+
+<p>Send the application command to FreeSwitch and return a Promise that is fulfilled immediately with the header and body of the <code>command/reply</code> response from FreeSwitch.</p>
+
+<pre><code>this.execute('bridge','sofia/client/6215@example.net')
+.then(function(res){
+   var headers = res.headers;
+   var body = res.body;
+})
+</code></pre>
+
+<h1>
+<a id="using-freeswitch-api" class="anchor" href="#using-freeswitch-api" aria-hidden="true"><span class="octicon octicon-link"></span></a>Using FreeSwitch API</h1>
+
+<h2>
+<a id="api" class="anchor" href="#api" aria-hidden="true"><span class="octicon octicon-link"></span></a>api</h2>
+
+<p>Sends an API command and returns a Promise that fulfills with the body of the response. If a UUID is provided in the response it is available as <code>.uuid</code>.</p>
+
+<pre><code>this
+  .api('originate sofia/client/sip:7002@example.net &amp;bridge(sofia/client/sip:3000@example.net)'
+  .then(function(res){
+     var originate_uuid = res.uuid;
+   })
+</code></pre>
+
+<h2>
+<a id="bgapi" class="anchor" href="#bgapi" aria-hidden="true"><span class="octicon octicon-link"></span></a>bgapi</h2>
+
+<p>Send a background API command and returns immediately a Promise that fulfills with an object containing the UUID of the background job.</p>
+
+<pre><code>this
+  .bgapi('originate sofia/client/sip:7002@example.net &amp;bridge(sofia/client/sip:3000@example.net)'
+  .then(function(res){
+     var job_uuid = res.uuid;
+   })
+</code></pre>
+
+<h1>
+<a id="socket" class="anchor" href="#socket" aria-hidden="true"><span class="octicon octicon-link"></span></a>Socket</h1>
+
+<h2>
+<a id="socket-1" class="anchor" href="#socket-1" aria-hidden="true"><span class="octicon octicon-link"></span></a>socket</h2>
+
+<p>The original socket (client socket or server's call socket).</p>
+
+<h2>
+<a id="end" class="anchor" href="#end" aria-hidden="true"><span class="octicon octicon-link"></span></a>end</h2>
+
+<p>Closes the socket. A shortcut to <code>this.socket.end()</code>.</p>
+
+<h1>
+<a id="events" class="anchor" href="#events" aria-hidden="true"><span class="octicon octicon-link"></span></a>Events</h1>
+
+<h2>
+<a id="on" class="anchor" href="#on" aria-hidden="true"><span class="octicon octicon-link"></span></a>on</h2>
+
+<p>Receives events from the parser.</p>
+
+<pre><code>this.on('DTMF',function(o) {
+  var headers = o.headers;
+  var body = o.body;
+  var dtmf = o.body['DTMF-Digit']
+}
+</code></pre>
+
+<h2>
+<a id="once" class="anchor" href="#once" aria-hidden="true"><span class="octicon octicon-link"></span></a>once</h2>
+
+<p>Returns a Promise that is fulfilled (once) when the event is received.</p>
+
+<pre><code>this
+  .once('my-event')
+  .then(function(data) { ... })
+</code></pre>
+
+<h2>
+<a id="emit" class="anchor" href="#emit" aria-hidden="true"><span class="octicon octicon-link"></span></a>emit</h2>
+
+<p>Sends an event that can be caught by <code>on</code> or <code>once</code>.</p>
+
+<pre><code>this.emit('my-event',some_data)
+</code></pre>
+
+<h1>
+<a id="generic" class="anchor" href="#generic" aria-hidden="true"><span class="octicon octicon-link"></span></a>Generic</h1>
+
+<h2>
+<a id="sendmsgcmdargs--sendmsg_uuiduuidcmdargs" class="anchor" href="#sendmsgcmdargs--sendmsg_uuiduuidcmdargs" aria-hidden="true"><span class="octicon octicon-link"></span></a>sendmsg(cmd,args) / sendmsg_uuid(uuid,cmd,args)</h2>
+
+<p>Send a message (server mode)</p>
+
+<pre><code>this.sendmsg(command,args).then(...)
+</code></pre>
+
+<p>Send a message (client mode)</p>
+
+<pre><code>this.sendmsg_uuid(uuid,command,args).then(...)
+</code></pre>
+
+<h2>
+<a id="hangupcause--hangup_uuiduuidcause" class="anchor" href="#hangupcause--hangup_uuiduuidcause" aria-hidden="true"><span class="octicon octicon-link"></span></a>hangup(cause) / hangup_uuid(uuid,cause)</h2>
+
+<p>Hang-up with the optional <code>cause</code>.</p>
+
+<h1>
+<a id="low-level" class="anchor" href="#low-level" aria-hidden="true"><span class="octicon octicon-link"></span></a>Low-level</h1>
+
+<p>Low-level shortcuts to the corresponding EventSocket commands.</p>
+
+<h2>
+<a id="events-configuration" class="anchor" href="#events-configuration" aria-hidden="true"><span class="octicon octicon-link"></span></a>Events configuration</h2>
+
+<pre><code>this.event_json(events...)
+this.nixevent()
+this.noevents()
+this.filter(header,value)
+this.filter_delete(header,value)
+this.sendevent(name,args)
+
+this.log()
+this.nolog()
+</code></pre>
+
+<h2>
+<a id="connection-handling" class="anchor" href="#connection-handling" aria-hidden="true"><span class="octicon octicon-link"></span></a>Connection handling</h2>
+
+<p>These are normally called for you, there is no need to use them.</p>
+
+<pre><code>this.auth(password)
+this.connect()
+this.linger()
+this.exit()
+</code></pre>
+
+      <footer class="site-footer">
+        <span class="site-footer-owner"><a href="https://github.com/shimaore/esl">Esl</a> is maintained by <a href="https://github.com/shimaore">shimaore</a>.</span>
+
+        <span class="site-footer-credits">This page was generated by <a href="https://pages.github.com">GitHub Pages</a> using the <a href="https://github.com/jasonlong/cayman-theme">Cayman theme</a> by <a href="https://twitter.com/jasonlong">Jason Long</a>.</span>
       </footer>
-    </div>
-    <script src="javascripts/scale.fix.js"></script>
-    
+
+    </section>
+
+  
   </body>
 </html>
