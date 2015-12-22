@@ -24,6 +24,10 @@ Make the command responses somewhat unique. This is required since FreeSwitch do
         if unique_id?
           call.emit "CHANNEL_EXECUTE_COMPLETE #{unique_id} #{application} #{application_data}", res
 
+      call.on 'BACKGROUND_JOB', (res) ->
+        job_uuid = res.body['Job-UUID']
+        call.emit "BACKGROUND_JOB #{job_uuid}", res
+
 The parser is responsible for de-framing messages coming from FreeSwitch and splitting it into headers and a body.
 
       parser.process = (headers,body) ->
@@ -304,12 +308,14 @@ Normally when the client connects, FreeSwitch will first send us an authenticati
       .then ->
         @auth options.password
       .then -> @auto_cleanup()
+      .then -> @event_json 'CHANNEL_EXECUTE_COMPLETE'
+      .then -> @event_json 'BACKGROUND_JOB'
       .then handler, errorHandler
 
       debug "Ready to start #{pkg.name} #{pkg.version} client."
       return client
 
-Please note that the client is not started with `event_json` since by default this would mean obtaining all events from FreeSwitch.
+Please note that the client is not started with `event_json ALL` since by default this would mean obtaining all events from FreeSwitch. Instead, we only monitor the events we need to be notified for (commands and `bgapi` responses).
 You must manually run `@event_json` and an optional `@filter` command.
 
 Toolbox

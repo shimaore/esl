@@ -181,7 +181,7 @@ api, queue_api
 Send an API command, see [Mod commands](http://wiki.freeswitch.org/wiki/Mod_commands) for a list.
 Returns a Promise that is fulfilled as soon as FreeSwitch sends a reply.
 
-Using `api` in concurrent environment (typically client mode) is not safe, since there is no way to match between requests and responses. Use `queue_api` in that case in order to serialize requests.
+Using `api` in a concurrent environment (typically client-mode) is not safe, since there is no way to match between requests and responses. Use `queue_api` in that case in order to serialize requests, or use `bgapi` which provides the proper semantics.
 
       api: (command) ->
         debug 'api', {command}
@@ -239,36 +239,17 @@ Send an API command in the background. Wraps it inside a Promise.
           p = Promise.reject new FreeSwitchError {}, {when:'bgapi on closed socket',command,args}
           return p.bind this
 
-        p = new Promise (resolve,reject) =>
-          try
-            @send "bgapi #{command}"
-            .catch (error) ->
-              reject error
-              null
-            .then (res) ->
-              return if not res?
-              reply = res.headers['Reply-Text']
-              r = reply?.match(/\+OK Job-UUID: (.+)$/)?[1]
-              r ?= res.headers['Job-UUID']
+        @send "bgapi #{command}"
+        .then (res) =>
+          error = Promise.reject new FreeSwitchError res, {when:"bgapi did not provide a Job-UUID",command}
 
-The Promise will be fulfilled with `{headers,body,uuid}` from the parser; uuid is the Job UUID if one is provided by FreeSwitch.
+          return error unless res?
+          reply = res.headers['Reply-Text']
+          r = reply?.match(/\+OK Job-UUID: (.+)$/)?[1]
+          r ?= res.headers['Job-UUID']
+          return error unless r?
 
-              if r?
-                res.uuid = r
-                resolve res, r
-                return
-
-The Promise might fail if FreeSwitch indicates an issue.
-
-              else
-                reject new FreeSwitchError res, {when:"bgapi did not provide a Job-UUID",command}
-                return
-          catch exception
-            reject exception
-
-        p.bind this
-
-Please note that it is up to you to monitor events coming from the background job. Since a lot of base API commands do not generate any events there is no generic way to know whether a background API call was successful or not.
+          @once "BACKGROUND_JOB #{r}"
 
 Event reception and filtering
 =============================
