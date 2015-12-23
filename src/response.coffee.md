@@ -17,7 +17,9 @@ The object provides `on`, `once`, and `emit` methods, which rely on an [`EventEm
 
 The object also provides a queue for operations which need to be submitted one after another on a given socket because FreeSwitch does not provide ways to map event socket requests and responses in the general case.
 
-        @queue ?= new Promise.resolve null
+        @__queue = Promise
+          .resolve null
+          .bind this
 
 We also must track connection close in order to prevent writing to a closed socket.
 
@@ -37,6 +39,22 @@ Default handler for `error` events to prevent `Unhandled 'error' event` reports.
         p = Promise
           .reject new FreeSwitchError res, data
           .bind this
+
+Queueing
+========
+
+      enqueue: (f) ->
+        instance = @__queue.then -> f()
+
+Do not fail the queue if a given command fails.
+
+        @__queue = instance
+          .catch (error) =>
+            debug "queued failed: #{error}"
+
+Return the (uncaught) command so that the user can do error handling.
+
+        instance
 
 Event Emitter
 =============
@@ -125,44 +143,33 @@ A generic way of sending commands to FreeSwitch, wrapping `write` into a Promise
         if @closed
           return @error {}, {when:'send on closed socket',command,args}
 
-        p = new Promise (resolve,reject) =>
-
 Typically `command/reply` will contain the status in the `Reply-Text` header while `api/response` will contain the status in the body.
 
-          try
-            @once 'freeswitch_command_reply'
-            .catch (error) ->
-              reject error
-              null
-            .then (res) ->
+        @enqueue =>
+          p = @once 'freeswitch_command_reply'
+            .then (res) =>
               return if not res?
-              debug 'send: reply', res, {command,args}
+              debug 'send: received reply', res, {command,args}
               reply = res.headers['Reply-Text']
 
 The Promise might fail if FreeSwitch's notification indicates an error.
 
               if not reply?
                 debug 'send: no reply', {command, args}
-                reject new FreeSwitchError res, {when:'no reply to command',command,args}
-                return
+                return @error res, {when:'no reply to command',command,args}
 
               if reply.match /^-/
-                debug 'send: failed', reply
-                reject new FreeSwitchError res, {when:'command reply',reply,command,args}
-                return
+                debug 'send: failed', reply, {command, args}
+                return @error res, {when:'command reply',reply,command,args}
 
 The promise will be fulfilled with the `{headers,body}` object provided by the parser.
 
-              resolve res
-              return
+              debug 'send: success', {command,args}
+              res
 
-            @write command, args
-            .catch (error) ->
-              reject error
-          catch exception
-            reject exception
+          q = @write command, args
 
-        p.bind this
+          q.then -> p
 
 end
 ---
@@ -178,13 +185,12 @@ Closes the socket.
 Channel-level commands
 ======================
 
-api, queue_api
---------------
+api
+---
 
 Send an API command, see [Mod commands](http://wiki.freeswitch.org/wiki/Mod_commands) for a list.
-Returns a Promise that is fulfilled as soon as FreeSwitch sends a reply.
-
-Using `api` in a concurrent environment (typically client-mode) is not safe, since there is no way to match between requests and responses. Use `queue_api` in that case in order to serialize requests, or use `bgapi` which provides the proper semantics.
+Returns a Promise that is fulfilled as soon as FreeSwitch sends a reply. Requests are queued and each request is matched with the first-coming response, since there is no way to match between requests and responses.
+Use `bgapi` if you need to make sure responses are correct, since it provides the proper semantices.
 
       api: (command) ->
         debug 'api', {command}
@@ -192,13 +198,9 @@ Using `api` in a concurrent environment (typically client-mode) is not safe, sin
         if @closed
           return @error {}, {when:'api on closed socket',command,args}
 
-        p = new Promise (resolve,reject) =>
-          try
-            @once 'freeswitch_api_response'
-            .catch (error) ->
-              reject error
-              null
-            .then (res) ->
+        @enqueue =>
+          p = @once 'freeswitch_api_response'
+            .then (res) =>
               return if not res?
               debug 'api: response', {command}
               reply = res.body
@@ -207,28 +209,20 @@ The Promise might fail if FreeSwitch indicates there was an error.
 
               if not reply?
                 debug 'api: no reply', {command}
-                reject new FreeSwitchError res, {when:'no reply to api',command}
-                return
+                return @error res, {when:'no reply to api',command}
 
               if reply.match /^-/
                 debug 'api response failed', {reply, command}
-                reject new FreeSwitchError res, {when:'api response',reply,command}
-                return
+                return @error res, {when:'api response',reply,command}
 
 The Promise that will be fulfilled with `{headers,body,uuid}` from the parser; uuid is the API UUID if one is provided by FreeSwitch.
 
               res.uuid = (reply.match /^\+OK ([\da-f-]{36})/)?[1]
+              res
 
-              resolve res, reply
-              return
+          q = @write "api #{command}"
 
-            @write "api #{command}"
-            .catch (error) ->
-              reject error
-          catch exception
-            reject exception
-
-        p.bind this
+          q.then -> p
 
 bgapi
 -----
@@ -539,32 +533,6 @@ Normal behavior on disconnect is to end the call.  (However you may capture the 
           @emit 'cleanup_disconnect', this
 
         return
-
-Queueing
-========
-
-Make the following methods queue-able.
-
-    queueable = ['api']
-
-    queueable.forEach (method) ->
-      FreeSwitchResponse.prototype["queue_#{method}"] = (args...) ->
-
-Add the function call.
-
-        instance = @queue.then =>
-          this[method].apply this, args
-
-Do not fail the queue if a given command fails.
-
-        @queue = instance.catch (error) =>
-          debug "queued #{method} failed", {error}
-
-Return the (uncaught) command so that the user can do error handling.
-
-        instance
-
-    null
 
 Toolbox
 =======
