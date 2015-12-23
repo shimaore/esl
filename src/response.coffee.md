@@ -37,6 +37,8 @@ Default handler for `error` events to prevent `Unhandled 'error' event` reports.
           debug 'Socket Error', {err}
           @emit 'socket-error', err
 
+        @__later = {}
+
         null
 
       error: (res,data) ->
@@ -94,10 +96,23 @@ this.once('CHANNEL_COMPLETE').then(save_cdr).then(stop_recording);
           catch exception
             reject exception
         p = p.bind this
+        if event of @__later
+          @emit event, @__later[event]
+          delete @__later[event]
         if cb?
           deprecate 'Using callback with once() is deprecated. Use once().then(callback) instead.'
           return p.then cb
         return p
+
+emit_later
+----------
+
+This is used for events that might trigger before we set the `once` receiver.
+
+      emit_later: (event,data) ->
+        debug 'emit_later', {event, data}
+        if not @emit event, data
+          @__later[event] = data
 
 on
 --

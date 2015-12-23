@@ -26,7 +26,7 @@ Make the command responses somewhat unique. This is required since FreeSwitch do
 
       call.on 'BACKGROUND_JOB', (res) ->
         job_uuid = res.body['Job-UUID']
-        call.emit "BACKGROUND_JOB #{job_uuid}", res
+        call.emit_later "BACKGROUND_JOB #{job_uuid}", {body:res.body._body}
 
 The parser is responsible for de-framing messages coming from FreeSwitch and splitting it into headers and a body.
 
