@@ -231,6 +231,7 @@ bgapi
 Send an API command in the background. Wraps it inside a Promise.
 
       bgapi: (command) ->
+        debug 'bgapi', {command}
 
         if @closed
           return @error {}, {when:'bgapi on closed socket',command,args}
@@ -244,6 +245,8 @@ Send an API command in the background. Wraps it inside a Promise.
           r = reply?.match(/\+OK Job-UUID: (.+)$/)?[1]
           r ?= res.headers['Job-UUID']
           return error unless r?
+
+          debug 'bgapi retrieve', r
 
           @once "BACKGROUND_JOB #{r}"
 
