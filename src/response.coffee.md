@@ -83,7 +83,7 @@ Wraps EventEmitter.once() into a Promise; this allows you to write for example
 this.once('CHANNEL_COMPLETE').then(save_cdr).then(stop_recording);
 ```
 
-      once: (event) ->
+      once: (event,cb) ->
         debug 'create_once', event
         p = new Promise (resolve,reject) =>
           try
@@ -93,7 +93,11 @@ this.once('CHANNEL_COMPLETE').then(save_cdr).then(stop_recording);
               return
           catch exception
             reject exception
-        p.bind this
+        p = p.bind this
+        if cb?
+          deprecate 'Using callback with once() is deprecated. Use once().then(callback) instead.'
+          return p.then cb
+        return p
 
 on
 --
@@ -549,3 +553,4 @@ Toolbox
     assert = require 'assert'
     {EventEmitter} = require 'events'
     debug = (require 'debug') 'esl:response'
+    deprecate = require 'deprecate'

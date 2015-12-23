@@ -41,7 +41,8 @@
   ],
   "dependencies": {
     "bluebird": "^3.0.5",
-    "debug": "^2.2.0"
+    "debug": "^2.2.0",
+    "deprecate": "^0.1.0"
   },
   "devDependencies": {
     "coffee-script": "^1.10.0",
