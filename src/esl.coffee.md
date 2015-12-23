@@ -256,7 +256,7 @@ Restricting events using `filter` is required so that `event_json` will only obt
 Subscribing to `event_json 'ALL'` is required to e.g. obtain `CHANNEL_EXECUTE_COMPLETE`.
 
           .then -> @event_json 'ALL'
-          .then handler
+          .then handler, report
 
         catch exception
           report exception
@@ -289,9 +289,9 @@ The `handler` will be called in the context of the `FreeSwitchResponse`; the `op
 
     exports.default_password = 'ClueCon'
 
-    exports.client = (options = {}, handler, errorHandler) ->
+    exports.client = (options = {}, handler, report = error) ->
       if typeof options is 'function'
-        [options,handler,errorHandler] = [{},options,handler]
+        [options,handler,report] = [{},options,handler]
 
 If neither `options` not `password` is provided, the default password is assumed.
 
@@ -310,7 +310,7 @@ Normally when the client connects, FreeSwitch will first send us an authenticati
       .then -> @auto_cleanup()
       .then -> @event_json 'CHANNEL_EXECUTE_COMPLETE'
       .then -> @event_json 'BACKGROUND_JOB'
-      .then handler, errorHandler
+      .then handler, report
 
       debug "Ready to start #{pkg.name} #{pkg.version} client."
       return client
@@ -322,7 +322,7 @@ Toolbox
 -------
 
     assert = require 'assert'
-    {error} = require 'util'
+    {error} = console
 
     FreeSwitchParser = require './parser'
     FreeSwitchResponse = require './response'
