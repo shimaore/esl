@@ -253,10 +253,14 @@ Restricting events using `filter` is required so that `event_json` will only obt
             server.stats.handler ?= 0
             server.stats.handler++
 
-Subscribing to `event_json 'ALL'` is required to e.g. obtain `CHANNEL_EXECUTE_COMPLETE`.
+          # .then -> @event_json 'CHANNEL_EXECUTE_COMPLETE'
+          # .then -> @event_json 'BACKGROUND_JOB'
+
+Subscribing to `ALL` is kept for backward compatibility.
 
           .then -> @event_json 'ALL'
-          .then handler, report
+          .then handler
+          .catch report
 
         catch exception
           report exception
@@ -310,7 +314,8 @@ Normally when the client connects, FreeSwitch will first send us an authenticati
       .then -> @auto_cleanup()
       .then -> @event_json 'CHANNEL_EXECUTE_COMPLETE'
       .then -> @event_json 'BACKGROUND_JOB'
-      .then handler, report
+      .then handler
+      .catch report
 
       debug "Ready to start #{pkg.name} #{pkg.version} client."
       return client
