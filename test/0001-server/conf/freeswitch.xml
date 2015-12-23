@@ -11,7 +11,7 @@
         <param name="max-sessions" value="2000"/>
         <param name="sessions-per-second" value="2000"/>
         <param name="min-idle-cpu" value="0"/>
-        <param name="loglevel" value="debug"/>
+        <param name="loglevel" value="err"/>
       </settings>
     </configuration>
     <configuration name="modules.conf" description="Modules">

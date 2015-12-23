@@ -2,25 +2,19 @@
 # set -e
 IMG=esl-test-0001
 for t in client server; do
+  echo "****** Starting $t *******"
   # Kill any leftover processes.
   docker kill $IMG-$t;
   docker rm $IMG-$t;
 
-  echo "****** Building $t *******"
-  docker build -t $IMG-$t 0001-$t/
-
+  docker run \
+    --net=host \
+    -v "${PWD}/0001-$t/conf:/opt/freeswitch/etc/freeswitch" \
+    -d --name $IMG-$t shimaore/freeswitch:2.1.2 \
+    /opt/freeswitch/bin/freeswitch -nf -nosql -nonat -nonatmap -nocal -nort -c
 done
-
-echo "****** Starting server *******"
-docker run \
-  --net=host \
-  -d --name $IMG-server $IMG-server
-echo "****** Starting client *******"
-docker run \
-  --net=host \
-  -d --name $IMG-client $IMG-client
 
 echo "****** Ready *******"
 
 # Give FreeSwitch some time to settle
-sleep 20
+sleep 10
