@@ -60,12 +60,14 @@
 <h1>
 <a id="client" class="anchor" href="#client" aria-hidden="true"><span class="octicon octicon-link"></span></a>Client</h1>
 
-<pre><code>FS.client(options,handler).connect(port,host)
+<pre><code>FS.client(options,handler,report).connect(port,host)
 </code></pre>
 
 <p>The only option available is <code>.password</code>, which defaults to <code>ClueCon</code>. The <code>options</code> object is optional.</p>
 
 <p>The <code>handler</code> is required; it is called after authentication with FreeSwitch is successful. Cleanup procedures are automatically called at the end of the connection.</p>
+
+<p><code>report(Error)</code> is called when the handler fails for any reason.</p>
 
 <p>The value returned by <code>FS.client()</code> is a <a href="https://nodejs.org/api/net.html#net_class_net_socket">net.Socket</a>, that's why you can call <code>.connect()</code> on it.</p>
 
@@ -120,7 +122,7 @@ The Promise is fulfilled with the header and body of the <code>CHANNEL_EXECUTE_C
 <h2>
 <a id="bgapi" class="anchor" href="#bgapi" aria-hidden="true"><span class="octicon octicon-link"></span></a>bgapi</h2>
 
-<p>Send a background API command and returns immediately a Promise that fulfills with an object containing the UUID of the background job.</p>
+<p>Send a background API command and returns after the command is completed.</p>
 
 <pre><code>this
   .bgapi('originate sofia/client/sip:7002@example.net &amp;bridge(sofia/client/sip:3000@example.net)'
@@ -175,34 +177,47 @@ The Promise is fulfilled with the header and body of the <code>CHANNEL_EXECUTE_C
 <pre><code>this.emit('my-event',some_data)
 </code></pre>
 
-<h1>
-<a id="generic" class="anchor" href="#generic" aria-hidden="true"><span class="octicon octicon-link"></span></a>Generic</h1>
-
 <h2>
-<a id="sendmsgcmdargs--sendmsg_uuiduuidcmdargs" class="anchor" href="#sendmsgcmdargs--sendmsg_uuiduuidcmdargs" aria-hidden="true"><span class="octicon octicon-link"></span></a>sendmsg(cmd,args) / sendmsg_uuid(uuid,cmd,args)</h2>
+<a id="emit_later" class="anchor" href="#emit_later" aria-hidden="true"><span class="octicon octicon-link"></span></a>emit_later</h2>
 
-<p>Send a message (server mode)</p>
+<p>Sends an event that can be caught by <code>once</code>, even if the event has not been registered yet.</p>
 
-<pre><code>this.sendmsg(command,args).then(...)
+<pre><code>this.emit('my-event',some_data)
 </code></pre>
-
-<p>Send a message (client mode)</p>
-
-<pre><code>this.sendmsg_uuid(uuid,command,args).then(...)
-</code></pre>
-
-<h2>
-<a id="hangupcause--hangup_uuiduuidcause" class="anchor" href="#hangupcause--hangup_uuiduuidcause" aria-hidden="true"><span class="octicon octicon-link"></span></a>hangup(cause) / hangup_uuid(uuid,cause)</h2>
-
-<p>Hang-up with the optional <code>cause</code>.</p>
 
 <h1>
 <a id="low-level" class="anchor" href="#low-level" aria-hidden="true"><span class="octicon octicon-link"></span></a>Low-level</h1>
 
-<p>Low-level shortcuts to the corresponding EventSocket commands.</p>
+<h2>
+<a id="generic" class="anchor" href="#generic" aria-hidden="true"><span class="octicon octicon-link"></span></a>Generic</h2>
+
+<h3>
+<a id="sendmsgcmdargs--sendmsg_uuiduuidcmdargs" class="anchor" href="#sendmsgcmdargs--sendmsg_uuiduuidcmdargs" aria-hidden="true"><span class="octicon octicon-link"></span></a>sendmsg(cmd,args) / sendmsg_uuid(uuid,cmd,args)</h3>
+
+<p>Send a low-level message (server mode)</p>
+
+<pre><code>this.sendmsg(command,args).then(...)
+</code></pre>
+
+<p>Send a low-level message (client mode)</p>
+
+<pre><code>this.sendmsg_uuid(uuid,command,args).then(...)
+</code></pre>
+
+<h3>
+<a id="hangupcause--hangup_uuiduuidcause" class="anchor" href="#hangupcause--hangup_uuiduuidcause" aria-hidden="true"><span class="octicon octicon-link"></span></a>hangup(cause) / hangup_uuid(uuid,cause)</h3>
+
+<p>Hang-up with the optional <code>cause</code>.</p>
+
+<p>This uses the low-level command, and might behave differently from <code>this.command('hangup')</code>.</p>
 
 <h2>
-<a id="events-configuration" class="anchor" href="#events-configuration" aria-hidden="true"><span class="octicon octicon-link"></span></a>Events configuration</h2>
+<a id="other" class="anchor" href="#other" aria-hidden="true"><span class="octicon octicon-link"></span></a>Other</h2>
+
+<p>Low-level shortcuts to the corresponding EventSocket commands.</p>
+
+<h3>
+<a id="events-configuration" class="anchor" href="#events-configuration" aria-hidden="true"><span class="octicon octicon-link"></span></a>Events configuration</h3>
 
 <pre><code>this.event_json(events...)
 this.nixevent()
@@ -215,8 +230,8 @@ this.log()
 this.nolog()
 </code></pre>
 
-<h2>
-<a id="connection-handling" class="anchor" href="#connection-handling" aria-hidden="true"><span class="octicon octicon-link"></span></a>Connection handling</h2>
+<h3>
+<a id="connection-handling" class="anchor" href="#connection-handling" aria-hidden="true"><span class="octicon octicon-link"></span></a>Connection handling</h3>
 
 <p>These are normally called for you, there is no need to use them.</p>
 
