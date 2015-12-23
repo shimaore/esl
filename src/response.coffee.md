@@ -33,6 +33,11 @@ Default handler for `error` events to prevent `Unhandled 'error' event` reports.
           debug 'Socket Error', {err}
           @emit 'socket-error', err
 
+      error: (res,data) ->
+        p = Promise
+          .reject new FreeSwitchError res, data
+          .bind this
+
 Event Emitter
 =============
 
@@ -92,8 +97,7 @@ Send a single command to FreeSwitch; `args` is a hash of headers sent with the c
 
       write: (command,args) ->
         if @closed
-          p = Promise.reject new FreeSwitchError {}, {when:'write on closed socket',command,args}
-          return p.bind this
+          return @error {}, {when:'write on closed socket',command,args}
 
         p = new Promise (resolve,reject) =>
           try
@@ -119,8 +123,7 @@ A generic way of sending commands to FreeSwitch, wrapping `write` into a Promise
       send: (command,args) ->
 
         if @closed
-          p = Promise.reject new FreeSwitchError {}, {when:'send on closed socket',command,args}
-          return p.bind this
+          return @error {}, {when:'send on closed socket',command,args}
 
         p = new Promise (resolve,reject) =>
 
@@ -187,8 +190,7 @@ Using `api` in a concurrent environment (typically client-mode) is not safe, sin
         debug 'api', {command}
 
         if @closed
-          p = Promise.reject new FreeSwitchError {}, {when:'api on closed socket',command,args}
-          return p.bind this
+          return @error {}, {when:'api on closed socket',command,args}
 
         p = new Promise (resolve,reject) =>
           try
@@ -236,12 +238,11 @@ Send an API command in the background. Wraps it inside a Promise.
       bgapi: (command) ->
 
         if @closed
-          p = Promise.reject new FreeSwitchError {}, {when:'bgapi on closed socket',command,args}
-          return p.bind this
+          return @error {}, {when:'bgapi on closed socket',command,args}
 
         @send "bgapi #{command}"
         .then (res) =>
-          error = Promise.reject new FreeSwitchError res, {when:"bgapi did not provide a Job-UUID",command}
+          error = @error res, {when:"bgapi did not provide a Job-UUID",command}
 
           return error unless res?
           reply = res.headers['Reply-Text']
