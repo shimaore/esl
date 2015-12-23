@@ -11,6 +11,8 @@ The `FreeSwitchResponse` is bound to a single socket (dual-stream). For outbound
 
       constructor: (@socket) ->
 
+        assert @socket?, 'Missing socket parameter'
+
 The object provides `on`, `once`, and `emit` methods, which rely on an [`EventEmitter`](http://nodejs.org/api/events.html#events_class_events_eventemitter) object for dispatch.
 
         @ev = new EventEmitter()
@@ -34,6 +36,8 @@ Default handler for `error` events to prevent `Unhandled 'error' event` reports.
         @socket.on 'error', (err) =>
           debug 'Socket Error', {err}
           @emit 'socket-error', err
+
+        null
 
       error: (res,data) ->
         p = Promise
@@ -542,6 +546,6 @@ Toolbox
 =======
 
     Promise = require 'bluebird'
-    util = require 'util'
+    assert = require 'assert'
     {EventEmitter} = require 'events'
     debug = (require 'debug') 'esl:response'
