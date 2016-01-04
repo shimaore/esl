@@ -539,25 +539,35 @@ Automatically called by the client and server.
               @emit 'freeswitch_disconnect'
 
 ### Linger
-The default behavior in linger mode is to disconnect the call (which is roughly equivalent to not using linger mode).
+
+In linger mode you may intercept the event `cleanup_linger` to do further processing. However you are responsible for calling `exit()`. If you do not do it, the calls will leak. (Make sure you also `catch` any errors on exit: `exit().catch(...)`.)
+
+The default behavior in linger mode is to disconnect the socket immediately (which is roughly equivalent to not using linger mode).
 
         @once 'freeswitch_linger'
         .then ->
-          debug 'auto_cleanup/linger: exit'
-          @exit()
-          @emit 'cleanup_linger'
-
-Use `call.once("freeswitch_linger",...)` to capture the end of the call. In this case you are responsible for calling `call.exit()`. If you do not do it, the calls will leak.
+          debug 'auto_cleanup/linger'
+          if @emit 'cleanup_linger'
+            debug 'auto_cleanup/linger: cleanup_linger processed'
+          else
+            debug 'auto_cleanup/linger: exit()'
+            @exit().catch (error) ->
+              debug "auto_cleanup/linger: exit() error: #{error} (ignored)"
 
 ### Disconnect
 
-Normal behavior on disconnect is to end the call.  (However you may capture the `freeswitch_disconnect` event as well.)
+On disconnect (no linger) mode, you may intercept the event `cleanup_disconnect` to do further processing. However you are responsible for calling `end()` in order to close the socket.
+
+Normal behavior on disconnect is to close the socket with `end()`.
 
         @once 'freeswitch_disconnect'
         .then ->
-          debug 'auto_cleanup/disconnect: end'
-          @end()
-          @emit 'cleanup_disconnect', this
+          debug 'auto_cleanup/disconnect'
+          if @emit 'cleanup_disconnect', this
+            debug 'auto_cleanup/disconnect: hoping you called end()'
+          else
+            debug 'auto_cleanup/disconnect: end()'
+            @end()
 
         return
 
