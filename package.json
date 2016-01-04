@@ -40,7 +40,7 @@
     "lib/response.js"
   ],
   "dependencies": {
-    "bluebird": "^3.0.5",
+    "bluebird": "^3.1.1",
     "debug": "^2.2.0",
     "deprecate": "^0.1.0"
   },
@@ -48,9 +48,9 @@
     "coffee-script": "^1.10.0",
     "docco": "^0.7.0",
     "memdown": "^1.1.0",
-    "mocha": "^2.3.3",
+    "mocha": "^2.3.4",
     "pouchdb": "^5.1.0",
-    "should": "^7.1.1",
+    "should": "^8.0.2",
     "uuid": "^2.0.1"
   },
   "scripts": {
