@@ -268,13 +268,13 @@ Send an API command in the background. Wraps it inside a Promise.
 
         @send "bgapi #{command}"
         .then (res) =>
-          error = @error res, {when:"bgapi did not provide a Job-UUID",command}
+          error = => @error res, {when:"bgapi did not provide a Job-UUID",command}
 
-          return error unless res?
+          return error() unless res?
           reply = res.headers['Reply-Text']
           r = reply?.match(/\+OK Job-UUID: (.+)$/)?[1]
           r ?= res.headers['Job-UUID']
-          return error unless r?
+          return error() unless r?
 
           trace 'bgapi retrieve', r
 
