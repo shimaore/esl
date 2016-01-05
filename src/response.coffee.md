@@ -94,15 +94,21 @@ this.once('CHANNEL_COMPLETE').then(save_cdr).then(stop_recording);
               trace 'once', event, data:arguments[0]
               resolve arguments...
               return
+            null
           catch exception
             reject exception
         p = p.bind this
+
+In some cases the event might have been emitted before we are ready to receive it.
+In that case we store the data in `@__later` so that we can emit the event when the recipient is ready.
+
         if event of @__later
           @emit event, @__later[event]
           delete @__later[event]
+
         if cb?
-          deprecate 'Using callback with once() is deprecated. Use once().then(callback) instead.'
           return p.then cb
+
         return p
 
 emit_later
@@ -525,8 +531,7 @@ Clean-up at the end of the connection.
 Automatically called by the client and server.
 
       auto_cleanup: ->
-        @once 'freeswitch_disconnect_notice'
-        .then (res) =>
+        @once 'freeswitch_disconnect_notice', (res) =>
           trace 'auto_cleanup: Received ESL disconnection notice', res
           switch res.headers['Content-Disposition']
             when 'linger'
@@ -545,8 +550,7 @@ In linger mode you may intercept the event `cleanup_linger` to do further proces
 
 The default behavior in linger mode is to disconnect the socket immediately (which is roughly equivalent to not using linger mode).
 
-        @once 'freeswitch_linger'
-        .then ->
+        @once 'freeswitch_linger', ->
           trace 'auto_cleanup/linger'
           if @emit 'cleanup_linger'
             debug 'auto_cleanup/linger: cleanup_linger processed, make sure you call exit()'
@@ -561,8 +565,7 @@ On disconnect (no linger) mode, you may intercept the event `cleanup_disconnect`
 
 Normal behavior on disconnect is to close the socket with `end()`.
 
-        @once 'freeswitch_disconnect'
-        .then ->
+        @once 'freeswitch_disconnect', ->
           trace 'auto_cleanup/disconnect'
           if @emit 'cleanup_disconnect', this
             debug 'auto_cleanup/disconnect: cleanup_disconnect processed, make sure you call end()'
@@ -570,7 +573,7 @@ Normal behavior on disconnect is to close the socket with `end()`.
             trace 'auto_cleanup/disconnect: end()'
             @end()
 
-        return
+        return null
 
 Toolbox
 =======
@@ -580,4 +583,3 @@ Toolbox
     {EventEmitter} = require 'events'
     debug = (require 'debug') 'esl:response'
     trace = (require 'debug') 'esl:response:trace'
-    deprecate = require 'deprecate'
