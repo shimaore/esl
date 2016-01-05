@@ -28,7 +28,7 @@ We also must track connection close in order to prevent writing to a closed sock
         @closed = false
         @socket.on 'close', =>
           @closed = true
-          debug 'Socket closed'
+          trace 'Socket closed'
           @emit 'socket-close'
 
 Default handler for `error` events to prevent `Unhandled 'error' event` reports.
@@ -42,7 +42,8 @@ Default handler for `error` events to prevent `Unhandled 'error' event` reports.
         null
 
       error: (res,data) ->
-        p = Promise
+        debug "error", {res,data}
+        Promise
           .reject new FreeSwitchError res, data
           .bind this
 
@@ -71,9 +72,9 @@ emit
 A single wrapper for EventEmitter.emit().
 
       emit: ->
-        debug 'emit', arguments[0], headers:arguments[1]?.headers, body:arguments[1]?.body
+        trace 'emit', arguments[0], headers:arguments[1]?.headers, body:arguments[1]?.body
         outcome = @ev.emit arguments...
-        debug emit:arguments[0], had_listeners:outcome
+        trace emit:arguments[0], had_listeners:outcome
         outcome
 
 once
@@ -86,11 +87,11 @@ this.once('CHANNEL_COMPLETE').then(save_cdr).then(stop_recording);
 ```
 
       once: (event,cb) ->
-        debug 'create_once', event
+        trace 'create_once', event
         p = new Promise (resolve,reject) =>
           try
             @ev.once event, =>
-              debug 'once', event, data:arguments[0]
+              trace 'once', event, data:arguments[0]
               resolve arguments...
               return
           catch exception
@@ -110,7 +111,7 @@ emit_later
 This is used for events that might trigger before we set the `once` receiver.
 
       emit_later: (event,data) ->
-        debug 'emit_later', {event, data}
+        trace 'emit_later', {event, data}
         if not @emit event, data
           @__later[event] = data
 
@@ -120,9 +121,9 @@ on
 A simple wrapper for EventEmitter.on().
 
       on: (event,callback) ->
-        debug 'create_on', event
+        trace 'create_on', event
         @ev.on event, =>
-          debug 'on', event, data:arguments[0]
+          trace 'on', event, data:arguments[0]
           callback.apply this, arguments
           return
 
@@ -142,7 +143,7 @@ Send a single command to FreeSwitch; `args` is a hash of headers sent with the c
 
         p = new Promise (resolve,reject) =>
           try
-            debug 'write', {command,args}
+            trace 'write', {command,args}
 
             text = "#{command}\n"
             if args?
@@ -173,13 +174,13 @@ Typically `command/reply` will contain the status in the `Reply-Text` header whi
           p = @once 'freeswitch_command_reply'
             .then (res) =>
               return if not res?
-              debug 'send: received reply', res, {command,args}
+              trace 'send: received reply', res, {command,args}
               reply = res.headers['Reply-Text']
 
 The Promise might fail if FreeSwitch's notification indicates an error.
 
               if not reply?
-                debug 'send: no reply', {command, args}
+                trace 'send: no reply', {command, args}
                 return @error res, {when:'no reply to command',command,args}
 
               if reply.match /^-/
@@ -188,7 +189,7 @@ The Promise might fail if FreeSwitch's notification indicates an error.
 
 The promise will be fulfilled with the `{headers,body}` object provided by the parser.
 
-              debug 'send: success', {command,args}
+              trace 'send: success', {command,args}
               res
 
           q = @write command, args
@@ -201,7 +202,7 @@ end
 Closes the socket.
 
       end: () ->
-        debug 'end'
+        trace 'end'
         @closed = true
         @socket.end()
         this
@@ -217,7 +218,7 @@ Returns a Promise that is fulfilled as soon as FreeSwitch sends a reply. Request
 Use `bgapi` if you need to make sure responses are correct, since it provides the proper semantices.
 
       api: (command) ->
-        debug 'api', {command}
+        trace 'api', {command}
 
         if @closed
           return @error {}, {when:'api on closed socket',command,args}
@@ -226,7 +227,7 @@ Use `bgapi` if you need to make sure responses are correct, since it provides th
           p = @once 'freeswitch_api_response'
             .then (res) =>
               return if not res?
-              debug 'api: response', {command}
+              trace 'api: response', {command}
               reply = res.body
 
 The Promise might fail if FreeSwitch indicates there was an error.
@@ -254,7 +255,7 @@ bgapi
 Send an API command in the background. Wraps it inside a Promise.
 
       bgapi: (command) ->
-        debug 'bgapi', {command}
+        trace 'bgapi', {command}
 
         if @closed
           return @error {}, {when:'bgapi on closed socket',command,args}
@@ -269,7 +270,7 @@ Send an API command in the background. Wraps it inside a Promise.
           r ?= res.headers['Job-UUID']
           return error unless r?
 
-          debug 'bgapi retrieve', r
+          trace 'bgapi retrieve', r
 
           @once "BACKGROUND_JOB #{r}"
 
@@ -526,16 +527,16 @@ Automatically called by the client and server.
       auto_cleanup: ->
         @once 'freeswitch_disconnect_notice'
         .then (res) =>
-          debug 'auto_cleanup: Received ESL disconnection notice', res
+          trace 'auto_cleanup: Received ESL disconnection notice', res
           switch res.headers['Content-Disposition']
             when 'linger'
-              debug 'Sending freeswitch_linger'
+              trace 'Sending freeswitch_linger'
               @emit 'freeswitch_linger'
             when 'disconnect'
-              debug 'Sending freeswitch_disconnect'
+              trace 'Sending freeswitch_disconnect'
               @emit 'freeswitch_disconnect'
             else # Header might be absent?
-              debug 'Sending freeswitch_disconnect'
+              trace 'Sending freeswitch_disconnect'
               @emit 'freeswitch_disconnect'
 
 ### Linger
@@ -546,11 +547,11 @@ The default behavior in linger mode is to disconnect the socket immediately (whi
 
         @once 'freeswitch_linger'
         .then ->
-          debug 'auto_cleanup/linger'
+          trace 'auto_cleanup/linger'
           if @emit 'cleanup_linger'
-            debug 'auto_cleanup/linger: cleanup_linger processed'
+            debug 'auto_cleanup/linger: cleanup_linger processed, make sure you call exit()'
           else
-            debug 'auto_cleanup/linger: exit()'
+            trace 'auto_cleanup/linger: exit()'
             @exit().catch (error) ->
               debug "auto_cleanup/linger: exit() error: #{error} (ignored)"
 
@@ -562,11 +563,11 @@ Normal behavior on disconnect is to close the socket with `end()`.
 
         @once 'freeswitch_disconnect'
         .then ->
-          debug 'auto_cleanup/disconnect'
+          trace 'auto_cleanup/disconnect'
           if @emit 'cleanup_disconnect', this
-            debug 'auto_cleanup/disconnect: hoping you called end()'
+            debug 'auto_cleanup/disconnect: cleanup_disconnect processed, make sure you call end()'
           else
-            debug 'auto_cleanup/disconnect: end()'
+            trace 'auto_cleanup/disconnect: end()'
             @end()
 
         return
@@ -578,4 +579,5 @@ Toolbox
     assert = require 'assert'
     {EventEmitter} = require 'events'
     debug = (require 'debug') 'esl:response'
+    trace = (require 'debug') 'esl:response:trace'
     deprecate = require 'deprecate'
