@@ -222,9 +222,13 @@ The connection-listener is called last to set the parser up and trigger the requ
 The `server` we export is only slightly more complex. It sets up a filter so that the application only gets its own events, and sets up automatic cleanup which will be used before disconnecting the socket.
 The call handler will receive a `FreeSwitchResponse` object, `options` are optional (and currently unused).
 
-    exports.server = (options = {}, handler, report = error) ->
+    exports.server = (options = {}, handler, report) ->
       if typeof options is 'function'
-        [options,handler] = [{},options]
+        [options,handler,report] = [{},options,handler]
+
+      report ?= options.report
+      report ?= (error) ->
+        debug "Server: #{error}"
 
       assert.ok handler?, "server handler is required"
       assert.strictEqual typeof handler, 'function', "server handler must be a function"
@@ -259,8 +263,8 @@ Restricting events using `filter` is required so that `event_json` will only obt
 Subscribing to `ALL` is kept for backward compatibility.
 
           .then -> @event_json 'ALL'
-          .then handler
-          .catch report
+          .then -> handler.apply this, arguments
+          .catch -> report.apply this, arguments
 
         catch exception
           report exception
@@ -293,9 +297,13 @@ The `handler` will be called in the context of the `FreeSwitchResponse`; the `op
 
     exports.default_password = 'ClueCon'
 
-    exports.client = (options = {}, handler, report = error) ->
+    exports.client = (options = {}, handler, report) ->
       if typeof options is 'function'
         [options,handler,report] = [{},options,handler]
+
+      report ?= options.report
+      report ?= (error) ->
+        debug "Client: #{error}"
 
 If neither `options` not `password` is provided, the default password is assumed.
 
@@ -314,8 +322,8 @@ Normally when the client connects, FreeSwitch will first send us an authenticati
       .then -> @auto_cleanup()
       .then -> @event_json 'CHANNEL_EXECUTE_COMPLETE'
       .then -> @event_json 'BACKGROUND_JOB'
-      .then handler
-      .catch report
+      .then -> handler.apply this, arguments
+      .catch -> report.apply this, arguments
 
       debug "Ready to start #{pkg.name} #{pkg.version} client."
       return client
@@ -327,7 +335,6 @@ Toolbox
 -------
 
     assert = require 'assert'
-    {error} = console
 
     FreeSwitchParser = require './parser'
     FreeSwitchResponse = require './response'
