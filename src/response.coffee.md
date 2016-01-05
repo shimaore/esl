@@ -19,9 +19,7 @@ The object provides `on`, `once`, and `emit` methods, which rely on an [`EventEm
 
 The object also provides a queue for operations which need to be submitted one after another on a given socket because FreeSwitch does not provide ways to map event socket requests and responses in the general case.
 
-        @__queue = Promise
-          .resolve null
-          .bind this
+        @__queue = Promise.resolve null
 
 We also must track connection close in order to prevent writing to a closed socket.
 
@@ -50,18 +48,18 @@ Default handler for `error` events to prevent `Unhandled 'error' event` reports.
 Queueing
 ========
 
+Enqueue a function that returns a Promise.
+The function is only called when all previously enqueued functions-that-return-Promises are completed and their respective Promises fulfilled or rejected.
+
       enqueue: (f) ->
-        instance = @__queue.then -> f()
-
-Do not fail the queue if a given command fails.
-
-        @__queue = instance
-          .catch (error) =>
-            debug "queued failed: #{error}"
-
-Return the (uncaught) command so that the user can do error handling.
-
-        instance
+        new Promise (resolve,reject) =>
+          fulfilled = (p) -> resolve p
+          rejected = (e) -> reject e
+          @__queue = @__queue
+            .then -> f()
+            .then fulfilled
+            .catch rejected
+        .bind this
 
 Event Emitter
 =============
