@@ -371,7 +371,7 @@ exit
 
 Send the `exit` command to the FreeSwitch socket.
 FreeSwitch will respond with "+OK bye" followed by a `disconnect-notice` message, which gets translated into a `freeswitch_disconnect_notice` event internally, which in turn gets translated into either `freeswitch_disconnect` or `freeswitch_linger` depending on whether `linger` was called on the socket.
-You normally do not need to call `@exit` directly.
+You normally do not need to call `@exit` directly. If you do, make sure you do handle any rejection.
 
       exit: -> @send "exit"
 
