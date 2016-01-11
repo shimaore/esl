@@ -41,8 +41,7 @@
   ],
   "dependencies": {
     "bluebird": "^3.1.1",
-    "debug": "^2.2.0",
-    "deprecate": "^0.1.0"
+    "debug": "^2.2.0"
   },
   "devDependencies": {
     "chai": "^3.4.1",
