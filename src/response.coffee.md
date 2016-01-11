@@ -362,7 +362,8 @@ Normally not needed, triggered automatically by the module.
 linger
 ------
 
-Used in server mode, requests FreeSwitch to not close the socket as soon as the call is over, allowing us to do some post-processing on the call.
+Used in server mode, requests FreeSwitch to not close the socket as soon as the call is over, allowing us to do some post-processing on the call (mainly, receiving call termination events).
+By default, `esl` with call `exit()` for you after 4 seconds. You need to capture the `cleanup_linger` event if you want to handle things differently.
 
       linger: -> @send "linger"     # Outbound mode
 
@@ -546,15 +547,22 @@ Automatically called by the client and server.
 
 In linger mode you may intercept the event `cleanup_linger` to do further processing. However you are responsible for calling `exit()`. If you do not do it, the calls will leak. (Make sure you also `catch` any errors on exit: `exit().catch(...)`.)
 
-The default behavior in linger mode is to disconnect the socket immediately (which is roughly equivalent to not using linger mode).
+The default behavior in linger mode is to disconnect the socket after 4 seconds, giving you some time to capture events.
+
+        linger_delay = 4000
 
         @once 'freeswitch_linger', ->
           trace 'auto_cleanup/linger'
           if @emit 'cleanup_linger'
             debug 'auto_cleanup/linger: cleanup_linger processed, make sure you call exit()'
           else
-            trace 'auto_cleanup/linger: exit()'
-            @exit().catch (error) ->
+            trace "auto_cleanup/linger: exit() in #{linger_delay}ms"
+            Promise.delay linger_delay
+            .bind this
+            .then ->
+              trace 'auto_cleanup/linger: exit()'
+              @exit()
+            .catch (error) ->
               debug "auto_cleanup/linger: exit() error: #{error} (ignored)"
 
 ### Disconnect
