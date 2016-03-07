@@ -40,16 +40,16 @@
     "lib/response.js"
   ],
   "dependencies": {
-    "bluebird": "^3.1.1",
+    "bluebird": "^3.3.3",
     "debug": "^2.2.0"
   },
   "devDependencies": {
-    "chai": "^3.4.1",
+    "chai": "^3.5.0",
     "coffee-script": "^1.10.0",
     "docco": "^0.7.0",
-    "memdown": "^1.1.0",
-    "mocha": "^2.3.4",
-    "pouchdb": "^5.1.0",
+    "memdown": "^1.1.2",
+    "mocha": "^2.4.5",
+    "pouchdb": "^5.3.0",
     "uuid": "^2.0.1"
   },
   "scripts": {
