@@ -24,6 +24,10 @@ Make the command responses somewhat unique. This is required since FreeSwitch do
         if unique_id?
           call.emit "CHANNEL_EXECUTE_COMPLETE #{unique_id} #{application} #{application_data}", res
 
+      call.on 'BACKGROUND_JOB', (res) ->
+        job_uuid = res.body['Job-UUID']
+        call.emit_later "BACKGROUND_JOB #{job_uuid}", {body:res.body._body}
+
 The parser is responsible for de-framing messages coming from FreeSwitch and splitting it into headers and a body.
 
       parser.process = (headers,body) ->
@@ -218,9 +222,13 @@ The connection-listener is called last to set the parser up and trigger the requ
 The `server` we export is only slightly more complex. It sets up a filter so that the application only gets its own events, and sets up automatic cleanup which will be used before disconnecting the socket.
 The call handler will receive a `FreeSwitchResponse` object, `options` are optional (and currently unused).
 
-    exports.server = (options = {}, handler, report = error) ->
+    exports.server = (options = {}, handler, report) ->
       if typeof options is 'function'
-        [options,handler] = [{},options]
+        [options,handler,report] = [{},options,handler]
+
+      report ?= options.report
+      report ?= (error) ->
+        debug "Server: #{error}"
 
       assert.ok handler?, "server handler is required"
       assert.strictEqual typeof handler, 'function', "server handler must be a function"
@@ -249,10 +257,14 @@ Restricting events using `filter` is required so that `event_json` will only obt
             server.stats.handler ?= 0
             server.stats.handler++
 
-Subscribing to `event_json 'ALL'` is required to e.g. obtain `CHANNEL_EXECUTE_COMPLETE`.
+          # .then -> @event_json 'CHANNEL_EXECUTE_COMPLETE'
+          # .then -> @event_json 'BACKGROUND_JOB'
+
+Subscribing to `ALL` is kept for backward compatibility.
 
           .then -> @event_json 'ALL'
-          .then handler
+          .then -> handler.apply this, arguments
+          .catch -> report.apply this, arguments
 
         catch exception
           report exception
@@ -285,9 +297,13 @@ The `handler` will be called in the context of the `FreeSwitchResponse`; the `op
 
     exports.default_password = 'ClueCon'
 
-    exports.client = (options = {}, handler, errorHandler) ->
+    exports.client = (options = {}, handler, report) ->
       if typeof options is 'function'
-        [options,handler,errorHandler] = [{},options,handler]
+        [options,handler,report] = [{},options,handler]
+
+      report ?= options.report
+      report ?= (error) ->
+        debug "Client: #{error}"
 
 If neither `options` not `password` is provided, the default password is assumed.
 
@@ -304,19 +320,21 @@ Normally when the client connects, FreeSwitch will first send us an authenticati
       .then ->
         @auth options.password
       .then -> @auto_cleanup()
-      .then handler, errorHandler
+      .then -> @event_json 'CHANNEL_EXECUTE_COMPLETE'
+      .then -> @event_json 'BACKGROUND_JOB'
+      .then -> handler.apply this, arguments
+      .catch -> report.apply this, arguments
 
       debug "Ready to start #{pkg.name} #{pkg.version} client."
       return client
 
-Please note that the client is not started with `event_json` since by default this would mean obtaining all events from FreeSwitch.
+Please note that the client is not started with `event_json ALL` since by default this would mean obtaining all events from FreeSwitch. Instead, we only monitor the events we need to be notified for (commands and `bgapi` responses).
 You must manually run `@event_json` and an optional `@filter` command.
 
 Toolbox
 -------
 
     assert = require 'assert'
-    {error} = require 'util'
 
     FreeSwitchParser = require './parser'
     FreeSwitchResponse = require './response'

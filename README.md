@@ -70,8 +70,12 @@ var call_handler = function() {
   .then(function(res) {
      var foo = res.body.variable_foo;
   })
-  .hangup() // hang-up the call
-  .exit()   // tell FreeSwitch we're disconnecting
+  .then(function() {
+    this.hangup() // hang-up the call
+  })
+  .then(function() {
+    this.exit()   // tell FreeSwitch we're disconnecting
+  })
 };
 
 require('esl').server(call_handler).listen(7000);
@@ -100,7 +104,9 @@ Examples and Documentation
 
 The test suite in [`test/0001.coffee.md`](https://github.com/shimaore/esl/blob/master/test/0001.coffee.md) provides many examples.
 
-The methods available inside the call-handler are those of the [response object](https://github.com/shimaore/esl/blob/master/src/response.coffee.md#channel-level-commands): `queue_api`, `api`, `bgapi`, `command`, `command_uuid`, etc.
+The [API](http://shimaore.github.io/esl/) provides a summary of usage.
+
+The methods available inside the call-handler are those of the [response object](https://github.com/shimaore/esl/blob/master/src/response.coffee.md#channel-level-commands): `api`, `bgapi`, `command`, `command_uuid`, etc.
 
 Overview
 --------

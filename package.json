@@ -1,6 +1,6 @@
 {
   "name": "esl",
-  "version": "4.3.0",
+  "version": "5.2.1",
   "description": "Client and Server for FreeSwitch Event System",
   "keywords": [
     "freeswitch",
@@ -10,7 +10,7 @@
     "name": "Stéphane Alnet",
     "email": "stephane@shimaore.net"
   },
-  "homepage": "https://github.com/shimaore/esl",
+  "homepage": "http://shimaore.github.io/esl",
   "repository": {
     "type": "git",
     "url": "git://github.com/shimaore/esl.git"
@@ -40,22 +40,22 @@
     "lib/response.js"
   ],
   "dependencies": {
-    "bluebird": "^3.0.5",
+    "bluebird": "^3.3.3",
     "debug": "^2.2.0"
   },
   "devDependencies": {
+    "chai": "^3.5.0",
     "coffee-script": "^1.10.0",
     "docco": "^0.7.0",
-    "memdown": "^1.1.0",
-    "mocha": "^2.3.3",
-    "pouchdb": "^5.1.0",
-    "should": "^7.1.1",
+    "memdown": "^1.1.2",
+    "mocha": "^2.4.5",
+    "pouchdb": "^5.3.0",
     "uuid": "^2.0.1"
   },
   "scripts": {
     "prepublish": "coffee -c -o lib/ src/* && docco src/*",
     "pretest": "npm install",
-    "test": "(cd test && ./setup.sh) && mocha && (cd test && ./cleanup.sh)",
+    "test": "(cd test && ./setup.sh) && NODE_ENV=development mocha && (cd test && ./cleanup.sh)",
     "clean": "rm -rf cov/ lib/ routes/ node_modules/ test/*.log"
   },
   "publishConfig": {

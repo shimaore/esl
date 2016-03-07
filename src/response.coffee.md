@@ -11,20 +11,22 @@ The `FreeSwitchResponse` is bound to a single socket (dual-stream). For outbound
 
       constructor: (@socket) ->
 
+        assert @socket?, 'Missing socket parameter'
+
 The object provides `on`, `once`, and `emit` methods, which rely on an [`EventEmitter`](http://nodejs.org/api/events.html#events_class_events_eventemitter) object for dispatch.
 
         @ev = new EventEmitter()
 
 The object also provides a queue for operations which need to be submitted one after another on a given socket because FreeSwitch does not provide ways to map event socket requests and responses in the general case.
 
-        @queue ?= new Promise.resolve null
+        @__queue = Promise.resolve null
 
 We also must track connection close in order to prevent writing to a closed socket.
 
         @closed = false
         @socket.on 'close', =>
           @closed = true
-          debug 'Socket closed'
+          trace 'Socket closed'
           @emit 'socket-close'
 
 Default handler for `error` events to prevent `Unhandled 'error' event` reports.
@@ -32,6 +34,32 @@ Default handler for `error` events to prevent `Unhandled 'error' event` reports.
         @socket.on 'error', (err) =>
           debug 'Socket Error', {err}
           @emit 'socket-error', err
+
+        @__later = {}
+
+        null
+
+      error: (res,data) ->
+        debug "error", {res,data}
+        Promise
+          .reject new FreeSwitchError res, data
+          .bind this
+
+Queueing
+========
+
+Enqueue a function that returns a Promise.
+The function is only called when all previously enqueued functions-that-return-Promises are completed and their respective Promises fulfilled or rejected.
+
+      enqueue: (f) ->
+        new Promise (resolve,reject) =>
+          fulfilled = (p) -> resolve p
+          rejected = (e) -> reject e
+          @__queue = @__queue
+            .then -> f()
+            .then fulfilled
+            .catch rejected
+        .bind this
 
 Event Emitter
 =============
@@ -42,9 +70,9 @@ emit
 A single wrapper for EventEmitter.emit().
 
       emit: ->
-        debug 'emit', arguments[0], headers:arguments[1]?.headers, body:arguments[1]?.body
+        trace 'emit', arguments[0], headers:arguments[1]?.headers, body:arguments[1]?.body
         outcome = @ev.emit arguments...
-        debug emit:arguments[0], had_listeners:outcome
+        trace emit:arguments[0], had_listeners:outcome
         outcome
 
 once
@@ -56,17 +84,40 @@ Wraps EventEmitter.once() into a Promise; this allows you to write for example
 this.once('CHANNEL_COMPLETE').then(save_cdr).then(stop_recording);
 ```
 
-      once: (event) ->
-        debug 'create_once', event
+      once: (event,cb) ->
+        trace 'create_once', event
         p = new Promise (resolve,reject) =>
           try
             @ev.once event, =>
-              debug 'once', event, data:arguments[0]
+              trace 'once', event, data:arguments[0]
               resolve arguments...
               return
+            null
           catch exception
             reject exception
-        p.bind this
+        p = p.bind this
+
+In some cases the event might have been emitted before we are ready to receive it.
+In that case we store the data in `@__later` so that we can emit the event when the recipient is ready.
+
+        if event of @__later
+          @emit event, @__later[event]
+          delete @__later[event]
+
+        if cb?
+          return p.then cb
+
+        return p
+
+emit_later
+----------
+
+This is used for events that might trigger before we set the `once` receiver.
+
+      emit_later: (event,data) ->
+        trace 'emit_later', {event, data}
+        if not @emit event, data
+          @__later[event] = data
 
 on
 --
@@ -74,9 +125,9 @@ on
 A simple wrapper for EventEmitter.on().
 
       on: (event,callback) ->
-        debug 'create_on', event
+        trace 'create_on', event
         @ev.on event, =>
-          debug 'on', event, data:arguments[0]
+          trace 'on', event, data:arguments[0]
           callback.apply this, arguments
           return
 
@@ -92,12 +143,11 @@ Send a single command to FreeSwitch; `args` is a hash of headers sent with the c
 
       write: (command,args) ->
         if @closed
-          p = Promise.reject new FreeSwitchError {}, {when:'write on closed socket',command,args}
-          return p.bind this
+          return @error {}, {when:'write on closed socket',command,args}
 
         p = new Promise (resolve,reject) =>
           try
-            debug 'write', {command,args}
+            trace 'write', {command,args}
 
             text = "#{command}\n"
             if args?
@@ -105,6 +155,7 @@ Send a single command to FreeSwitch; `args` is a hash of headers sent with the c
                 text += "#{key}: #{value}\n"
             text += "\n"
             @socket.write text, 'utf8'
+            resolve null
 
           catch error
             reject error
@@ -119,47 +170,35 @@ A generic way of sending commands to FreeSwitch, wrapping `write` into a Promise
       send: (command,args) ->
 
         if @closed
-          p = Promise.reject new FreeSwitchError {}, {when:'send on closed socket',command,args}
-          return p.bind this
-
-        p = new Promise (resolve,reject) =>
+          return @error {}, {when:'send on closed socket',command,args}
 
 Typically `command/reply` will contain the status in the `Reply-Text` header while `api/response` will contain the status in the body.
 
-          try
-            @once 'freeswitch_command_reply'
-            .catch (error) ->
-              reject error
-              null
-            .then (res) ->
+        @enqueue =>
+          p = @once 'freeswitch_command_reply'
+            .then (res) =>
               return if not res?
-              debug 'send: reply', res, {command,args}
+              trace 'send: received reply', res, {command,args}
               reply = res.headers['Reply-Text']
 
 The Promise might fail if FreeSwitch's notification indicates an error.
 
               if not reply?
-                debug 'send: no reply', {command, args}
-                reject new FreeSwitchError res, {when:'no reply to command',command,args}
-                return
+                trace 'send: no reply', {command, args}
+                return @error res, {when:'no reply to command',command,args}
 
               if reply.match /^-/
-                debug 'send: failed', reply
-                reject new FreeSwitchError res, {when:'command reply',reply,command,args}
-                return
+                debug 'send: failed', reply, {command, args}
+                return @error res, {when:'command reply',reply,command,args}
 
 The promise will be fulfilled with the `{headers,body}` object provided by the parser.
 
-              resolve res
-              return
+              trace 'send: success', {command,args}
+              res
 
-            @write command, args
-            .catch (error) ->
-              reject error
-          catch exception
-            reject exception
+          q = @write command, args
 
-        p.bind this
+          q.then -> p
 
 end
 ---
@@ -167,7 +206,7 @@ end
 Closes the socket.
 
       end: () ->
-        debug 'end'
+        trace 'end'
         @closed = true
         @socket.end()
         this
@@ -175,58 +214,44 @@ Closes the socket.
 Channel-level commands
 ======================
 
-api, queue_api
---------------
+api
+---
 
 Send an API command, see [Mod commands](http://wiki.freeswitch.org/wiki/Mod_commands) for a list.
-Returns a Promise that is fulfilled as soon as FreeSwitch sends a reply.
-
-Using `api` in concurrent environment (typically client mode) is not safe, since there is no way to match between requests and responses. Use `queue_api` in that case in order to serialize requests.
+Returns a Promise that is fulfilled as soon as FreeSwitch sends a reply. Requests are queued and each request is matched with the first-coming response, since there is no way to match between requests and responses.
+Use `bgapi` if you need to make sure responses are correct, since it provides the proper semantices.
 
       api: (command) ->
-        debug 'api', {command}
+        trace 'api', {command}
 
         if @closed
-          p = Promise.reject new FreeSwitchError {}, {when:'api on closed socket',command,args}
-          return p.bind this
+          return @error {}, {when:'api on closed socket',command,args}
 
-        p = new Promise (resolve,reject) =>
-          try
-            @once 'freeswitch_api_response'
-            .catch (error) ->
-              reject error
-              null
-            .then (res) ->
+        @enqueue =>
+          p = @once 'freeswitch_api_response'
+            .then (res) =>
               return if not res?
-              debug 'api: response', {command}
+              trace 'api: response', {command}
               reply = res.body
 
 The Promise might fail if FreeSwitch indicates there was an error.
 
               if not reply?
                 debug 'api: no reply', {command}
-                reject new FreeSwitchError res, {when:'no reply to api',command}
-                return
+                return @error res, {when:'no reply to api',command}
 
               if reply.match /^-/
                 debug 'api response failed', {reply, command}
-                reject new FreeSwitchError res, {when:'api response',reply,command}
-                return
+                return @error res, {when:'api response',reply,command}
 
 The Promise that will be fulfilled with `{headers,body,uuid}` from the parser; uuid is the API UUID if one is provided by FreeSwitch.
 
               res.uuid = (reply.match /^\+OK ([\da-f-]{36})/)?[1]
+              res
 
-              resolve res, reply
-              return
+          q = @write "api #{command}"
 
-            @write "api #{command}"
-            .catch (error) ->
-              reject error
-          catch exception
-            reject exception
-
-        p.bind this
+          q.then -> p
 
 bgapi
 -----
@@ -234,41 +259,24 @@ bgapi
 Send an API command in the background. Wraps it inside a Promise.
 
       bgapi: (command) ->
+        trace 'bgapi', {command}
 
         if @closed
-          p = Promise.reject new FreeSwitchError {}, {when:'bgapi on closed socket',command,args}
-          return p.bind this
+          return @error {}, {when:'bgapi on closed socket',command,args}
 
-        p = new Promise (resolve,reject) =>
-          try
-            @send "bgapi #{command}"
-            .catch (error) ->
-              reject error
-              null
-            .then (res) ->
-              return if not res?
-              reply = res.headers['Reply-Text']
-              r = reply?.match(/\+OK Job-UUID: (.+)$/)?[1]
-              r ?= res.headers['Job-UUID']
+        @send "bgapi #{command}"
+        .then (res) =>
+          error = => @error res, {when:"bgapi did not provide a Job-UUID",command}
 
-The Promise will be fulfilled with `{headers,body,uuid}` from the parser; uuid is the Job UUID if one is provided by FreeSwitch.
+          return error() unless res?
+          reply = res.headers['Reply-Text']
+          r = reply?.match(/\+OK Job-UUID: (.+)$/)?[1]
+          r ?= res.headers['Job-UUID']
+          return error() unless r?
 
-              if r?
-                res.uuid = r
-                resolve res, r
-                return
+          trace 'bgapi retrieve', r
 
-The Promise might fail if FreeSwitch indicates an issue.
-
-              else
-                reject new FreeSwitchError res, {when:"bgapi did not provide a Job-UUID",command}
-                return
-          catch exception
-            reject exception
-
-        p.bind this
-
-Please note that it is up to you to monitor events coming from the background job. Since a lot of base API commands do not generate any events there is no generic way to know whether a background API call was successful or not.
+          @once "BACKGROUND_JOB #{r}"
 
 Event reception and filtering
 =============================
@@ -354,7 +362,8 @@ Normally not needed, triggered automatically by the module.
 linger
 ------
 
-Used in server mode, requests FreeSwitch to not close the socket as soon as the call is over, allowing us to do some post-processing on the call.
+Used in server mode, requests FreeSwitch to not close the socket as soon as the call is over, allowing us to do some post-processing on the call (mainly, receiving call termination events).
+By default, `esl` with call `exit()` for you after 4 seconds. You need to capture the `cleanup_linger` event if you want to handle things differently.
 
       linger: -> @send "linger"     # Outbound mode
 
@@ -363,7 +372,7 @@ exit
 
 Send the `exit` command to the FreeSwitch socket.
 FreeSwitch will respond with "+OK bye" followed by a `disconnect-notice` message, which gets translated into a `freeswitch_disconnect_notice` event internally, which in turn gets translated into either `freeswitch_disconnect` or `freeswitch_linger` depending on whether `linger` was called on the socket.
-You normally do not need to call `@exit` directly.
+You normally do not need to call `@exit` directly. If you do, make sure you do handle any rejection.
 
       exit: -> @send "exit"
 
@@ -521,73 +530,62 @@ Clean-up at the end of the connection.
 Automatically called by the client and server.
 
       auto_cleanup: ->
-        @once 'freeswitch_disconnect_notice'
-        .then (res) =>
-          debug 'auto_cleanup: Received ESL disconnection notice', res
+        @once 'freeswitch_disconnect_notice', (res) =>
+          trace 'auto_cleanup: Received ESL disconnection notice', res
           switch res.headers['Content-Disposition']
             when 'linger'
-              debug 'Sending freeswitch_linger'
+              trace 'Sending freeswitch_linger'
               @emit 'freeswitch_linger'
             when 'disconnect'
-              debug 'Sending freeswitch_disconnect'
+              trace 'Sending freeswitch_disconnect'
               @emit 'freeswitch_disconnect'
             else # Header might be absent?
-              debug 'Sending freeswitch_disconnect'
+              trace 'Sending freeswitch_disconnect'
               @emit 'freeswitch_disconnect'
 
 ### Linger
-The default behavior in linger mode is to disconnect the call (which is roughly equivalent to not using linger mode).
 
-        @once 'freeswitch_linger'
-        .then ->
-          debug 'auto_cleanup/linger: exit'
-          @exit()
-          @emit 'cleanup_linger'
+In linger mode you may intercept the event `cleanup_linger` to do further processing. However you are responsible for calling `exit()`. If you do not do it, the calls will leak. (Make sure you also `catch` any errors on exit: `exit().catch(...)`.)
 
-Use `call.once("freeswitch_linger",...)` to capture the end of the call. In this case you are responsible for calling `call.exit()`. If you do not do it, the calls will leak.
+The default behavior in linger mode is to disconnect the socket after 4 seconds, giving you some time to capture events.
+
+        linger_delay = 4000
+
+        @once 'freeswitch_linger', ->
+          trace 'auto_cleanup/linger'
+          if @emit 'cleanup_linger'
+            debug 'auto_cleanup/linger: cleanup_linger processed, make sure you call exit()'
+          else
+            trace "auto_cleanup/linger: exit() in #{linger_delay}ms"
+            Promise.delay linger_delay
+            .bind this
+            .then ->
+              trace 'auto_cleanup/linger: exit()'
+              @exit()
+            .catch (error) ->
+              debug "auto_cleanup/linger: exit() error: #{error} (ignored)"
 
 ### Disconnect
 
-Normal behavior on disconnect is to end the call.  (However you may capture the `freeswitch_disconnect` event as well.)
+On disconnect (no linger) mode, you may intercept the event `cleanup_disconnect` to do further processing. However you are responsible for calling `end()` in order to close the socket.
 
-        @once 'freeswitch_disconnect'
-        .then ->
-          debug 'auto_cleanup/disconnect: end'
-          @end()
-          @emit 'cleanup_disconnect', this
+Normal behavior on disconnect is to close the socket with `end()`.
 
-        return
+        @once 'freeswitch_disconnect', ->
+          trace 'auto_cleanup/disconnect'
+          if @emit 'cleanup_disconnect', this
+            debug 'auto_cleanup/disconnect: cleanup_disconnect processed, make sure you call end()'
+          else
+            trace 'auto_cleanup/disconnect: end()'
+            @end()
 
-Queueing
-========
-
-Make the following methods queue-able.
-
-    queueable = ['api']
-
-    queueable.forEach (method) ->
-      FreeSwitchResponse.prototype["queue_#{method}"] = (args...) ->
-
-Add the function call.
-
-        instance = @queue.then =>
-          this[method].apply this, args
-
-Do not fail the queue if a given command fails.
-
-        @queue = instance.catch (error) =>
-          debug "queued #{method} failed", {error}
-
-Return the (uncaught) command so that the user can do error handling.
-
-        instance
-
-    null
+        return null
 
 Toolbox
 =======
 
     Promise = require 'bluebird'
-    util = require 'util'
+    assert = require 'assert'
     {EventEmitter} = require 'events'
     debug = (require 'debug') 'esl:response'
+    trace = (require 'debug') 'esl:response:trace'
