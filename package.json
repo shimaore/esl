@@ -31,6 +31,10 @@
     {
       "name": "James Criscuolo",
       "email": "james@onsip.com"
+    },
+    {
+      "name": "Guillermo López Leal",
+      "email": "willyaranda@gmail.com"
     }
   ],
   "main": "lib/esl.js",
