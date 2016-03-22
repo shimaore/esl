@@ -225,7 +225,7 @@ Use `bgapi` if you need to make sure responses are correct, since it provides th
         trace 'api', {command}
 
         if @closed
-          return @error {}, {when:'api on closed socket',command,args}
+          return @error {}, {when:'api on closed socket',command}
 
         @enqueue =>
           p = @once 'freeswitch_api_response'
@@ -262,7 +262,7 @@ Send an API command in the background. Wraps it inside a Promise.
         trace 'bgapi', {command}
 
         if @closed
-          return @error {}, {when:'bgapi on closed socket',command,args}
+          return @error {}, {when:'bgapi on closed socket',command}
 
         @send "bgapi #{command}"
         .then (res) =>
