@@ -253,9 +253,9 @@ Restricting events using `filter` is required so that `event_json` will only obt
 
             @filter Unique_ID, @uuid
           .then ->
-            @auto_cleanup()
             server.stats.handler ?= 0
             server.stats.handler++
+            @auto_cleanup()
 
           # .then -> @event_json 'CHANNEL_EXECUTE_COMPLETE'
           # .then -> @event_json 'BACKGROUND_JOB'
