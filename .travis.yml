@@ -5,4 +5,4 @@ sudo: required
 services:
 - docker
 before_install:
-  - docker pull shimaore/freeswitch:2.1.4
+  - docker pull shimaore/freeswitch:4.0.2
