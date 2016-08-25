@@ -4,7 +4,7 @@ IMG=esl-test-0001
 
 # Postmortem
 for t in client server; do
-  docker logs $IMG-$t > $IMG-$t.log;
+  docker logs $IMG-$t
 done
 for t in client server; do
   docker kill $IMG-$t;
