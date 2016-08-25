@@ -22,7 +22,6 @@
         <load module="mod_loopback"/>
         <load module="mod_tone_stream"/>
 
-        <load module="mod_dialplan_xml"/>
         <load module="mod_sofia"/>
       </modules>
     </configuration>
@@ -75,18 +74,6 @@
           <action application="answer"/>
           <action application="sleep" data="$1"/>
           <action application="hangup"/>
-        </condition>
-      </extension>
-      <extension name="automaton">
-        <condition field="destination_number" expression="^just-wait-(\d+)$">
-          <action application="sleep" data="$1"/>
-        </condition>
-      </extension>
-      <extension name="automaton">
-        <condition field="destination_number" expression="^wait-(\d+)-pre-answer$">
-          <action application="sleep" data="$1"/>
-          <action application="pre_answer"/>
-          <action application="sleep" data="9999"/>
         </condition>
       </extension>
       <extension name="automaton">

@@ -17,4 +17,4 @@ done
 echo "****** Ready *******"
 
 # Give FreeSwitch some time to settle
-sleep 10
+sleep 3
