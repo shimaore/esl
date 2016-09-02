@@ -54,49 +54,4 @@
 
   </section>
 
-  <section name="dialplan" description="Regex/XML Dialplan">
-
-    <context name="private">
-      <extension name="test">
-        <condition field="destination_number" expression="^server(\d+)$">
-          <action application="socket" data="127.0.0.1:$1 async full"/>
-        </condition>
-      </extension>
-      <extension name="test-503">
-        <condition field="destination_number" expression="^server-failed$">
-          <action application="set" data="socket_resume=true"/>
-          <action application="socket" data="127.0.0.1:3$1 async full"/>
-          <action application="respond" data="500 socket failed"/>
-        </condition>
-      </extension>
-      <extension name="automaton">
-        <condition field="destination_number" expression="^answer-wait-(\d+)$">
-          <action application="answer"/>
-          <action application="sleep" data="$1"/>
-          <action application="hangup"/>
-        </condition>
-      </extension>
-      <extension name="automaton">
-        <condition field="destination_number" expression="^wait-(\d+)-ring-ready$">
-          <action application="sleep" data="$1"/>
-          <action application="ring_ready"/>
-          <action application="sleep" data="9999"/>
-        </condition>
-      </extension>
-      <extension name="automaton">
-        <condition field="destination_number" expression="^wait-(\d+)-respond-(\d+)$">
-          <action application="sleep" data="$1"/>
-          <action application="respond" data="$2"/>
-          <action application="sleep" data="9999"/>
-        </condition>
-      </extension>
-      <extension name="lcr">
-        <condition field="destination_number" expression="^lcr(\d+)-\d+$">
-          <action application="socket" data="127.0.0.1:$1 async full"/>
-        </condition>
-      </extension>
-    </context>
-
-  </section>
-
 </document>

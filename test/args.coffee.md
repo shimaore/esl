@@ -7,6 +7,7 @@
         .api 'foo'
         .catch (error) ->
           done() if error.args.when is 'api on closed socket'
+        null
 
     describe 'bgapi', ->
       Response = require '../src/response'
@@ -17,3 +18,4 @@
         .bgapi 'foo'
         .catch (error) ->
           done() if error.args.when is 'bgapi on closed socket'
+        null
