@@ -292,6 +292,14 @@ Parsing of incoming messages is handled by the connection-listener.
           connectionListener @call
         super()
 
+      keepConnected: (args...) ->
+        connect = =>
+          @connect args...
+        @on 'close', (had_error) =>
+          if had_error
+            connect()
+        connect()
+
 The `client` function we provide wraps `FreeSwitchClient` in order to provide some defaults.
 The `handler` will be called in the context of the `FreeSwitchResponse`; the `options` are optional, but may include a `password`.
 
