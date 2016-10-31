@@ -253,9 +253,9 @@ Restricting events using `filter` is required so that `event_json` will only obt
 
             @filter Unique_ID, @uuid
           .then ->
-            @auto_cleanup()
             server.stats.handler ?= 0
             server.stats.handler++
+            @auto_cleanup()
 
           # .then -> @event_json 'CHANNEL_EXECUTE_COMPLETE'
           # .then -> @event_json 'BACKGROUND_JOB'
@@ -291,6 +291,14 @@ Parsing of incoming messages is handled by the connection-listener.
         @on 'connect', =>
           connectionListener @call
         super()
+
+      keepConnected: (args...) ->
+        connect = =>
+          @connect args...
+        @on 'close', (had_error) =>
+          if had_error
+            connect()
+        connect()
 
 The `client` function we provide wraps `FreeSwitchClient` in order to provide some defaults.
 The `handler` will be called in the context of the `FreeSwitchResponse`; the `options` are optional, but may include a `password`.

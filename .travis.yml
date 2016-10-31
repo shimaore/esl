@@ -1,8 +1,8 @@
 language: node_js
 node_js:
-  - "0.10"
-cache:
-  - apt
+  - "6"
+sudo: required
+services:
+- docker
 before_install:
-  - sudo apt-get update -qq
-  - sudo apt-get install -y docker.io
+  - docker pull shimaore/freeswitch:4.0.2
