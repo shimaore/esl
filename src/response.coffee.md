@@ -221,8 +221,8 @@ Send an API command, see [Mod commands](http://wiki.freeswitch.org/wiki/Mod_comm
 Returns a Promise that is fulfilled as soon as FreeSwitch sends a reply. Requests are queued and each request is matched with the first-coming response, since there is no way to match between requests and responses.
 Use `bgapi` if you need to make sure responses are correct, since it provides the proper semantices.
 
-      api: (command) ->
-        trace 'api', {command}
+      api: (command, args) ->
+        trace 'api', {command, args}
 
         if @closed
           return @error {}, {when:'api on closed socket',command}
@@ -258,8 +258,8 @@ bgapi
 
 Send an API command in the background. Wraps it inside a Promise.
 
-      bgapi: (command) ->
-        trace 'bgapi', {command}
+      bgapi: (command, args) ->
+        trace 'bgapi', {command, args}
 
         if @closed
           return @error {}, {when:'bgapi on closed socket',command}
