@@ -6,6 +6,8 @@ This module is actively maintained and used in production systems.
 Client Usage
 ------------
 
+[![Join the chat at https://gitter.im/nodejs-esl/Lobby](https://badges.gitter.im/nodejs-esl/Lobby.svg)](https://gitter.im/nodejs-esl/Lobby?utm_source=badge&utm_medium=badge&utm_campaign=pr-badge&utm_content=badge)
+
 The following code does the equivalent of `fs_cli -x`: it connects to the Event Socket, runs a single command, then disconnects.
 
 ```javascript
