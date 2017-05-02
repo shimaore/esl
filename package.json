@@ -44,18 +44,18 @@
     "lib/response.js"
   ],
   "dependencies": {
-    "bluebird": "^3.4.3",
-    "debug": "^2.2.0"
+    "bluebird": "^3.5.0",
+    "debug": "^2.6.6"
   },
   "devDependencies": {
     "chai": "^3.5.0",
-    "coffee-script": "^1.10.0",
+    "coffee-script": "^1.12.5",
     "docco": "^0.7.0",
-    "memdown": "^1.2.0",
-    "mocha": "^3.0.2",
-    "pouchdb": "^5.4.5",
+    "memdown": "^1.2.4",
+    "mocha": "^3.3.0",
+    "pouchdb": "^6.2.0",
     "seem": "^2.0.0",
-    "uuid": "^2.0.2"
+    "uuid": "^3.0.1"
   },
   "scripts": {
     "prepublish": "coffee -c -o lib/ src/* && docco src/*",
