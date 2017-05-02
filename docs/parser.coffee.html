@@ -68,6 +68,10 @@
             <div class="content"><div class='highlight'><pre>querystring = <span class="hljs-built_in">require</span> <span class="hljs-string">'querystring'</span>
 util = <span class="hljs-built_in">require</span> <span class="hljs-string">'util'</span>
 
+<span class="hljs-class"><span class="hljs-keyword">class</span> <span class="hljs-title">FreeSwitchParserError</span> <span class="hljs-keyword">extends</span> <span class="hljs-title">Error</span></span>
+  constructor: <span class="hljs-function"><span class="hljs-params">(@error,@buffer)</span> -&gt;</span>
+    <span class="hljs-keyword">super</span> JSON.stringify {error:@error,buffer:@buffer}
+
 <span class="hljs-built_in">module</span>.exports = <span class="hljs-class"><span class="hljs-keyword">class</span> <span class="hljs-title">FreeSwitchParser</span></span></pre></div></div>
             
         </li>
@@ -83,16 +87,16 @@ util = <span class="hljs-built_in">require</span> <span class="hljs-string">'uti
 
             </div>
             
-            <div class="content"><div class='highlight'><pre>  <span class="hljs-attribute">constructor</span>: <span class="hljs-function"><span class="hljs-params">(<span class="hljs-property">@socket</span>)</span> -&gt;</span>
-    <span class="hljs-property">@body_length</span> = <span class="hljs-number">0</span>
-    <span class="hljs-property">@buffer</span> = <span class="hljs-keyword">new</span> Buffer <span class="hljs-number">0</span>
-    <span class="hljs-property">@buffer_length</span> = <span class="hljs-number">0</span>
+            <div class="content"><div class='highlight'><pre>  constructor: <span class="hljs-function"><span class="hljs-params">(@socket)</span> -&gt;</span>
+    @body_length = <span class="hljs-number">0</span>
+    @buffer = <span class="hljs-keyword">new</span> Buffer <span class="hljs-number">0</span>
+    @buffer_length = <span class="hljs-number">0</span>
 
-    <span class="hljs-property">@socket</span>.<span class="hljs-literal">on</span> <span class="hljs-string">'data'</span>, <span class="hljs-function"><span class="hljs-params">(data)</span> =&gt;</span>
-      <span class="hljs-property">@on_data</span> data
+    @socket.<span class="hljs-literal">on</span> <span class="hljs-string">'data'</span>, <span class="hljs-function"><span class="hljs-params">(data)</span> =&gt;</span>
+      @on_data data
 
-    <span class="hljs-property">@socket</span>.<span class="hljs-literal">on</span> <span class="hljs-string">'end'</span>, <span class="hljs-function">=&gt;</span>
-      <span class="hljs-property">@on_end</span>()</pre></div></div>
+    @socket.<span class="hljs-literal">on</span> <span class="hljs-string">'end'</span>, <span class="hljs-function">=&gt;</span>
+      @on_end()</pre></div></div>
             
         </li>
         
@@ -107,7 +111,7 @@ util = <span class="hljs-built_in">require</span> <span class="hljs-string">'uti
 
             </div>
             
-            <div class="content"><div class='highlight'><pre>  <span class="hljs-attribute">capture_body</span>: <span class="hljs-function"><span class="hljs-params">(data)</span> -&gt;</span></pre></div></div>
+            <div class="content"><div class='highlight'><pre>  capture_body: <span class="hljs-function"><span class="hljs-params">(data)</span> -&gt;</span></pre></div></div>
             
         </li>
         
@@ -122,8 +126,8 @@ util = <span class="hljs-built_in">require</span> <span class="hljs-string">'uti
 
             </div>
             
-            <div class="content"><div class='highlight'><pre>    <span class="hljs-property">@buffer_length</span> += data.length
-    <span class="hljs-property">@buffer</span> = Buffer.concat [<span class="hljs-property">@buffer</span>, data], <span class="hljs-property">@buffer_length</span></pre></div></div>
+            <div class="content"><div class='highlight'><pre>    @buffer_length += data.length
+    @buffer = Buffer.concat [@buffer, data], @buffer_length</pre></div></div>
             
         </li>
         
@@ -138,7 +142,7 @@ util = <span class="hljs-built_in">require</span> <span class="hljs-string">'uti
 
             </div>
             
-            <div class="content"><div class='highlight'><pre>    <span class="hljs-keyword">if</span> <span class="hljs-property">@buffer_length</span> &lt; <span class="hljs-property">@body_length</span>
+            <div class="content"><div class='highlight'><pre>    <span class="hljs-keyword">if</span> @buffer_length &lt; @body_length
       <span class="hljs-keyword">return</span></pre></div></div>
             
         </li>
@@ -154,10 +158,10 @@ util = <span class="hljs-built_in">require</span> <span class="hljs-string">'uti
 
             </div>
             
-            <div class="content"><div class='highlight'><pre>    body = <span class="hljs-property">@buffer</span>.toString <span class="hljs-string">'utf8'</span>, <span class="hljs-number">0</span>, <span class="hljs-property">@body_length</span>
-    <span class="hljs-property">@buffer</span> = <span class="hljs-property">@buffer</span>.slice <span class="hljs-property">@body_length</span>
-    <span class="hljs-property">@buffer_length</span> -= <span class="hljs-property">@body_length</span>
-    <span class="hljs-property">@body_length</span> = <span class="hljs-number">0</span></pre></div></div>
+            <div class="content"><div class='highlight'><pre>    body = @buffer.toString <span class="hljs-string">'utf8'</span>, <span class="hljs-number">0</span>, @body_length
+    @buffer = @buffer.slice @body_length
+    @buffer_length -= @body_length
+    @body_length = <span class="hljs-number">0</span></pre></div></div>
             
         </li>
         
@@ -172,8 +176,8 @@ util = <span class="hljs-built_in">require</span> <span class="hljs-string">'uti
 
             </div>
             
-            <div class="content"><div class='highlight'><pre>    <span class="hljs-property">@process</span> <span class="hljs-property">@headers</span>, body
-    <span class="hljs-property">@headers</span> = {}</pre></div></div>
+            <div class="content"><div class='highlight'><pre>    @process @headers, body
+    @headers = {}</pre></div></div>
             
         </li>
         
@@ -188,7 +192,7 @@ util = <span class="hljs-built_in">require</span> <span class="hljs-string">'uti
 
             </div>
             
-            <div class="content"><div class='highlight'><pre>    <span class="hljs-property">@capture_headers</span> <span class="hljs-keyword">new</span> Buffer <span class="hljs-number">0</span></pre></div></div>
+            <div class="content"><div class='highlight'><pre>    @capture_headers <span class="hljs-keyword">new</span> Buffer <span class="hljs-number">0</span></pre></div></div>
             
         </li>
         
@@ -203,7 +207,7 @@ util = <span class="hljs-built_in">require</span> <span class="hljs-string">'uti
 
             </div>
             
-            <div class="content"><div class='highlight'><pre>  <span class="hljs-attribute">capture_headers</span>: <span class="hljs-function"><span class="hljs-params">(data)</span> -&gt;</span></pre></div></div>
+            <div class="content"><div class='highlight'><pre>  capture_headers: <span class="hljs-function"><span class="hljs-params">(data)</span> -&gt;</span></pre></div></div>
             
         </li>
         
@@ -218,8 +222,8 @@ util = <span class="hljs-built_in">require</span> <span class="hljs-string">'uti
 
             </div>
             
-            <div class="content"><div class='highlight'><pre>    <span class="hljs-property">@buffer_length</span> += data.length
-    <span class="hljs-property">@buffer</span> = Buffer.concat [<span class="hljs-property">@buffer</span>, data], <span class="hljs-property">@buffer_length</span></pre></div></div>
+            <div class="content"><div class='highlight'><pre>    @buffer_length += data.length
+    @buffer = Buffer.concat [@buffer, data], @buffer_length</pre></div></div>
             
         </li>
         
@@ -234,7 +238,7 @@ util = <span class="hljs-built_in">require</span> <span class="hljs-string">'uti
 
             </div>
             
-            <div class="content"><div class='highlight'><pre>    header_end = <span class="hljs-property">@buffer</span>.indexOf <span class="hljs-string">'\n\n'</span>
+            <div class="content"><div class='highlight'><pre>    header_end = @buffer.indexOf <span class="hljs-string">'\n\n'</span>
     <span class="hljs-keyword">if</span> header_end &lt; <span class="hljs-number">0</span>
       <span class="hljs-keyword">return</span></pre></div></div>
             
@@ -251,9 +255,9 @@ util = <span class="hljs-built_in">require</span> <span class="hljs-string">'uti
 
             </div>
             
-            <div class="content"><div class='highlight'><pre>    header_text = <span class="hljs-property">@buffer</span>.toString <span class="hljs-string">'utf8'</span>, <span class="hljs-number">0</span>, header_end
-    <span class="hljs-property">@buffer</span> = <span class="hljs-property">@buffer</span>.slice header_end+<span class="hljs-number">2</span>
-    <span class="hljs-property">@buffer_length</span> -= header_end+<span class="hljs-number">2</span></pre></div></div>
+            <div class="content"><div class='highlight'><pre>    header_text = @buffer.toString <span class="hljs-string">'utf8'</span>, <span class="hljs-number">0</span>, header_end
+    @buffer = @buffer.slice header_end+<span class="hljs-number">2</span>
+    @buffer_length -= header_end+<span class="hljs-number">2</span></pre></div></div>
             
         </li>
         
@@ -268,7 +272,7 @@ util = <span class="hljs-built_in">require</span> <span class="hljs-string">'uti
 
             </div>
             
-            <div class="content"><div class='highlight'><pre>    <span class="hljs-property">@headers</span> = parse_header_text header_text</pre></div></div>
+            <div class="content"><div class='highlight'><pre>    @headers = parse_header_text header_text</pre></div></div>
             
         </li>
         
@@ -283,8 +287,8 @@ util = <span class="hljs-built_in">require</span> <span class="hljs-string">'uti
 
             </div>
             
-            <div class="content"><div class='highlight'><pre>    <span class="hljs-keyword">if</span> <span class="hljs-property">@headers</span>[<span class="hljs-string">"Content-Length"</span>]
-      <span class="hljs-property">@body_length</span> = <span class="hljs-property">@headers</span>[<span class="hljs-string">"Content-Length"</span>]</pre></div></div>
+            <div class="content"><div class='highlight'><pre>    <span class="hljs-keyword">if</span> @headers[<span class="hljs-string">"Content-Length"</span>]
+      @body_length = @headers[<span class="hljs-string">"Content-Length"</span>]</pre></div></div>
             
         </li>
         
@@ -299,7 +303,7 @@ util = <span class="hljs-built_in">require</span> <span class="hljs-string">'uti
 
             </div>
             
-            <div class="content"><div class='highlight'><pre>      <span class="hljs-property">@capture_body</span> <span class="hljs-keyword">new</span> Buffer <span class="hljs-number">0</span>
+            <div class="content"><div class='highlight'><pre>      @capture_body <span class="hljs-keyword">new</span> Buffer <span class="hljs-number">0</span>
 
     <span class="hljs-keyword">else</span></pre></div></div>
             
@@ -316,8 +320,8 @@ util = <span class="hljs-built_in">require</span> <span class="hljs-string">'uti
 
             </div>
             
-            <div class="content"><div class='highlight'><pre>      <span class="hljs-property">@process</span> <span class="hljs-property">@headers</span>
-      <span class="hljs-property">@headers</span> = {}</pre></div></div>
+            <div class="content"><div class='highlight'><pre>      @process @headers
+      @headers = {}</pre></div></div>
             
         </li>
         
@@ -332,7 +336,7 @@ util = <span class="hljs-built_in">require</span> <span class="hljs-string">'uti
 
             </div>
             
-            <div class="content"><div class='highlight'><pre>      <span class="hljs-property">@capture_headers</span> <span class="hljs-keyword">new</span> Buffer <span class="hljs-number">0</span></pre></div></div>
+            <div class="content"><div class='highlight'><pre>      @capture_headers <span class="hljs-keyword">new</span> Buffer <span class="hljs-number">0</span></pre></div></div>
             
         </li>
         
@@ -347,7 +351,7 @@ util = <span class="hljs-built_in">require</span> <span class="hljs-string">'uti
 
             </div>
             
-            <div class="content"><div class='highlight'><pre>  <span class="hljs-attribute">on_data</span>: <span class="hljs-function"><span class="hljs-params">(data)</span> -&gt;</span></pre></div></div>
+            <div class="content"><div class='highlight'><pre>  on_data: <span class="hljs-function"><span class="hljs-params">(data)</span> -&gt;</span></pre></div></div>
             
         </li>
         
@@ -362,10 +366,10 @@ util = <span class="hljs-built_in">require</span> <span class="hljs-string">'uti
 
             </div>
             
-            <div class="content"><div class='highlight'><pre>    <span class="hljs-keyword">if</span> <span class="hljs-property">@body_length</span> &gt; <span class="hljs-number">0</span>
-      <span class="hljs-keyword">return</span> <span class="hljs-property">@capture_body</span> data
+            <div class="content"><div class='highlight'><pre>    <span class="hljs-keyword">if</span> @body_length &gt; <span class="hljs-number">0</span>
+      <span class="hljs-keyword">return</span> @capture_body data
     <span class="hljs-keyword">else</span>
-      <span class="hljs-keyword">return</span> <span class="hljs-property">@capture_headers</span> data</pre></div></div>
+      <span class="hljs-keyword">return</span> @capture_headers data</pre></div></div>
             
         </li>
         
@@ -380,9 +384,9 @@ util = <span class="hljs-built_in">require</span> <span class="hljs-string">'uti
 
             </div>
             
-            <div class="content"><div class='highlight'><pre>  <span class="hljs-attribute">on_end</span>: <span class="hljs-function"><span class="hljs-params">()</span> -&gt;</span>
-    <span class="hljs-keyword">if</span> <span class="hljs-property">@buffer_length</span> &gt; <span class="hljs-number">0</span>
-      <span class="hljs-property">@socket</span>.emit <span class="hljs-string">'error'</span>, <span class="hljs-keyword">new</span> Error util.inspect <span class="hljs-attribute">error</span>:<span class="hljs-string">'Buffer is not empty at end of stream'</span>, <span class="hljs-attribute">buffer</span>:<span class="hljs-property">@buffer</span></pre></div></div>
+            <div class="content"><div class='highlight'><pre>  on_end: <span class="hljs-function"><span class="hljs-params">()</span> -&gt;</span>
+    <span class="hljs-keyword">if</span> @buffer_length &gt; <span class="hljs-number">0</span>
+      @socket.emit <span class="hljs-string">'error'</span>, <span class="hljs-keyword">new</span> FreeSwitchParserError <span class="hljs-string">'Buffer is not empty at end of stream'</span>, @buffer</pre></div></div>
             
         </li>
         
