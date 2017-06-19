@@ -733,6 +733,8 @@ The call handler will receive a <code>FreeSwitchResponse</code> object, <code>op
   report ?= <span class="hljs-function"><span class="hljs-params">(error)</span> -&gt;</span>
     debug <span class="hljs-string">"Server: <span class="hljs-subst">#{error}</span>"</span>
 
+  options.all_events ?= <span class="hljs-literal">true</span>
+
   assert.ok handler?, <span class="hljs-string">"server handler is required"</span>
   assert.strictEqual <span class="hljs-keyword">typeof</span> handler, <span class="hljs-string">'function'</span>, <span class="hljs-string">"server handler must be a function"</span>
 
@@ -791,36 +793,12 @@ The call handler will receive a <code>FreeSwitchResponse</code> object, <code>op
       .<span class="hljs-keyword">then</span> -&gt;
         server.stats.handler ?= <span class="hljs-number">0</span>
         server.stats.handler++
-        @auto_cleanup()</pre></div></div>
-            
-        </li>
-        
-        
-        <li id="section-47">
-            <div class="annotation">
-              
-              <div class="pilwrap ">
-                <a class="pilcrow" href="#section-47">&#182;</a>
-              </div>
-              <p>.then -&gt; @event_json ‘CHANNEL_EXECUTE_COMPLETE’
-.then -&gt; @event_json ‘BACKGROUND_JOB’</p>
-
-            </div>
-            
-        </li>
-        
-        
-        <li id="section-48">
-            <div class="annotation">
-              
-              <div class="pilwrap ">
-                <a class="pilcrow" href="#section-48">&#182;</a>
-              </div>
-              <p>Subscribing to <code>ALL</code> is kept for backward compatibility.</p>
-
-            </div>
-            
-            <div class="content"><div class='highlight'><pre>      .<span class="hljs-keyword">then</span> -&gt; @event_json <span class="hljs-string">'ALL'</span>
+        @auto_cleanup()
+      .<span class="hljs-keyword">then</span> -&gt;
+        <span class="hljs-keyword">if</span> options.all_events
+          @event_json <span class="hljs-string">'ALL'</span>
+        <span class="hljs-keyword">else</span>
+          @event_json <span class="hljs-string">'CHANNEL_EXECUTE_COMPLETE'</span>, <span class="hljs-string">'BACKGROUND_JOB'</span>
       .<span class="hljs-keyword">then</span> -&gt; handler.apply <span class="hljs-keyword">this</span>, arguments
       .<span class="hljs-keyword">catch</span> -&gt; report.apply <span class="hljs-keyword">this</span>, arguments
 
@@ -833,11 +811,11 @@ The call handler will receive a <code>FreeSwitchResponse</code> object, <code>op
         </li>
         
         
-        <li id="section-49">
+        <li id="section-47">
             <div class="annotation">
               
               <div class="pilwrap ">
-                <a class="pilcrow" href="#section-49">&#182;</a>
+                <a class="pilcrow" href="#section-47">&#182;</a>
               </div>
               <h1 id="client">Client</h1>
 
@@ -846,11 +824,11 @@ The call handler will receive a <code>FreeSwitchResponse</code> object, <code>op
         </li>
         
         
-        <li id="section-50">
+        <li id="section-48">
             <div class="annotation">
               
               <div class="pilwrap ">
-                <a class="pilcrow" href="#section-50">&#182;</a>
+                <a class="pilcrow" href="#section-48">&#182;</a>
               </div>
               <p>Client mode is used to place new calls or take over existing calls.</p>
 <p>We inherit from the <code>Socket</code> class of Node.js’ <code>net</code> module. This way any method from <code>Socket</code> may be re-used (although in most cases only <code>connect</code> is used).</p>
@@ -863,11 +841,11 @@ The call handler will receive a <code>FreeSwitchResponse</code> object, <code>op
         </li>
         
         
-        <li id="section-51">
+        <li id="section-49">
             <div class="annotation">
               
               <div class="pilwrap ">
-                <a class="pilcrow" href="#section-51">&#182;</a>
+                <a class="pilcrow" href="#section-49">&#182;</a>
               </div>
               <p>Contrarily to the server which will handle multiple socket connections over its lifetime, a client only handles one socket, so only one <code>FreeSwitchResponse</code> object is needed as well.</p>
 
@@ -878,11 +856,11 @@ The call handler will receive a <code>FreeSwitchResponse</code> object, <code>op
         </li>
         
         
-        <li id="section-52">
+        <li id="section-50">
             <div class="annotation">
               
               <div class="pilwrap ">
-                <a class="pilcrow" href="#section-52">&#182;</a>
+                <a class="pilcrow" href="#section-50">&#182;</a>
               </div>
               <p>Parsing of incoming messages is handled by the connection-listener.</p>
 
@@ -903,11 +881,11 @@ The call handler will receive a <code>FreeSwitchResponse</code> object, <code>op
         </li>
         
         
-        <li id="section-53">
+        <li id="section-51">
             <div class="annotation">
               
               <div class="pilwrap ">
-                <a class="pilcrow" href="#section-53">&#182;</a>
+                <a class="pilcrow" href="#section-51">&#182;</a>
               </div>
               <p>The <code>client</code> function we provide wraps <code>FreeSwitchClient</code> in order to provide some defaults.
 The <code>handler</code> will be called in the context of the <code>FreeSwitchResponse</code>; the <code>options</code> are optional, but may include a <code>password</code>.</p>
@@ -927,11 +905,11 @@ exports.client = <span class="hljs-function"><span class="hljs-params">(options 
         </li>
         
         
-        <li id="section-54">
+        <li id="section-52">
             <div class="annotation">
               
               <div class="pilwrap ">
-                <a class="pilcrow" href="#section-54">&#182;</a>
+                <a class="pilcrow" href="#section-52">&#182;</a>
               </div>
               <p>If neither <code>options</code> not <code>password</code> is provided, the default password is assumed.</p>
 
@@ -947,11 +925,11 @@ exports.client = <span class="hljs-function"><span class="hljs-params">(options 
         </li>
         
         
-        <li id="section-55">
+        <li id="section-53">
             <div class="annotation">
               
               <div class="pilwrap ">
-                <a class="pilcrow" href="#section-55">&#182;</a>
+                <a class="pilcrow" href="#section-53">&#182;</a>
               </div>
               <p>Normally when the client connects, FreeSwitch will first send us an authentication request. We use it to trigger the remainder of the stack.</p>
 
@@ -961,8 +939,7 @@ exports.client = <span class="hljs-function"><span class="hljs-params">(options 
   .<span class="hljs-keyword">then</span> -&gt;
     @auth options.password
   .<span class="hljs-keyword">then</span> -&gt; @auto_cleanup()
-  .<span class="hljs-keyword">then</span> -&gt; @event_json <span class="hljs-string">'CHANNEL_EXECUTE_COMPLETE'</span>
-  .<span class="hljs-keyword">then</span> -&gt; @event_json <span class="hljs-string">'BACKGROUND_JOB'</span>
+  .<span class="hljs-keyword">then</span> -&gt; @event_json <span class="hljs-string">'CHANNEL_EXECUTE_COMPLETE'</span>, <span class="hljs-string">'BACKGROUND_JOB'</span>
   .<span class="hljs-keyword">then</span> -&gt; handler.apply <span class="hljs-keyword">this</span>, arguments
   .<span class="hljs-keyword">catch</span> -&gt; report.apply <span class="hljs-keyword">this</span>, arguments
 
@@ -972,11 +949,11 @@ exports.client = <span class="hljs-function"><span class="hljs-params">(options 
         </li>
         
         
-        <li id="section-56">
+        <li id="section-54">
             <div class="annotation">
               
               <div class="pilwrap ">
-                <a class="pilcrow" href="#section-56">&#182;</a>
+                <a class="pilcrow" href="#section-54">&#182;</a>
               </div>
               <p>Please note that the client is not started with <code>event_json ALL</code> since by default this would mean obtaining all events from FreeSwitch. Instead, we only monitor the events we need to be notified for (commands and <code>bgapi</code> responses).
 You must manually run <code>@event_json</code> and an optional <code>@filter</code> command.</p>
@@ -987,11 +964,11 @@ You must manually run <code>@event_json</code> and an optional <code>@filter</co
         </li>
         
         
-        <li id="section-57">
+        <li id="section-55">
             <div class="annotation">
               
               <div class="pilwrap ">
-                <a class="pilcrow" href="#section-57">&#182;</a>
+                <a class="pilcrow" href="#section-55">&#182;</a>
               </div>
               
             </div>
