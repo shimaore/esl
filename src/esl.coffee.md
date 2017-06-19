@@ -230,6 +230,8 @@ The call handler will receive a `FreeSwitchResponse` object, `options` are optio
       report ?= (error) ->
         debug "Server: #{error}"
 
+      options.all_events ?= true
+
       assert.ok handler?, "server handler is required"
       assert.strictEqual typeof handler, 'function', "server handler must be a function"
 
@@ -256,13 +258,11 @@ Restricting events using `filter` is required so that `event_json` will only obt
             server.stats.handler ?= 0
             server.stats.handler++
             @auto_cleanup()
-
-          # .then -> @event_json 'CHANNEL_EXECUTE_COMPLETE'
-          # .then -> @event_json 'BACKGROUND_JOB'
-
-Subscribing to `ALL` is kept for backward compatibility.
-
-          .then -> @event_json 'ALL'
+          .then ->
+            if options.all_events
+              @event_json 'ALL'
+            else
+              @event_json 'CHANNEL_EXECUTE_COMPLETE', 'BACKGROUND_JOB'
           .then -> handler.apply this, arguments
           .catch -> report.apply this, arguments
 
@@ -328,8 +328,7 @@ Normally when the client connects, FreeSwitch will first send us an authenticati
       .then ->
         @auth options.password
       .then -> @auto_cleanup()
-      .then -> @event_json 'CHANNEL_EXECUTE_COMPLETE'
-      .then -> @event_json 'BACKGROUND_JOB'
+      .then -> @event_json 'CHANNEL_EXECUTE_COMPLETE', 'BACKGROUND_JOB'
       .then -> handler.apply this, arguments
       .catch -> report.apply this, arguments
 
