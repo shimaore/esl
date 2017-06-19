@@ -19,24 +19,30 @@ Load
 Server
 ======
 
-    FS.server(handler,report).listen(port)
+A Node.js server to handle Event Socket outbound connections.
+
+    FS.server([options,]handler[,report]).listen(port)
 
 The `handler` is required; it is called once for every connection from FreeSwitch (i.e. once for each call). A filter is set up so that the handler only receives events pertaining to the call it handles, and cleanup procedures are automatically called at the end of the connection.
 
-`report(Error)` is called when the handler fails for any reason. This prevents the server from crashing if the handler crashes. It is optional.
+The  `options` object is optional, and may contain:
+- `report(Error)`, a function called when the handler fails for any reason. This prevents the server from crashing if the handler crashes. It is optional, and may be supplied as the third argument to `.server`. It defaults to using the `debug` module to log the handler's errors.
+- `all_events`, a boolean indicating whether the server should subscribe to all events (the default, backward-compatible behavior) or not (`false`). In the later case you must subscribe to events in the handler using `.event_json()`.
 
 The value returned by `FS.server()` is a [net.Server](https://nodejs.org/api/net.html#net_class_net_server), that's why you can (for example) call `.listen()` on it.
 
 Client
 ======
 
-    FS.client(options,handler,report).connect(port,host)
+A Node.js client to connect to inbound Event Socket.
 
-The only option available is `.password`, which defaults to `ClueCon`. The `options` object is optional.
+    FS.client([options,]handler[,report]).connect(port,host)
 
 The `handler` is required; it is called after authentication with FreeSwitch is successful. Cleanup procedures are automatically called at the end of the connection.
 
-`report(Error)` is called when the handler fails for any reason.
+The  `options` object is optional, and may contain:
+- `report(Error)`, a function called when the handler fails for any reason. It is optional, and may be supplied as the third argument to `.client`. It defaults to using the `debug` module to log the handler's errors.
+- `password` (string), a password to authenticate with the FreeSwitch server (defaults to `FS.default_password`, which itself defaults to `ClueCon`).
 
 The value returned by `FS.client()` is a [net.Socket](https://nodejs.org/api/net.html#net_class_net_socket), that's why you can call `.connect()` on it.
 
@@ -105,10 +111,16 @@ socket
 
 The original socket (client socket or server's call socket).
 
+    this.socket.on('error', function(error) {
+      console.error("The socket had a boo-boo. Better restart.")
+    })
+
 end
 ---
 
 Closes the socket. A shortcut to `this.socket.end()`.
+
+    this.end() // disconnect from FreeSwitch
 
 Events
 ======
@@ -118,11 +130,12 @@ on
 
 Receives events from the parser.
 
+    this.event_json('DMTF'); // actually returns a Promise
     this.on('DTMF',function(o) {
       var headers = o.headers;
       var body = o.body;
       var dtmf = o.body['DTMF-Digit']
-    }
+    })
 
 once
 ----
