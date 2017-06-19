@@ -129,7 +129,7 @@ Please use [GitHub issues](https://github.com/shimaore/esl/issues).
 Client Notes
 ------------
 
-Note: Use `call.event_json 'HEARTBEAT'` to start receiving event notifications.
+Note: Use `call.event_json('CHANNEL_HANGUP_COMPLETE','DTMF')` to start receiving event notifications.
 
 Server Notes
 ------------
@@ -160,9 +160,11 @@ var call_handler = function() {
   this.on('SOME_MESSAGE', function(call) {
     util.log('Got Some Message');
   });
+  // Remember to accept the messages since we're using `all_events: false` below.
+  this.event_json('CHANNEL_ANSWER','CHANNEL_HANGUP','CHANNEL_HANGUP_COMPLETE','SOME_MESSAGE');
 };
 
-var server = esl.server(call_handler)
+var server = esl.server({all_events:false},call_handler)
 server.listen(3232);
 ```
 
@@ -171,9 +173,3 @@ Alternative
 
 The present module should be more convenient if you've already coded for Node.js and are used to promises and events.
 If you are coming from the world of FreeSwitch and are used to the Event Socket Library API, you might want to try [node-esl](https://github.com/englercj/node-esl).
-
-Projects using this module
---------------------------
-
-* [tough-rate](https://github.com/shimaore/tough-rate) is a dynamic LCR engine for FreeSwitch that uses a middleware stack to process calls.
-* [useful-wind](https://github.com/shimaore/useful-wind) is a middleware-based framework for FreeSwitch call-handling. (Think of it as ExpressJS for FreeSwitch.)
