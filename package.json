@@ -45,26 +45,26 @@
   ],
   "dependencies": {
     "bluebird": "^3.5.0",
-    "debug": "^2.6.6"
+    "debug": "^3.0.0"
   },
   "devDependencies": {
     "chai": "^3.5.0",
-    "coffee-script": "^1.12.5",
+    "coffee-script": "^1.12.7",
     "docco": "^0.7.0",
     "memdown": "^1.2.4",
-    "mocha": "^3.3.0",
-    "pouchdb": "^6.2.0",
+    "mocha": "^3.5.0",
+    "pouchdb": "^6.3.4",
     "seem": "^2.0.0",
-    "uuid": "^3.0.1"
+    "uuid": "^3.1.0"
   },
   "scripts": {
-    "prepublish": "coffee -c -o lib/ src/* && docco src/*",
+    "prepublish": "coffee -c -o lib/ src/*.coffee.md && docco src/*",
     "pretest": "npm install",
     "test": "(cd test && ./setup.sh) && DEBUG='esl:test:*' mocha && (cd test && ./cleanup.sh; exit 0)",
     "clean": "rm -rf cov/ lib/ routes/ node_modules/ test/*.log"
   },
   "publishConfig": {
-    "tag": "latest"
+    "tag": "development"
   },
   "ok": true
 }
