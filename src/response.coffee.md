@@ -97,15 +97,12 @@ this.once('CHANNEL_COMPLETE').then(save_cdr).then(stop_recording);
         trace 'create_once', event
         unless @__ev?
           return @error {}, {when:'once on closed socket',event}
-        p = new Promise (resolve,reject) =>
-          try
-            @__ev.once event, (args...) =>
-              trace 'once', event, data:args[0]
-              resolve args...
-              return
-            null
-          catch exception
-            reject exception
+        p = new Promise (resolve) =>
+          @__ev?.once event, (args...) ->
+            trace 'once', event, data:args[0]
+            resolve args...
+            return
+          null
         p = p.bind this
 
 In some cases the event might have been emitted before we are ready to receive it.
