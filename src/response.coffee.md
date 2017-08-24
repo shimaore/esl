@@ -69,10 +69,10 @@ emit
 
 A single wrapper for EventEmitter.emit().
 
-      emit: ->
-        trace 'emit', arguments[0], headers:arguments[1]?.headers, body:arguments[1]?.body
-        outcome = @ev.emit arguments...
-        trace emit:arguments[0], had_listeners:outcome
+      emit: (args...) ->
+        trace 'emit', args[0], headers:args[1]?.headers, body:args[1]?.body
+        outcome = @ev.emit args...
+        trace emit:args[0], had_listeners:outcome
         outcome
 
 once
@@ -88,9 +88,9 @@ this.once('CHANNEL_COMPLETE').then(save_cdr).then(stop_recording);
         trace 'create_once', event
         p = new Promise (resolve,reject) =>
           try
-            @ev.once event, =>
-              trace 'once', event, data:arguments[0]
-              resolve arguments...
+            @ev.once event, (args...) =>
+              trace 'once', event, data:args[0]
+              resolve args...
               return
             null
           catch exception
@@ -126,9 +126,9 @@ A simple wrapper for EventEmitter.on().
 
       on: (event,callback) ->
         trace 'create_on', event
-        @ev.on event, =>
-          trace 'on', event, data:arguments[0]
-          callback.apply this, arguments
+        @ev.on event, (args...) =>
+          trace 'on', event, data:args[0]
+          callback.apply this, args
           return
 
 Low-level sending
