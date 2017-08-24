@@ -15,7 +15,7 @@ The `FreeSwitchResponse` is bound to a single socket (dual-stream). For outbound
 
 The object provides `on`, `once`, and `emit` methods, which rely on an [`EventEmitter`](http://nodejs.org/api/events.html#events_class_events_eventemitter) object for dispatch.
 
-        @ev = new EventEmitter()
+        @__ev = new EventEmitter()
 
 The object also provides a queue for operations which need to be submitted one after another on a given socket because FreeSwitch does not provide ways to map event socket requests and responses in the general case.
 
@@ -29,6 +29,12 @@ We also must track connection close in order to prevent writing to a closed sock
           trace 'Socket closed'
           @emit 'socket-close'
 
+After the socket-close event is emitted this object is no longer usable.
+
+          @__ev?.removeAllListeners()
+          ## @__ev = null
+          @__queue = null
+
 Default handler for `error` events to prevent `Unhandled 'error' event` reports.
 
         @socket.on 'error', (err) =>
@@ -40,7 +46,7 @@ Default handler for `error` events to prevent `Unhandled 'error' event` reports.
         null
 
       error: (res,data) ->
-        debug "error", {res,data}
+        debug "error: new FreeSwitchError", {res,data}
         Promise
           .reject new FreeSwitchError res, data
           .bind this
@@ -52,6 +58,9 @@ Enqueue a function that returns a Promise.
 The function is only called when all previously enqueued functions-that-return-Promises are completed and their respective Promises fulfilled or rejected.
 
       enqueue: (f) ->
+        if not @__queue?
+          return @error {}, {when:'enqueue on closed socket'}
+
         new Promise (resolve,reject) =>
           fulfilled = (p) -> resolve p
           rejected = (e) -> reject e
@@ -71,7 +80,7 @@ A single wrapper for EventEmitter.emit().
 
       emit: (args...) ->
         trace 'emit', args[0], headers:args[1]?.headers, body:args[1]?.body
-        outcome = @ev.emit args...
+        outcome = @__ev?.emit args...
         trace emit:args[0], had_listeners:outcome
         outcome
 
@@ -86,9 +95,11 @@ this.once('CHANNEL_COMPLETE').then(save_cdr).then(stop_recording);
 
       once: (event,cb) ->
         trace 'create_once', event
+        unless @__ev?
+          return @error {}, {when:'once on closed socket',event}
         p = new Promise (resolve,reject) =>
           try
-            @ev.once event, (args...) =>
+            @__ev.once event, (args...) =>
               trace 'once', event, data:args[0]
               resolve args...
               return
@@ -126,10 +137,14 @@ A simple wrapper for EventEmitter.on().
 
       on: (event,callback) ->
         trace 'create_on', event
-        @ev.on event, (args...) =>
+        @__ev?.on event, (args...) =>
           trace 'on', event, data:args[0]
           callback.apply this, args
           return
+
+      removeListener: (event,callback) ->
+        trace 'removeListener', event
+        @__ev?.removeListener event, callback
 
 Low-level sending
 =================
@@ -209,7 +224,7 @@ Closes the socket.
         trace 'end'
         @closed = true
         @socket.end()
-        this
+        null
 
 Channel-level commands
 ======================
