@@ -14,7 +14,7 @@ The parser will be the one receiving the actual data from the socket. We will pr
 
       parser = new FreeSwitchParser call.socket
 
-Make the command responses somewhat unique. This is required since FreeSwitch doesn't provide us a way to match response with requests.
+Make the command responses somewhat unique. This is required since FreeSwitch doesn't provide us a way to match responses with requests.
 
       call.on 'CHANNEL_EXECUTE_COMPLETE', (res) ->
         application = res.body['Application']
@@ -29,6 +29,7 @@ Make the command responses somewhat unique. This is required since FreeSwitch do
         call.emit_later "BACKGROUND_JOB #{job_uuid}", {body:res.body._body}
 
 The parser is responsible for de-framing messages coming from FreeSwitch and splitting it into headers and a body.
+We then process those in order to generate higher-level events.
 
       parser.process = (headers,body) ->
 
@@ -73,6 +74,7 @@ Apparently a bug in the response to `connect` causes FreeSwitch to send the head
               for n in ['Content-Type','Reply-Text','Socket-Mode','Control']
                 headers[n] = body[n]
                 delete body[n]
+
             call.stats.command_reply ?= 0
             call.stats.command_reply++
 
@@ -82,6 +84,9 @@ text/event-json
 A generic event with a JSON body. We map it to its own Event-Name.
 
           when 'text/event-json'
+            call.stats.events ?= 0
+            call.stats.events++
+
             try
 
 Strip control characters that might be emitted by FreeSwitch.
@@ -97,6 +102,7 @@ In case of error report it as an error.
             catch exception
               call.stats.json_parse_errors ?= 0
               call.stats.json_parse_errors++
+
               call.socket.emit 'error', when:'JSON error', error:exception, body:body
               return
 
@@ -107,7 +113,7 @@ Otherwise trigger the proper event.
 text/event-plain
 ----------------
 
-Same a `text/event-json` except the body is encoded using plain text. Either way the module provides you with a parsed body (a hash/Object).
+Same as `text/event-json` except the body is encoded using plain text. Either way the module provides you with a parsed body (a hash/Object).
 
           when 'text/event-plain'
             body = parse_header_text(body)
