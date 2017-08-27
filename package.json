@@ -45,15 +45,16 @@
   ],
   "dependencies": {
     "bluebird": "^3.5.0",
-    "debug": "^3.0.0"
+    "debug": "^3.0.1"
   },
   "devDependencies": {
-    "chai": "^3.5.0",
+    "chai": "^4.1.1",
     "coffee-script": "^1.12.7",
     "docco": "^0.7.0",
     "memdown": "^1.2.4",
     "mocha": "^3.5.0",
-    "pouchdb": "^6.3.4",
+    "pouchdb-core": "^6.3.4",
+    "pouchdb-adapter-memory": "^6.3.4",
     "seem": "^2.0.0",
     "uuid": "^3.1.0"
   },
