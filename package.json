@@ -1,6 +1,6 @@
 {
   "name": "esl",
-  "version": "6.0.0-0",
+  "version": "6.0.0",
   "description": "Client and Server for FreeSwitch Event System",
   "keywords": [
     "freeswitch",
@@ -66,7 +66,7 @@
     "clean": "rm -rf cov/ lib/ routes/ node_modules/ test/*.log"
   },
   "publishConfig": {
-    "tag": "development"
+    "tag": "latest"
   },
   "ok": true
 }
