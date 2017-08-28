@@ -1,6 +1,6 @@
 {
   "name": "esl",
-  "version": "6.0.0",
+  "version": "6.0.1",
   "description": "Client and Server for FreeSwitch Event System",
   "keywords": [
     "freeswitch",
@@ -53,8 +53,8 @@
     "docco": "^0.7.0",
     "memdown": "^1.2.4",
     "mocha": "^3.5.0",
-    "pouchdb-core": "^6.3.4",
     "pouchdb-adapter-memory": "^6.3.4",
+    "pouchdb-core": "^6.3.4",
     "seem": "^2.0.0",
     "uuid": "^3.1.0"
   },
