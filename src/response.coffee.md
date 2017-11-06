@@ -4,6 +4,7 @@ Response and associated API
     class FreeSwitchError extends Error
       constructor: (@res,@args) ->
         super JSON.stringify @args
+        return
 
     module.exports = class FreeSwitchResponse
 
@@ -15,7 +16,7 @@ The `FreeSwitchResponse` is bound to a single socket (dual-stream). For outbound
 
 The object provides `on`, `once`, and `emit` methods, which rely on an [`EventEmitter`](http://nodejs.org/api/events.html#events_class_events_eventemitter) object for dispatch.
 
-        @ev = new EventEmitter()
+        @__ev = new EventEmitter()
 
 The object also provides a queue for operations which need to be submitted one after another on a given socket because FreeSwitch does not provide ways to map event socket requests and responses in the general case.
 
@@ -24,23 +25,32 @@ The object also provides a queue for operations which need to be submitted one a
 We also must track connection close in order to prevent writing to a closed socket.
 
         @closed = false
-        @socket.on 'close', =>
+        @socket.once 'close', =>
           @closed = true
           trace 'Socket closed'
           @emit 'socket-close'
+
+After the socket-close event is emitted this object is no longer usable.
+
+          @__ev?.removeAllListeners()
+          ## @__ev = null
+          @__queue = null
+          @__later = null
+          return
 
 Default handler for `error` events to prevent `Unhandled 'error' event` reports.
 
         @socket.on 'error', (err) =>
           debug 'Socket Error', {err}
           @emit 'socket-error', err
+          return
 
         @__later = {}
 
         null
 
       error: (res,data) ->
-        debug "error", {res,data}
+        debug "error: new FreeSwitchError", {res,data}
         Promise
           .reject new FreeSwitchError res, data
           .bind this
@@ -52,6 +62,9 @@ Enqueue a function that returns a Promise.
 The function is only called when all previously enqueued functions-that-return-Promises are completed and their respective Promises fulfilled or rejected.
 
       enqueue: (f) ->
+        if not @__queue?
+          return @error {}, {when:'enqueue on closed socket'}
+
         new Promise (resolve,reject) =>
           fulfilled = (p) -> resolve p
           rejected = (e) -> reject e
@@ -69,10 +82,10 @@ emit
 
 A single wrapper for EventEmitter.emit().
 
-      emit: ->
-        trace 'emit', arguments[0], headers:arguments[1]?.headers, body:arguments[1]?.body
-        outcome = @ev.emit arguments...
-        trace emit:arguments[0], had_listeners:outcome
+      emit: (args...) ->
+        trace 'emit', args[0], headers:args[1]?.headers, body:args[1]?.body
+        outcome = @__ev?.emit args...
+        trace emit:args[0], had_listeners:outcome
         outcome
 
 once
@@ -86,21 +99,20 @@ this.once('CHANNEL_COMPLETE').then(save_cdr).then(stop_recording);
 
       once: (event,cb) ->
         trace 'create_once', event
-        p = new Promise (resolve,reject) =>
-          try
-            @ev.once event, =>
-              trace 'once', event, data:arguments[0]
-              resolve arguments...
-              return
-            null
-          catch exception
-            reject exception
+        unless @__ev?
+          return @error {}, {when:'once on closed socket',event}
+        p = new Promise (resolve) =>
+          @__ev?.once event, (args...) ->
+            trace 'once', event, data:args[0]
+            resolve args...
+            return
+          null
         p = p.bind this
 
 In some cases the event might have been emitted before we are ready to receive it.
 In that case we store the data in `@__later` so that we can emit the event when the recipient is ready.
 
-        if event of @__later
+        if @__later? and event of @__later
           @emit event, @__later[event]
           delete @__later[event]
 
@@ -116,7 +128,7 @@ This is used for events that might trigger before we set the `once` receiver.
 
       emit_later: (event,data) ->
         trace 'emit_later', {event, data}
-        if not @emit event, data
+        if @__later? and not @emit event, data
           @__later[event] = data
 
 on
@@ -126,10 +138,16 @@ A simple wrapper for EventEmitter.on().
 
       on: (event,callback) ->
         trace 'create_on', event
-        @ev.on event, =>
-          trace 'on', event, data:arguments[0]
-          callback.apply this, arguments
+        @__ev?.on event, (args...) =>
+          trace 'on', event, data:args[0]
+          callback.apply this, args
           return
+        return
+
+      removeListener: (event,callback) ->
+        trace 'removeListener', event
+        @__ev?.removeListener event, callback
+        return
 
 Low-level sending
 =================
@@ -209,7 +227,7 @@ Closes the socket.
         trace 'end'
         @closed = true
         @socket.end()
-        this
+        null
 
 Channel-level commands
 ======================
@@ -530,7 +548,8 @@ Clean-up at the end of the connection.
 Automatically called by the client and server.
 
       auto_cleanup: ->
-        @once 'freeswitch_disconnect_notice', (res) =>
+
+        @once 'freeswitch_disconnect_notice', (res) ->
           trace 'auto_cleanup: Received ESL disconnection notice', res
           switch res.headers['Content-Disposition']
             when 'linger'
@@ -542,6 +561,7 @@ Automatically called by the client and server.
             else # Header might be absent?
               trace 'Sending freeswitch_disconnect'
               @emit 'freeswitch_disconnect'
+          return
 
 ### Linger
 
@@ -557,13 +577,12 @@ The default behavior in linger mode is to disconnect the socket after 4 seconds,
             debug 'auto_cleanup/linger: cleanup_linger processed, make sure you call exit()'
           else
             trace "auto_cleanup/linger: exit() in #{linger_delay}ms"
-            Promise.delay linger_delay
-            .bind this
-            .then ->
+            setTimeout =>
               trace 'auto_cleanup/linger: exit()'
-              @exit()
-            .catch (error) ->
-              debug "auto_cleanup/linger: exit() error: #{error} (ignored)"
+              @exit().catch -> yes
+              return
+            , linger_delay
+          return
 
 ### Disconnect
 
@@ -578,6 +597,7 @@ Normal behavior on disconnect is to close the socket with `end()`.
           else
             trace 'auto_cleanup/disconnect: end()'
             @end()
+          return
 
         return null
 

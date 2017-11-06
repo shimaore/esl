@@ -6,15 +6,13 @@ This is modelled after Node.js' http.js; the connection-listener is called eithe
 
     connectionListener = (call) ->
 
-The module provides statistics in the `stats` object. You may use it  to collect your own call-related statistics. For example the [tough-rate](https://github.com/shimaore/tough-rate) LCR engine uses this along with the [caring-band](https://github.com/shimaore/caring-band) data collection tool to provide realtime data.
-
-      call.stats ?= {}
+The module provides statistics in the `stats` object if it is initialized. You may use it  to collect your own call-related statistics.
 
 The parser will be the one receiving the actual data from the socket. We will process the parser's output below.
 
       parser = new FreeSwitchParser call.socket
 
-Make the command responses somewhat unique. This is required since FreeSwitch doesn't provide us a way to match response with requests.
+Make the command responses somewhat unique. This is required since FreeSwitch doesn't provide us a way to match responses with requests.
 
       call.on 'CHANNEL_EXECUTE_COMPLETE', (res) ->
         application = res.body['Application']
@@ -29,6 +27,7 @@ Make the command responses somewhat unique. This is required since FreeSwitch do
         call.emit_later "BACKGROUND_JOB #{job_uuid}", {body:res.body._body}
 
 The parser is responsible for de-framing messages coming from FreeSwitch and splitting it into headers and a body.
+We then process those in order to generate higher-level events.
 
       parser.process = (headers,body) ->
 
@@ -36,8 +35,9 @@ Rewrite headers as needed to work around some weirdnesses in the protocol; and a
 
         content_type = headers['Content-Type']
         if not content_type?
-          call.stats.missing_content_type ?= 0
-          call.stats.missing_content_type++
+          if call.stats?
+            call.stats.missing_content_type ?= 0
+            call.stats.missing_content_type++
           call.socket.emit 'error', {when: 'Missing Content-Type', headers, body}
           return
 
@@ -53,8 +53,9 @@ Normally caught by the client code, there is no need for your code to monitor th
 
           when 'auth/request'
             event = 'freeswitch_auth_request'
-            call.stats.auth_request ?= 0
-            call.stats.auth_request++
+            if call.stats?
+              call.stats.auth_request ?= 0
+              call.stats.auth_request++
 
 command/reply
 -------------
@@ -73,8 +74,10 @@ Apparently a bug in the response to `connect` causes FreeSwitch to send the head
               for n in ['Content-Type','Reply-Text','Socket-Mode','Control']
                 headers[n] = body[n]
                 delete body[n]
-            call.stats.command_reply ?= 0
-            call.stats.command_reply++
+
+            if call.stats?
+              call.stats.command_reply ?= 0
+              call.stats.command_reply++
 
 text/event-json
 ---------------
@@ -82,6 +85,10 @@ text/event-json
 A generic event with a JSON body. We map it to its own Event-Name.
 
           when 'text/event-json'
+            if call.stats?
+              call.stats.events ?= 0
+              call.stats.events++
+
             try
 
 Strip control characters that might be emitted by FreeSwitch.
@@ -95,8 +102,10 @@ Parse the JSON body.
 In case of error report it as an error.
 
             catch exception
-              call.stats.json_parse_errors ?= 0
-              call.stats.json_parse_errors++
+              if call.stats?
+                call.stats.json_parse_errors ?= 0
+                call.stats.json_parse_errors++
+
               call.socket.emit 'error', when:'JSON error', error:exception, body:body
               return
 
@@ -107,21 +116,23 @@ Otherwise trigger the proper event.
 text/event-plain
 ----------------
 
-Same a `text/event-json` except the body is encoded using plain text. Either way the module provides you with a parsed body (a hash/Object).
+Same as `text/event-json` except the body is encoded using plain text. Either way the module provides you with a parsed body (a hash/Object).
 
           when 'text/event-plain'
             body = parse_header_text(body)
             event = body['Event-Name']
-            call.stats.events ?= 0
-            call.stats.events++
+            if call.stats?
+              call.stats.events ?= 0
+              call.stats.events++
 
 log/data
 --------
 
           when 'log/data'
             event = 'freeswitch_log_data'
-            call.stats.log_data ?= 0
-            call.stats.log_data++
+            if call.stats?
+              call.stats.log_data ?= 0
+              call.stats.log_data++
 
 text/disconnect-notice
 ----------------------
@@ -131,8 +142,9 @@ You normally do not have to monitor this event; the `autocleanup` methods catche
 
           when 'text/disconnect-notice'
             event = 'freeswitch_disconnect_notice'
-            call.stats.disconnect ?= 0
-            call.stats.disconnect++
+            if call.stats?
+              call.stats.disconnect ?= 0
+              call.stats.disconnect++
 
 api/response
 ------------
@@ -142,8 +154,9 @@ You normally do not have to monitor this event, the `api` methods catches it.
 
           when 'api/response'
             event = 'freeswitch_api_response'
-            call.stats.api_responses ?= 0
-            call.stats.api_responses++
+            if call.stats?
+              call.stats.api_responses ?= 0
+              call.stats.api_responses++
 
 Others?
 -------
@@ -155,8 +168,9 @@ Ideally other content-types should be individually specified. In any case we pro
             debug 'Unhandled Content-Type', content_type
             event = "freeswitch_#{content_type.replace /[^a-z]/, '_'}"
             call.socket.emit 'error', when:'Unhandled Content-Type', error:content_type
-            call.stats.unhandled ?= 0
-            call.stats.unhandled++
+            if call.stats?
+              call.stats.unhandled ?= 0
+              call.stats.unhandled++
 
 Event content
 -------------
@@ -165,7 +179,8 @@ The messages sent at the server- or client-level only contain the headers and th
 
         msg = {headers,body}
 
-        outcome = call.emit event, msg
+        call.emit event, msg
+        return
 
 Get things started
 ------------------
@@ -173,6 +188,7 @@ Get things started
 Get things started: notify the application that the connection is established and that we are ready to send commands to FreeSwitch.
 
       call.emit 'freeswitch_connect'
+      return
 
 Server
 ======
@@ -187,12 +203,7 @@ We inherit from the `Server` class of Node.js' `net` module. This way any method
     class FreeSwitchServer extends net.Server
       constructor: (requestListener) ->
 
-The server also contains a `stats` object. It records the number of connections.
-
-        @stats = {}
         @on 'connection', (socket) ->
-          @stats.connections ?= 0
-          @stats.connections++
 
 For every new connection to our server we get a new `Socket` object, which we wrap inside our `FreeSwitchResponse` object. This becomes the `call` object used throughout the application.
 
@@ -216,8 +227,10 @@ All errors are reported directly on the socket; even though `FreeSwitchResponse`
 The connection-listener is called last to set the parser up and trigger the request-listener.
 
           connectionListener call
+          return
 
         super()
+        return
 
 The `server` we export is only slightly more complex. It sets up a filter so that the application only gets its own events, and sets up automatic cleanup which will be used before disconnecting the socket.
 The call handler will receive a `FreeSwitchResponse` object, `options` are optional (and currently unused).
@@ -231,6 +244,7 @@ The call handler will receive a `FreeSwitchResponse` object, `options` are optio
         debug "Server: #{error}"
 
       options.all_events ?= true
+      options.my_events ?= true
 
       assert.ok handler?, "server handler is required"
       assert.strictEqual typeof handler, 'function', "server handler must be a function"
@@ -241,8 +255,6 @@ Here starts our default request-listener.
 
         try
           Unique_ID = 'Unique-ID'
-          server.stats.connecting ?= 0
-          server.stats.connecting++
 
 Confirm connection with FreeSwitch.
 
@@ -253,10 +265,8 @@ Confirm connection with FreeSwitch.
 
 Restricting events using `filter` is required so that `event_json` will only obtain our events.
 
-            @filter Unique_ID, @uuid
+            @filter Unique_ID, @uuid if options.my_events
           .then ->
-            server.stats.handler ?= 0
-            server.stats.handler++
             @auto_cleanup()
           .then ->
             if options.all_events
@@ -268,6 +278,8 @@ Restricting events using `filter` is required so that `event_json` will only obt
 
         catch exception
           report exception
+
+        return
 
       debug "Ready to start #{pkg.name} #{pkg.version} server."
       return server
@@ -284,21 +296,25 @@ We inherit from the `Socket` class of Node.js' `net` module. This way any method
 
 Contrarily to the server which will handle multiple socket connections over its lifetime, a client only handles one socket, so only one `FreeSwitchResponse` object is needed as well.
 
-        @call = new FreeSwitchResponse this
+        @call = call = new FreeSwitchResponse this
 
 Parsing of incoming messages is handled by the connection-listener.
 
-        @on 'connect', =>
-          connectionListener @call
+        @once 'connect', ->
+          connectionListener call
         super()
+        return
 
       keepConnected: (args...) ->
         connect = =>
+          @once 'close', (had_error) ->
+            if had_error
+              connect()
+            return
           @connect args...
-        @on 'close', (had_error) =>
-          if had_error
-            connect()
+          return
         connect()
+        return
 
 The `client` function we provide wraps `FreeSwitchClient` in order to provide some defaults.
 The `handler` will be called in the context of the `FreeSwitchResponse`; the `options` are optional, but may include a `password`.

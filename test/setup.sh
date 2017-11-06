@@ -10,7 +10,7 @@ for t in client server; do
   docker run \
     --net=host \
     -v "${PWD}/0001-$t/conf:/opt/freeswitch/etc/freeswitch" \
-    -d --name $IMG-$t shimaore/freeswitch:4.2.4 \
+    -d --name $IMG-$t shimaore/docker.freeswitch \
     /opt/freeswitch/bin/freeswitch -nf -nosql -nonat -nonatmap -nocal -nort -c
 done
 
