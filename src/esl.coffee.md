@@ -240,6 +240,7 @@ The call handler will receive a `FreeSwitchResponse` object, `options` are optio
         debug "Server: #{error}"
 
       options.all_events ?= true
+      options.my_events ?= true
 
       assert.ok handler?, "server handler is required"
       assert.strictEqual typeof handler, 'function', "server handler must be a function"
@@ -260,7 +261,7 @@ Confirm connection with FreeSwitch.
 
 Restricting events using `filter` is required so that `event_json` will only obtain our events.
 
-            @filter Unique_ID, @uuid
+            @filter Unique_ID, @uuid if options.my_events
           .then ->
             @auto_cleanup()
           .then ->
