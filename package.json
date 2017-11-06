@@ -44,14 +44,14 @@
     "lib/response.js"
   ],
   "dependencies": {
-    "bluebird": "^3.5.0",
-    "debug": "^3.0.1"
+    "bluebird": "^3.5.1",
+    "debug": "^3.1.0"
   },
   "devDependencies": {
-    "chai": "^4.1.1",
+    "chai": "^4.1.2",
     "coffee-script": "^1.12.7",
     "docco": "^0.7.0",
-    "memdown": "^1.2.4",
+    "memdown": "^1.4.1",
     "mocha": "^3.5.0",
     "pouchdb-adapter-memory": "^6.3.4",
     "pouchdb-core": "^6.3.4",
@@ -61,7 +61,7 @@
   "scripts": {
     "prepublish": "coffee -c -o lib/ src/*.coffee.md && docco src/*",
     "pretest": "npm install",
-    "test": "(cd test && ./setup.sh) && DEBUG='esl:test:*' mocha && (cd test && ./cleanup.sh; exit 0)",
+    "test": "(cd test && ./setup.sh) && mocha && (cd test && ./cleanup.sh; exit 0)",
     "test-debug": "(cd test && ./setup.sh) && DEBUG='*,-mocha*' mocha && (cd test && ./cleanup.sh; exit 0)",
     "clean": "rm -rf cov/ lib/ routes/ node_modules/ test/*.log"
   },
