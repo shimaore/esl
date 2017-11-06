@@ -7,6 +7,7 @@ Event Socket stream parser
     class FreeSwitchParserError extends Error
       constructor: (@error,@buffer) ->
         super JSON.stringify {error:@error,buffer:@buffer}
+        return
 
     module.exports = class FreeSwitchParser
 
@@ -22,6 +23,8 @@ The Event Socket parser will parse an incoming ES stream, whether your code is a
 
         @socket.on 'end', =>
           @on_end()
+
+        return
 
 ### Capture body
 
@@ -52,6 +55,7 @@ Process the content at each step.
 Re-parse whatever data was left after the body was fully consumed.
 
         @capture_headers new Buffer 0
+        return
 
 ### Capture headers
 
@@ -98,6 +102,8 @@ Re-parse whatever data was left after these headers were fully consumed.
 
           @capture_headers new Buffer 0
 
+        return
+
 ### Dispatch incoming data into the header or body parsers.
 
       on_data: (data) ->
@@ -108,12 +114,14 @@ Capture the body as needed
           return @capture_body data
         else
           return @capture_headers data
+        return
 
 For completeness provide an `on_end()` method.
 
       on_end: () ->
         if @buffer_length > 0
           @socket.emit 'error', new FreeSwitchParserError 'Buffer is not empty at end of stream', @buffer
+        return
 
 Headers parser
 ==============

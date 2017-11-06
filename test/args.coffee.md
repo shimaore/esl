@@ -1,7 +1,9 @@
     describe 'api', ->
       Response = require '../src/response'
       it 'should throw properly on closed', (done) ->
-        t = new Response on: ->
+        t = new Response
+          on: ->
+          once: ->
         t.closed = true
         t
         .api 'foo'
@@ -12,7 +14,9 @@
     describe 'bgapi', ->
       Response = require '../src/response'
       it 'should throw properly on closed', (done) ->
-        t = new Response on: ->
+        t = new Response
+          on: ->
+          once: ->
         t.closed = true
         t
         .bgapi 'foo'

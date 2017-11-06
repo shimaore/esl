@@ -179,7 +179,8 @@ The messages sent at the server- or client-level only contain the headers and th
 
         msg = {headers,body}
 
-        outcome = call.emit event, msg
+        call.emit event, msg
+        return
 
 Get things started
 ------------------
@@ -187,6 +188,7 @@ Get things started
 Get things started: notify the application that the connection is established and that we are ready to send commands to FreeSwitch.
 
       call.emit 'freeswitch_connect'
+      return
 
 Server
 ======
@@ -225,8 +227,10 @@ All errors are reported directly on the socket; even though `FreeSwitchResponse`
 The connection-listener is called last to set the parser up and trigger the request-listener.
 
           connectionListener call
+          return
 
         super()
+        return
 
 The `server` we export is only slightly more complex. It sets up a filter so that the application only gets its own events, and sets up automatic cleanup which will be used before disconnecting the socket.
 The call handler will receive a `FreeSwitchResponse` object, `options` are optional (and currently unused).
@@ -275,6 +279,8 @@ Restricting events using `filter` is required so that `event_json` will only obt
         catch exception
           report exception
 
+        return
+
       debug "Ready to start #{pkg.name} #{pkg.version} server."
       return server
 
@@ -290,21 +296,25 @@ We inherit from the `Socket` class of Node.js' `net` module. This way any method
 
 Contrarily to the server which will handle multiple socket connections over its lifetime, a client only handles one socket, so only one `FreeSwitchResponse` object is needed as well.
 
-        @call = new FreeSwitchResponse this
+        @call = call = new FreeSwitchResponse this
 
 Parsing of incoming messages is handled by the connection-listener.
 
-        @on 'connect', =>
-          connectionListener @call
+        @once 'connect', ->
+          connectionListener call
         super()
+        return
 
       keepConnected: (args...) ->
         connect = =>
+          @once 'close', (had_error) ->
+            if had_error
+              connect()
+            return
           @connect args...
-        @on 'close', (had_error) =>
-          if had_error
-            connect()
+          return
         connect()
+        return
 
 The `client` function we provide wraps `FreeSwitchClient` in order to provide some defaults.
 The `handler` will be called in the context of the `FreeSwitchResponse`; the `options` are optional, but may include a `password`.
