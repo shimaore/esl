@@ -6,9 +6,7 @@ This is modelled after Node.js' http.js; the connection-listener is called eithe
 
     connectionListener = (call) ->
 
-The module provides statistics in the `stats` object. You may use it  to collect your own call-related statistics. For example the [tough-rate](https://github.com/shimaore/tough-rate) LCR engine uses this along with the [caring-band](https://github.com/shimaore/caring-band) data collection tool to provide realtime data.
-
-      call.stats ?= {}
+The module provides statistics in the `stats` object if it is initialized. You may use it  to collect your own call-related statistics.
 
 The parser will be the one receiving the actual data from the socket. We will process the parser's output below.
 
@@ -37,8 +35,9 @@ Rewrite headers as needed to work around some weirdnesses in the protocol; and a
 
         content_type = headers['Content-Type']
         if not content_type?
-          call.stats.missing_content_type ?= 0
-          call.stats.missing_content_type++
+          if call.stats?
+            call.stats.missing_content_type ?= 0
+            call.stats.missing_content_type++
           call.socket.emit 'error', {when: 'Missing Content-Type', headers, body}
           return
 
@@ -54,8 +53,9 @@ Normally caught by the client code, there is no need for your code to monitor th
 
           when 'auth/request'
             event = 'freeswitch_auth_request'
-            call.stats.auth_request ?= 0
-            call.stats.auth_request++
+            if call.stats?
+              call.stats.auth_request ?= 0
+              call.stats.auth_request++
 
 command/reply
 -------------
@@ -75,8 +75,9 @@ Apparently a bug in the response to `connect` causes FreeSwitch to send the head
                 headers[n] = body[n]
                 delete body[n]
 
-            call.stats.command_reply ?= 0
-            call.stats.command_reply++
+            if call.stats?
+              call.stats.command_reply ?= 0
+              call.stats.command_reply++
 
 text/event-json
 ---------------
@@ -84,8 +85,9 @@ text/event-json
 A generic event with a JSON body. We map it to its own Event-Name.
 
           when 'text/event-json'
-            call.stats.events ?= 0
-            call.stats.events++
+            if call.stats?
+              call.stats.events ?= 0
+              call.stats.events++
 
             try
 
@@ -100,8 +102,9 @@ Parse the JSON body.
 In case of error report it as an error.
 
             catch exception
-              call.stats.json_parse_errors ?= 0
-              call.stats.json_parse_errors++
+              if call.stats?
+                call.stats.json_parse_errors ?= 0
+                call.stats.json_parse_errors++
 
               call.socket.emit 'error', when:'JSON error', error:exception, body:body
               return
@@ -118,16 +121,18 @@ Same as `text/event-json` except the body is encoded using plain text. Either wa
           when 'text/event-plain'
             body = parse_header_text(body)
             event = body['Event-Name']
-            call.stats.events ?= 0
-            call.stats.events++
+            if call.stats?
+              call.stats.events ?= 0
+              call.stats.events++
 
 log/data
 --------
 
           when 'log/data'
             event = 'freeswitch_log_data'
-            call.stats.log_data ?= 0
-            call.stats.log_data++
+            if call.stats?
+              call.stats.log_data ?= 0
+              call.stats.log_data++
 
 text/disconnect-notice
 ----------------------
@@ -137,8 +142,9 @@ You normally do not have to monitor this event; the `autocleanup` methods catche
 
           when 'text/disconnect-notice'
             event = 'freeswitch_disconnect_notice'
-            call.stats.disconnect ?= 0
-            call.stats.disconnect++
+            if call.stats?
+              call.stats.disconnect ?= 0
+              call.stats.disconnect++
 
 api/response
 ------------
@@ -148,8 +154,9 @@ You normally do not have to monitor this event, the `api` methods catches it.
 
           when 'api/response'
             event = 'freeswitch_api_response'
-            call.stats.api_responses ?= 0
-            call.stats.api_responses++
+            if call.stats?
+              call.stats.api_responses ?= 0
+              call.stats.api_responses++
 
 Others?
 -------
@@ -161,8 +168,9 @@ Ideally other content-types should be individually specified. In any case we pro
             debug 'Unhandled Content-Type', content_type
             event = "freeswitch_#{content_type.replace /[^a-z]/, '_'}"
             call.socket.emit 'error', when:'Unhandled Content-Type', error:content_type
-            call.stats.unhandled ?= 0
-            call.stats.unhandled++
+            if call.stats?
+              call.stats.unhandled ?= 0
+              call.stats.unhandled++
 
 Event content
 -------------
@@ -193,12 +201,7 @@ We inherit from the `Server` class of Node.js' `net` module. This way any method
     class FreeSwitchServer extends net.Server
       constructor: (requestListener) ->
 
-The server also contains a `stats` object. It records the number of connections.
-
-        @stats = {}
         @on 'connection', (socket) ->
-          @stats.connections ?= 0
-          @stats.connections++
 
 For every new connection to our server we get a new `Socket` object, which we wrap inside our `FreeSwitchResponse` object. This becomes the `call` object used throughout the application.
 
@@ -247,8 +250,6 @@ Here starts our default request-listener.
 
         try
           Unique_ID = 'Unique-ID'
-          server.stats.connecting ?= 0
-          server.stats.connecting++
 
 Confirm connection with FreeSwitch.
 
@@ -261,8 +262,6 @@ Restricting events using `filter` is required so that `event_json` will only obt
 
             @filter Unique_ID, @uuid
           .then ->
-            server.stats.handler ?= 0
-            server.stats.handler++
             @auto_cleanup()
           .then ->
             if options.all_events
