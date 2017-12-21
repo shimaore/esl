@@ -158,6 +158,12 @@ You normally do not have to monitor this event, the `api` methods catches it.
               call.stats.api_responses ?= 0
               call.stats.api_responses++
 
+          when 'text/rude-rejection'
+            event = 'freeswitch_rude_rejection'
+            if call.stats?
+              call.stats.rude_rejections ?= 0
+              call.stats.rude_rejections++
+
 Others?
 -------
 
