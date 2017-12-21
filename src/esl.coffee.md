@@ -4,6 +4,11 @@ Connection Listener (socket events handler)
 We use the same connection-listener for both client (FreeSwitch "inbound" socket) and server (FreeSwitch "outound" socket).
 This is modelled after Node.js' http.js; the connection-listener is called either when FreeSwitch connects to our server, or when we connect to FreeSwitch from our client.
 
+    class FreeSwitchParserError extends Error
+      constructor: (@args) ->
+        super JSON.stringify @args
+        return
+
     connectionListener = (call) ->
 
 The module provides statistics in the `stats` object if it is initialized. You may use it  to collect your own call-related statistics.
@@ -38,7 +43,7 @@ Rewrite headers as needed to work around some weirdnesses in the protocol; and a
           if call.stats?
             call.stats.missing_content_type ?= 0
             call.stats.missing_content_type++
-          call.socket.emit 'error', {when: 'Missing Content-Type', headers, body}
+          call.emit 'error.missing-content-type', new FreeSwitchParserError {headers, body}
           return
 
 Notice how all our (internal) event names are lower-cased; FreeSwitch always uses full-upper-case event names.
@@ -102,11 +107,12 @@ Parse the JSON body.
 In case of error report it as an error.
 
             catch exception
+              trace 'Invalid JSON', body
               if call.stats?
                 call.stats.json_parse_errors ?= 0
                 call.stats.json_parse_errors++
 
-              call.socket.emit 'error', when:'JSON error', error:exception, body:body
+              call.emit 'error.invalid-json', exception
               return
 
 Otherwise trigger the proper event.
@@ -171,9 +177,9 @@ Others?
 
 Ideally other content-types should be individually specified. In any case we provide a fallback mechanism.
 
-            debug 'Unhandled Content-Type', content_type
+            trace 'Unhandled Content-Type', content_type
             event = "freeswitch_#{content_type.replace /[^a-z]/, '_'}"
-            call.socket.emit 'error', when:'Unhandled Content-Type', error:content_type
+            call.emit 'error.unhandled-content-type', new FreeSwitchParserError {content_type}
             if call.stats?
               call.stats.unhandled ?= 0
               call.stats.unhandled++
@@ -217,18 +223,17 @@ For every new connection to our server we get a new `Socket` object, which we wr
 
 The `freeswitch_connect` event is triggered by our `connectionListener` once the parser is set up and ready.
 
-          call.once 'freeswitch_connect'
-          .then ->
+          call.once 'freeswitch_connect', ->
 
 The request-listener is called within the context of the `FreeSwitchResponse` object.
 
             try
               requestListener.call call
 
-All errors are reported directly on the socket; even though `FreeSwitchResponse` contains an `EventEmitter` we don't use it for error notification.
+All errors are reported on `FreeSwitchResponse`.
 
             catch exception
-              call.socket.emit 'error', exception
+              call.emit 'error.listener', exception
 
 The connection-listener is called last to set the parser up and trigger the request-listener.
 
@@ -346,7 +351,7 @@ If neither `options` not `password` is provided, the default password is assumed
 
 Normally when the client connects, FreeSwitch will first send us an authentication request. We use it to trigger the remainder of the stack.
 
-      client.call.once 'freeswitch_auth_request'
+      client.call.onceAsync 'freeswitch_auth_request'
       .then ->
         @auth options.password
       .then -> @auto_cleanup()
@@ -371,3 +376,4 @@ Toolbox
 
     pkg = require '../package.json'
     debug = (require 'debug') 'esl:main'
+    trace = (require 'debug') 'esl:main:trace'

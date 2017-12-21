@@ -146,13 +146,13 @@ var call_handler = function() {
   this.trace(true);
 
   # These are called asynchronously.
-  this.once('CHANNEL_ANSWER').then( function () {
+  this.onceAsync('CHANNEL_ANSWER').then( function () {
     util.log('Call was answered');
   });
-  this.once('CHANNEL_HANGUP').then(  function () {
+  this.onceAsync('CHANNEL_HANGUP').then(  function () {
     util.log('Call hangup');
   });
-  this.once('CHANNEL_HANGUP_COMPLETE').then(  function () {
+  this.onceAsync('CHANNEL_HANGUP_COMPLETE').then(  function () {
     util.log('Call was disconnected');
   });
   # However note that `on` cannot use a Promise (since it only would
@@ -167,6 +167,12 @@ var call_handler = function() {
 var server = esl.server({all_events:false},call_handler)
 server.listen(3232);
 ```
+
+Migrating from earlier versions
+-------------------------------
+
+- `once` has been renamed to `onceAsync`; `onceAsync(event)` returns a Promise. `once` is now the regular event-emitter `once(event,callback)`.
+- Promises are native Promises, not bluebird's.
 
 Alternative
 -----------
