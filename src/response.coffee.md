@@ -8,8 +8,17 @@ Response and associated API
 
     class FreeSwitchError extends Error
       constructor: (@res,@args) ->
-        super JSON.stringify @args
+        super()
         return
+      toString: ->
+        "FreeSwitchError: #{JSON.stringify @args}"
+
+    class FreeSwitchTimeout extends Error
+      constructor: (@timeout,@text) ->
+        super()
+        return
+      toString: ->
+        "FreeSwitchTimeout: Timeout after #{@timeout}ms waiting for #{@text}"
 
     module.exports = class FreeSwitchResponse extends EventEmitter2
 
@@ -73,7 +82,7 @@ Note that this value must be longer than (for exemple) a regular call's duration
 
       default_event_timeout: 9*3600*1000 # 9 hours
 
-      command_timeout: 30*1000 # 30s
+      command_timeout: 10*1000 # 10s
 
 Most commands allow you to specify a timeout.
 
@@ -108,7 +117,7 @@ onceAsync
             trace "onceAsync: on_timeout #{event}"
             return unless p.isPending()
             cleanup()
-            reject.call self, new Error "Timeout after #{timeout}ms waiting for event #{event}"
+            reject.call self, new FreeSwitchTimeout timeout, "event #{event}"
             return
 
           cleanup = ->
