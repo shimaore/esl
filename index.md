@@ -46,6 +46,23 @@ The  `options` object is optional, and may contain:
 
 The value returned by `FS.client()` is a [net.Socket](https://nodejs.org/api/net.html#net_class_net_socket), that's why you can call `.connect()` on it.
 
+Always-on client
+----------------
+
+The module contains a wrapper that will attempt to keep the client connected:
+
+    FS.reconnect(connect_options,[options,]handler[,report])
+
+The `connect_options` and `handler` are required; if `connect_options` is `null` it will default to connecting to FreeSwitch's event socket (inbound) on `127.0.0.1`.
+
+`reconnect` returns a function which can be used to stop the process:
+
+    var stop_client = FS.reconnect({host:'localhost',port:8021},handler)
+    …
+    stop_client()
+
+Note: the handler is re-started for each new connection.
+
 Handler Context
 ===============
 
