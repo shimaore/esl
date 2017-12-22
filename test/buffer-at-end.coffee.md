@@ -24,9 +24,11 @@
               Disconnected, filling your buffer with junk.
 
             '''
+        after ->
+          spoof.close()
         client = FS.client ->
           client.end()
-        client.call.on 'socket-error', (error) ->
+        client.call.on 'socket.error', (error) ->
           debug "Got error #{error}", error
           if error.error is 'Buffer is not empty at end of stream'
             done()
