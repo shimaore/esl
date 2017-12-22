@@ -316,17 +316,6 @@ Parsing of incoming messages is handled by the connection-listener.
         super()
         return
 
-      keepConnected: (args...) ->
-        connect = =>
-          @once 'close', (had_error) ->
-            if had_error
-              connect()
-            return
-          @connect args...
-          return
-        connect()
-        return
-
 The `client` function we provide wraps `FreeSwitchClient` in order to provide some defaults.
 The `handler` will be called in the context of the `FreeSwitchResponse`; the `options` are optional, but may include a `password`.
 
@@ -338,7 +327,7 @@ The `handler` will be called in the context of the `FreeSwitchResponse`; the `op
 
       report ?= options.report
       report ?= (error) ->
-        debug "Client: #{error}"
+        debug "Client report error: #{error}"
 
 If neither `options` not `password` is provided, the default password is assumed.
 
@@ -361,6 +350,42 @@ Normally when the client connects, FreeSwitch will first send us an authenticati
 
       debug "Ready to start #{pkg.name} #{pkg.version} client."
       return client
+
+    exports.reconnect = (connect_options, options, handler, report) ->
+      connect_options ?=
+        host: '127.0.0.1'
+        port: 8021
+      client = null
+      running = true
+      reconnect = (retry,attempt = 0) ->
+        if not running
+          debug "reconnect attempt ##{attempt}: stopping client to ", connect_options
+          return
+        debug "reconnect attempt ##{attempt} (retry is #{retry}ms): (re)connecting client to ", connect_options
+        client?.destroy()
+
+        client = exports.client options, handler, report
+        client.on 'error', (error) ->
+          if retry < 5000
+            retry = (retry * 1200) // 1000 if error.code is 'ECONNREFUSED'
+          debug "reconnect attempt ##{attempt}: client received `error` event: #{error.code} — #{error}. (Reconnecting in #{retry}ms.)"
+          setTimeout (-> reconnect retry, attempt+1), retry
+          return
+        client.on 'end', ->
+          debug "reconnect attempt ##{attempt}: client received `end` event (remote end sent a FIN packet). (Reconnecting in #{retry}ms.)"
+          setTimeout (-> reconnect retry, attempt+1), retry
+          return
+        client.on 'close', (had_error) ->
+          debug "reconnect attempt ##{attempt}: client received `close` event (due to error: #{had_error}). (Ignored.)"
+          return
+
+        client.connect connect_options
+        ->
+          debug "reconnect attempt ##{attempt}: end requested by application."
+          running = false
+          client?.end()
+
+      reconnect 200
 
 Please note that the client is not started with `event_json ALL` since by default this would mean obtaining all events from FreeSwitch. Instead, we only monitor the events we need to be notified for (commands and `bgapi` responses).
 You must manually run `@event_json` and an optional `@filter` command.
