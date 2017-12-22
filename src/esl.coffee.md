@@ -355,6 +355,7 @@ Normally when the client connects, FreeSwitch will first send us an authenticati
       connect_options ?=
         host: '127.0.0.1'
         port: 8021
+      {notify} = connect_options
       client = null
       running = true
       reconnect = (retry,attempt = 0) ->
@@ -369,23 +370,65 @@ Normally when the client connects, FreeSwitch will first send us an authenticati
           if retry < 5000
             retry = (retry * 1200) // 1000 if error.code is 'ECONNREFUSED'
           debug "reconnect attempt ##{attempt}: client received `error` event: #{error.code} — #{error}. (Reconnecting in #{retry}ms.)"
+          notify? 'reconnecting', retry
           setTimeout (-> reconnect retry, attempt+1), retry
           return
         client.on 'end', ->
           debug "reconnect attempt ##{attempt}: client received `end` event (remote end sent a FIN packet). (Reconnecting in #{retry}ms.)"
+          notify? 'reconnecting', retry
           setTimeout (-> reconnect retry, attempt+1), retry
           return
         client.on 'close', (had_error) ->
           debug "reconnect attempt ##{attempt}: client received `close` event (due to error: #{had_error}). (Ignored.)"
+          notify? 'close', had_error
           return
 
         client.connect connect_options
         ->
           debug "reconnect attempt ##{attempt}: end requested by application."
+          notify? 'end'
           running = false
           client?.end()
 
       reconnect 200
+
+createClient
+============
+
+    {EventEmitter2} = require 'eventemitter2'
+
+Options are socket.connect options plus `password`.
+
+    class Wrapper extends EventEmitter2
+      constructor: (options) ->
+        self = this
+        notify = (event,args...) ->
+          if event is 'error'
+            if self.listeners('error').length > 0
+              self.emit 'error', error
+          else
+            self.emit 'event', args...
+          return
+
+        handler = ->
+          self.client = this
+          self.emit 'connect', this
+        report = (error) ->
+          notify 'error', error
+
+        options.notify = notify
+        @end = exports.reconnect options, options, handler, report
+        return
+
+    for name in '''
+      write send api bgapi event_json nixevent noevents filter filter_delete sendevent auth connect linger exit log nolog
+      sengmsg_uuid sendmsg execute_uuid command_uuid hangup_uuid unicast_uuid
+      execute command hangup unicast
+    '''.split /\s+/
+      Wrapper::[name] = (args...) -> @client[name] args...
+
+    exports.createClient = (options) ->
+      new Wrapper options
 
 Please note that the client is not started with `event_json ALL` since by default this would mean obtaining all events from FreeSwitch. Instead, we only monitor the events we need to be notified for (commands and `bgapi` responses).
 You must manually run `@event_json` and an optional `@filter` command.

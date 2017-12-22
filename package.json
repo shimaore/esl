@@ -61,7 +61,7 @@
   },
   "scripts": {
     "prepublishOnly": "npm install --only=dev && rm package-lock.json && coffee -c -o lib/ src/*.coffee.md && docco src/*",
-    "pretest": "npm install",
+    "pretest": "npm install && npm run prepublishOnly",
     "test": "(cd test && ./setup.sh) && mocha && (cd test && ./cleanup.sh; exit 0)",
     "test-debug": "(cd test && ./setup.sh) && DEBUG='*,-mocha*' mocha && (cd test && ./cleanup.sh; exit 0)",
     "clean": "rm -rf cov/ lib/ routes/ node_modules/ test/*.log"
