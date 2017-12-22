@@ -1,12 +1,26 @@
 Response and associated API
 ===========================
 
+    {EventEmitter2} = require 'eventemitter2'
+    Promise = require 'bluebird'
+    Promise.config
+      cancellation: true
+
     class FreeSwitchError extends Error
       constructor: (@res,@args) ->
-        super JSON.stringify @args
+        super()
         return
+      toString: ->
+        "FreeSwitchError: #{JSON.stringify @args}"
 
-    module.exports = class FreeSwitchResponse
+    class FreeSwitchTimeout extends Error
+      constructor: (@timeout,@text) ->
+        super()
+        return
+      toString: ->
+        "FreeSwitchTimeout: Timeout after #{@timeout}ms waiting for #{@text}"
+
+    module.exports = class FreeSwitchResponse extends EventEmitter2
 
 The `FreeSwitchResponse` is bound to a single socket (dual-stream). For outbound (server) mode this would represent a single socket call from FreeSwitch.
 
@@ -14,39 +28,40 @@ The `FreeSwitchResponse` is bound to a single socket (dual-stream). For outbound
 
         assert @socket?, 'Missing socket parameter'
 
-The object provides `on`, `once`, and `emit` methods, which rely on an [`EventEmitter`](http://nodejs.org/api/events.html#events_class_events_eventemitter) object for dispatch.
-
-        @__ev = new EventEmitter()
-
 The object also provides a queue for operations which need to be submitted one after another on a given socket because FreeSwitch does not provide ways to map event socket requests and responses in the general case.
 
         @__queue = Promise.resolve null
 
+The object also provides a mechanism to report events that might already have been triggered.
+
+        @__later = {}
+
 We also must track connection close in order to prevent writing to a closed socket.
 
         @closed = false
+
         @socket.once 'close', =>
-          @closed = true
-          trace 'Socket closed'
-          @emit 'socket-close'
-
-After the socket-close event is emitted this object is no longer usable.
-
-          @__ev?.removeAllListeners()
-          ## @__ev = null
-          @__queue = null
-          @__later = null
+          debug 'Socket closed'
+          @emit 'socket.close'
           return
 
 Default handler for `error` events to prevent `Unhandled 'error' event` reports.
 
-        @socket.on 'error', (err) =>
+        @socket.once 'error', (err) =>
           debug 'Socket Error', {err}
-          @emit 'socket-error', err
+          @emit 'socket.error', err
           return
 
-        @__later = {}
+After the socket is closed or errored, this object is no longer usable.
 
+        @once 'socket.*', =>
+          @closed = true
+          @removeAllListeners()
+          @__queue = null
+          @__later = null
+          return
+
+        super wildcard: true, verboseMemoryLeak: true
         null
 
       error: (res,data) ->
@@ -54,6 +69,68 @@ Default handler for `error` events to prevent `Unhandled 'error' event` reports.
         Promise
           .reject new FreeSwitchError res, data
           .bind this
+
+Event Emitter
+=============
+
+`default_event_timeout`
+-----------------------
+
+The default timeout waiting for events.
+
+Note that this value must be longer than (for exemple) a regular call's duration, if you want to be able to catch `EXECUTE_COMPLETE` on `bridge` commands.
+
+      default_event_timeout: 9*3600*1000 # 9 hours
+
+      command_timeout: 10*1000 # 10s
+
+Most commands allow you to specify a timeout.
+
+onceAsync
+---------
+
+      onceAsync: (event,timeout) ->
+        trace 'onceAsync', event, timeout
+        self = this
+        p = new Promise (resolve,reject,on_cancel) ->
+
+          on_cancel ->
+            trace "onceAsync: Cancelling #{event}"
+            cleanup()
+            return
+
+          on_event = (args...) ->
+            trace "onceAsync: on_event #{event}", args
+            return unless p.isPending()
+            cleanup()
+            resolve.apply self, args
+            return
+
+          on_error = (error) ->
+            trace "onceAsync: on_error #{event}", error
+            return unless p.isPending()
+            cleanup()
+            reject.call self, error ? new Error "Socket closed while waiting for #{event}"
+            return
+
+          on_timeout = ->
+            trace "onceAsync: on_timeout #{event}"
+            return unless p.isPending()
+            cleanup()
+            reject.call self, new FreeSwitchTimeout timeout, "event #{event}"
+            return
+
+          cleanup = ->
+            self.removeListener event, on_event
+            self.removeListener 'socket.*', on_error
+            clearTimeout timer
+            return
+
+          self.once event, on_event
+          self.once 'socket.*', on_error
+          timer = setTimeout on_timeout, timeout if timeout?
+          return
+        .bind this
 
 Queueing
 ========
@@ -66,60 +143,28 @@ The function is only called when all previously enqueued functions-that-return-P
           return @error {}, {when:'enqueue on closed socket'}
 
         new Promise (resolve,reject) =>
-          fulfilled = (p) -> resolve p
-          rejected = (e) -> reject e
           @__queue = @__queue
             .then -> f()
-            .then fulfilled
-            .catch rejected
+            .then resolve, reject
         .bind this
 
-Event Emitter
-=============
+Sync/Async event
+================
 
-emit
-----
-
-A single wrapper for EventEmitter.emit().
-
-      emit: (args...) ->
-        trace 'emit', args[0], headers:args[1]?.headers, body:args[1]?.body
-        outcome = @__ev?.emit args...
-        trace emit:args[0], had_listeners:outcome
-        outcome
-
-once
-----
-
-Wraps EventEmitter.once() into a Promise; this allows you to write for example
-
-```javascript
-this.once('CHANNEL_COMPLETE').then(save_cdr).then(stop_recording);
-```
-
-      once: (event,cb) ->
-        trace 'create_once', event
-        unless @__ev?
-          return @error {}, {when:'once on closed socket',event}
-        p = new Promise (resolve) =>
-          @__ev?.once event, (args...) ->
-            trace 'once', event, data:args[0]
-            resolve args...
-            return
-          null
-        p = p.bind this
+waitAsync
+---------
 
 In some cases the event might have been emitted before we are ready to receive it.
 In that case we store the data in `@__later` so that we can emit the event when the recipient is ready.
 
+      waitAsync: (event,timeout) ->
+
         if @__later? and event of @__later
-          @emit event, @__later[event]
+          p = Promise.resolve @__later[event]
           delete @__later[event]
-
-        if cb?
-          return p.then cb
-
-        return p
+          p.bind this
+        else
+          @onceAsync event, timeout
 
 emit_later
 ----------
@@ -127,27 +172,10 @@ emit_later
 This is used for events that might trigger before we set the `once` receiver.
 
       emit_later: (event,data) ->
-        trace 'emit_later', {event, data}
-        if @__later? and not @emit event, data
+        handled = @emit event, data
+        if @__later? and not handled
           @__later[event] = data
-
-on
---
-
-A simple wrapper for EventEmitter.on().
-
-      on: (event,callback) ->
-        trace 'create_on', event
-        @__ev?.on event, (args...) =>
-          trace 'on', event, data:args[0]
-          callback.apply this, args
-          return
-        return
-
-      removeListener: (event,callback) ->
-        trace 'removeListener', event
-        @__ev?.removeListener event, callback
-        return
+        handled
 
 Low-level sending
 =================
@@ -178,6 +206,8 @@ Send a single command to FreeSwitch; `args` is a hash of headers sent with the c
           catch error
             reject error
 
+          return
+
         p.bind this
 
 send
@@ -185,7 +215,7 @@ send
 
 A generic way of sending commands to FreeSwitch, wrapping `write` into a Promise that waits for FreeSwitch's notification that the command completed.
 
-      send: (command,args) ->
+      send: (command,args,timeout = @command_timeout) ->
 
         if @closed
           return @error {}, {when:'send on closed socket',command,args}
@@ -193,30 +223,37 @@ A generic way of sending commands to FreeSwitch, wrapping `write` into a Promise
 Typically `command/reply` will contain the status in the `Reply-Text` header while `api/response` will contain the status in the body.
 
         @enqueue =>
-          p = @once 'freeswitch_command_reply'
-            .then (res) =>
-              return if not res?
-              trace 'send: received reply', res, {command,args}
-              reply = res.headers['Reply-Text']
+          p = @onceAsync 'freeswitch_command_reply', timeout
+            .catch (error) ->
+              debug "send: response #{error}", {command,args}
+              null
+
+          q = @write command, args
+            .catch (error) ->
+              debug "send: write #{error}", {command,args}
+              p.cancel()
+              Promise.reject error
+
+          q
+          .then -> p
+          .then (res) =>
+            trace 'send: received reply', {command,args}
+            reply = res?.headers['Reply-Text']
 
 The Promise might fail if FreeSwitch's notification indicates an error.
 
-              if not reply?
-                trace 'send: no reply', {command, args}
-                return @error res, {when:'no reply to command',command,args}
+            if not reply?
+              trace 'send: no reply', {command, args}
+              return @error res, {when:'no reply to command',command,args}
 
-              if reply.match /^-/
-                debug 'send: failed', reply, {command, args}
-                return @error res, {when:'command reply',reply,command,args}
+            if reply.match /^-/
+              debug 'send: failed', reply, {command, args}
+              return @error res, {when:'command reply',reply,command,args}
 
 The promise will be fulfilled with the `{headers,body}` object provided by the parser.
 
-              trace 'send: success', {command,args}
-              res
-
-          q = @write command, args
-
-          q.then -> p
+            trace 'send: success', {command,args}
+            res
 
 end
 ---
@@ -239,45 +276,53 @@ Send an API command, see [Mod commands](http://wiki.freeswitch.org/wiki/Mod_comm
 Returns a Promise that is fulfilled as soon as FreeSwitch sends a reply. Requests are queued and each request is matched with the first-coming response, since there is no way to match between requests and responses.
 Use `bgapi` if you need to make sure responses are correct, since it provides the proper semantices.
 
-      api: (command) ->
+      api: (command,timeout) ->
         trace 'api', {command}
 
         if @closed
           return @error {}, {when:'api on closed socket',command}
 
         @enqueue =>
-          p = @once 'freeswitch_api_response'
-            .then (res) =>
-              return if not res?
-              trace 'api: response', {command}
-              reply = res.body
+          p = @onceAsync 'freeswitch_api_response', timeout
+            .catch (error) ->
+              debug "api: response #{error}", command
+              null
+
+          q = @write "api #{command}"
+            .catch (error) ->
+              debug "api: write #{error}", command
+              p.cancel()
+              Promise.reject error
+
+          q
+          .then -> p
+          .then (res) =>
+            trace 'api: response', {command}
+            reply = res?.body
 
 The Promise might fail if FreeSwitch indicates there was an error.
 
-              if not reply?
-                debug 'api: no reply', {command}
-                return @error res, {when:'no reply to api',command}
+            if not reply?
+              debug 'api: no reply', {command}
+              return @error res, {when:'no reply to api',command}
 
-              if reply.match /^-/
-                debug 'api response failed', {reply, command}
-                return @error res, {when:'api response',reply,command}
+            if reply.match /^-/
+              debug 'api response failed', {reply, command}
+              return @error res, {when:'api response',reply,command}
 
 The Promise that will be fulfilled with `{headers,body,uuid}` from the parser; uuid is the API UUID if one is provided by FreeSwitch.
 
-              res.uuid = (reply.match /^\+OK ([\da-f-]{36})/)?[1]
-              res
+            res.uuid = (reply.match /^\+OK ([\da-f-]{36})/)?[1]
+            res
 
-          q = @write "api #{command}"
-
-          q.then -> p
 
 bgapi
 -----
 
 Send an API command in the background. Wraps it inside a Promise.
 
-      bgapi: (command) ->
-        trace 'bgapi', {command}
+      bgapi: (command,timeout) ->
+        trace 'bgapi', {command,timeout}
 
         if @closed
           return @error {}, {when:'bgapi on closed socket',command}
@@ -294,7 +339,7 @@ Send an API command in the background. Wraps it inside a Promise.
 
           trace 'bgapi retrieve', r
 
-          @once "BACKGROUND_JOB #{r}"
+          @waitAsync "BACKGROUND_JOB #{r}", timeout
 
 Event reception and filtering
 =============================
@@ -375,7 +420,7 @@ Used in server mode to start the conversation with FreeSwitch.
 
 Normally not needed, triggered automatically by the module.
 
-      connect: -> @send "connect"    # Outbound mode
+      connect: -> @send "connect"   # Outbound mode
 
 linger
 ------
@@ -383,7 +428,7 @@ linger
 Used in server mode, requests FreeSwitch to not close the socket as soon as the call is over, allowing us to do some post-processing on the call (mainly, receiving call termination events).
 By default, `esl` with call `exit()` for you after 4 seconds. You need to capture the `cleanup_linger` event if you want to handle things differently.
 
-      linger: -> @send "linger"     # Outbound mode
+      linger: -> @send "linger"    # Outbound mode
 
 exit
 ----
@@ -462,7 +507,7 @@ command_uuid
 
 Execute an application synchronously. Return a Promise.
 
-      command_uuid: (uuid,app_name,app_arg) ->
+      command_uuid: (uuid,app_name,app_arg,timeout = @default_command_timeout) ->
         app_arg ?= ''
         event = if uuid?
             "CHANNEL_EXECUTE_COMPLETE #{uuid} #{app_name} #{app_arg}"
@@ -471,10 +516,21 @@ Execute an application synchronously. Return a Promise.
 
 The Promise is only fulfilled when the command has completed.
 
-        result = @once event
-        @execute_uuid uuid,app_name,app_arg
-        .then ->
-          result
+        p = @onceAsync event, timeout
+          .catch (error) ->
+
+FIXME There should be no need to catch the error here, however things break if I don't.
+
+            debug "command_uuid: response #{error}", uuid,app_name,app_arg
+            null
+
+        q = @execute_uuid uuid,app_name,app_arg
+          .catch (error) ->
+            debug "command_uuid: execute_uuid #{error}", uuid,app_name,app_arg
+            p.cancel()
+            Promise.reject error
+
+        q.then -> p
 
 hangup_uuid
 -----------
@@ -604,8 +660,6 @@ Normal behavior on disconnect is to close the socket with `end()`.
 Toolbox
 =======
 
-    Promise = require 'bluebird'
     assert = require 'assert'
-    {EventEmitter} = require 'events'
     debug = (require 'debug') 'esl:response'
     trace = (require 'debug') 'esl:response:trace'

@@ -1,6 +1,6 @@
 {
   "name": "esl",
-  "version": "7.0.0",
+  "version": "8.0.0",
   "description": "Client and Server for FreeSwitch Event System",
   "keywords": [
     "freeswitch",
@@ -45,21 +45,22 @@
   ],
   "dependencies": {
     "bluebird": "^3.5.1",
-    "debug": "^3.1.0"
+    "debug": "^3.1.0",
+    "eventemitter2": "^5.0.0"
   },
   "devDependencies": {
     "chai": "^4.1.2",
     "coffee-script": "^1.12.7",
-    "docco": "^0.7.0",
+    "docco": "^0.8.0",
     "memdown": "^1.4.1",
-    "mocha": "^3.5.0",
-    "pouchdb-adapter-memory": "^6.3.4",
-    "pouchdb-core": "^6.3.4",
+    "mocha": "^4.0.1",
+    "pouchdb-adapter-memory": "^6.4.1",
+    "pouchdb-core": "^6.4.1",
     "seem": "^2.0.0",
     "uuid": "^3.1.0"
   },
   "scripts": {
-    "prepublish": "coffee -c -o lib/ src/*.coffee.md && docco src/*",
+    "prepublishOnly": "npm install --only=dev && rm package-lock.json && coffee -c -o lib/ src/*.coffee.md && docco src/*",
     "pretest": "npm install",
     "test": "(cd test && ./setup.sh) && mocha && (cd test && ./cleanup.sh; exit 0)",
     "test-debug": "(cd test && ./setup.sh) && DEBUG='*,-mocha*' mocha && (cd test && ./cleanup.sh; exit 0)",

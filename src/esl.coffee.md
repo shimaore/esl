@@ -4,6 +4,11 @@ Connection Listener (socket events handler)
 We use the same connection-listener for both client (FreeSwitch "inbound" socket) and server (FreeSwitch "outound" socket).
 This is modelled after Node.js' http.js; the connection-listener is called either when FreeSwitch connects to our server, or when we connect to FreeSwitch from our client.
 
+    class FreeSwitchParserError extends Error
+      constructor: (@args) ->
+        super JSON.stringify @args
+        return
+
     connectionListener = (call) ->
 
 The module provides statistics in the `stats` object if it is initialized. You may use it  to collect your own call-related statistics.
@@ -38,7 +43,7 @@ Rewrite headers as needed to work around some weirdnesses in the protocol; and a
           if call.stats?
             call.stats.missing_content_type ?= 0
             call.stats.missing_content_type++
-          call.socket.emit 'error', {when: 'Missing Content-Type', headers, body}
+          call.emit 'error.missing-content-type', new FreeSwitchParserError {headers, body}
           return
 
 Notice how all our (internal) event names are lower-cased; FreeSwitch always uses full-upper-case event names.
@@ -102,11 +107,12 @@ Parse the JSON body.
 In case of error report it as an error.
 
             catch exception
+              trace 'Invalid JSON', body
               if call.stats?
                 call.stats.json_parse_errors ?= 0
                 call.stats.json_parse_errors++
 
-              call.socket.emit 'error', when:'JSON error', error:exception, body:body
+              call.emit 'error.invalid-json', exception
               return
 
 Otherwise trigger the proper event.
@@ -158,6 +164,12 @@ You normally do not have to monitor this event, the `api` methods catches it.
               call.stats.api_responses ?= 0
               call.stats.api_responses++
 
+          when 'text/rude-rejection'
+            event = 'freeswitch_rude_rejection'
+            if call.stats?
+              call.stats.rude_rejections ?= 0
+              call.stats.rude_rejections++
+
 Others?
 -------
 
@@ -165,9 +177,9 @@ Others?
 
 Ideally other content-types should be individually specified. In any case we provide a fallback mechanism.
 
-            debug 'Unhandled Content-Type', content_type
+            trace 'Unhandled Content-Type', content_type
             event = "freeswitch_#{content_type.replace /[^a-z]/, '_'}"
-            call.socket.emit 'error', when:'Unhandled Content-Type', error:content_type
+            call.emit 'error.unhandled-content-type', new FreeSwitchParserError {content_type}
             if call.stats?
               call.stats.unhandled ?= 0
               call.stats.unhandled++
@@ -211,18 +223,17 @@ For every new connection to our server we get a new `Socket` object, which we wr
 
 The `freeswitch_connect` event is triggered by our `connectionListener` once the parser is set up and ready.
 
-          call.once 'freeswitch_connect'
-          .then ->
+          call.once 'freeswitch_connect', ->
 
 The request-listener is called within the context of the `FreeSwitchResponse` object.
 
             try
               requestListener.call call
 
-All errors are reported directly on the socket; even though `FreeSwitchResponse` contains an `EventEmitter` we don't use it for error notification.
+All errors are reported on `FreeSwitchResponse`.
 
             catch exception
-              call.socket.emit 'error', exception
+              call.emit 'error.listener', exception
 
 The connection-listener is called last to set the parser up and trigger the request-listener.
 
@@ -305,17 +316,6 @@ Parsing of incoming messages is handled by the connection-listener.
         super()
         return
 
-      keepConnected: (args...) ->
-        connect = =>
-          @once 'close', (had_error) ->
-            if had_error
-              connect()
-            return
-          @connect args...
-          return
-        connect()
-        return
-
 The `client` function we provide wraps `FreeSwitchClient` in order to provide some defaults.
 The `handler` will be called in the context of the `FreeSwitchResponse`; the `options` are optional, but may include a `password`.
 
@@ -327,7 +327,7 @@ The `handler` will be called in the context of the `FreeSwitchResponse`; the `op
 
       report ?= options.report
       report ?= (error) ->
-        debug "Client: #{error}"
+        debug "Client report error: #{error}"
 
 If neither `options` not `password` is provided, the default password is assumed.
 
@@ -340,7 +340,7 @@ If neither `options` not `password` is provided, the default password is assumed
 
 Normally when the client connects, FreeSwitch will first send us an authentication request. We use it to trigger the remainder of the stack.
 
-      client.call.once 'freeswitch_auth_request'
+      client.call.onceAsync 'freeswitch_auth_request'
       .then ->
         @auth options.password
       .then -> @auto_cleanup()
@@ -350,6 +350,42 @@ Normally when the client connects, FreeSwitch will first send us an authenticati
 
       debug "Ready to start #{pkg.name} #{pkg.version} client."
       return client
+
+    exports.reconnect = (connect_options, options, handler, report) ->
+      connect_options ?=
+        host: '127.0.0.1'
+        port: 8021
+      client = null
+      running = true
+      reconnect = (retry,attempt = 0) ->
+        if not running
+          debug "reconnect attempt ##{attempt}: stopping client to ", connect_options
+          return
+        debug "reconnect attempt ##{attempt} (retry is #{retry}ms): (re)connecting client to ", connect_options
+        client?.destroy()
+
+        client = exports.client options, handler, report
+        client.on 'error', (error) ->
+          if retry < 5000
+            retry = (retry * 1200) // 1000 if error.code is 'ECONNREFUSED'
+          debug "reconnect attempt ##{attempt}: client received `error` event: #{error.code} — #{error}. (Reconnecting in #{retry}ms.)"
+          setTimeout (-> reconnect retry, attempt+1), retry
+          return
+        client.on 'end', ->
+          debug "reconnect attempt ##{attempt}: client received `end` event (remote end sent a FIN packet). (Reconnecting in #{retry}ms.)"
+          setTimeout (-> reconnect retry, attempt+1), retry
+          return
+        client.on 'close', (had_error) ->
+          debug "reconnect attempt ##{attempt}: client received `close` event (due to error: #{had_error}). (Ignored.)"
+          return
+
+        client.connect connect_options
+        ->
+          debug "reconnect attempt ##{attempt}: end requested by application."
+          running = false
+          client?.end()
+
+      reconnect 200
 
 Please note that the client is not started with `event_json ALL` since by default this would mean obtaining all events from FreeSwitch. Instead, we only monitor the events we need to be notified for (commands and `bgapi` responses).
 You must manually run `@event_json` and an optional `@filter` command.
@@ -365,3 +401,4 @@ Toolbox
 
     pkg = require '../package.json'
     debug = (require 'debug') 'esl:main'
+    trace = (require 'debug') 'esl:main:trace'
