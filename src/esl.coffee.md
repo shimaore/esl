@@ -425,7 +425,10 @@ Options are socket.connect options plus `password`.
       sengmsg_uuid sendmsg execute_uuid command_uuid hangup_uuid unicast_uuid
       execute command hangup unicast
     '''.split /\s+/
-      Wrapper::[name] = (args...) -> @client[name] args...
+      do (name) ->
+        Wrapper::[name] = (args...) ->
+          trace "Wrapper::#{name}", args
+          @client[name] args...
 
     exports.createClient = (options) ->
       new Wrapper options

@@ -7,55 +7,63 @@
 
     describe 'createClient', ->
       client_port = 5624
-      it 'should reconnect', (done) ->
+      it 'should send commands', (done) ->
         @timeout 30000
+        spoof = null
         start = (run = 1) ->
+          connection = 0
           service = (c) ->
-            debug "Server run ##{run} received connection"
+            debug "Server run ##{run} received #{++connection} connection"
+            debug "Server run ##{run} writing (auth)"
             c.on 'error', (error) ->
               debug "Server run ##{run} received error #{error}"
               return
             c.on 'data', seem (data) ->
+              data = data.toString 'utf-8'
               debug "Server run ##{run} received data", data
-              switch run
-                when 1
-                  debug 'Server run #1 sleeping'
-                  yield sleep 500
-                  debug 'Server run #1 close'
-                  yield c.destroy()
-                  yield spoof.close()
+              yield sleep 100
+              debug "Server run ##{run} writing (reply ok)"
+              c.write '''
 
-                when 2
-                  debug 'Server run #2 writing (auth)'
-                  yield c.write '''
-                    Content-Type: auth/request
+                Content-Type: command/reply
+                Reply-Text: +OK accepted
 
 
-                  '''
-                  debug 'Server run #2 sleeping'
-                  yield sleep 500
-                  debug 'Server run #2 writing (reply)'
-                  yield c.write '''
+              '''
+              if data.match /bridge[^]*foo/
+                yield sleep 100
+                debug "Server run ##{run} writing (execute-complete for bridge)"
+                c.write '''
 
-                    Content-Type: command/reply
-                    Reply-Text: +OK accepted
+                  Content-Type: text/event-plain
+                  Content-Length: 78
 
-                    Content-Type: text/disconnect-notice
-                    Content-Length: 0
+                  Event-Name: CHANNEL_EXECUTE_COMPLETE
+                  Application: bridge
+                  Application-Data: foo
 
-                  '''
-                  debug 'Server run #2 sleeping'
-                  yield sleep 500
-                  debug 'Server run #2 close'
-                  yield spoof.close()
 
-                when 3
-                  debug 'Server run #3 close'
-                  yield spoof.close()
-                  done()
+                '''
+              if data.match /ping[^]*bar/
+                yield sleep 100
+                debug "Server run ##{run} writing (execute-complete for ping)"
+                c.write '''
+
+                  Content-Type: text/event-plain
+                  Content-Length: 76
+
+                  Event-Name: CHANNEL_EXECUTE_COMPLETE
+                  Application: ping
+                  Application-Data: bar
+
+
+                '''
+            c.on 'end', ->
+              debug "Server run ##{run} end"
 
             c.resume()
             c.write '''
+
               Content-Type: auth/request
 
 
@@ -67,19 +75,23 @@
             debug "Server run ##{run} ready"
           spoof.on 'close', ->
             debug 'Server received close event'
-            run++
-            if run < 4
-              setTimeout (-> start run+1), 1400
             return
           return
 
         after ->
           w.end()
+          spoof.close()
 
         start()
 
-        w = FS.createClient {host:'127.0.0.1',port:client_port}, ->
+        w = FS.createClient {host:'127.0.0.1',port:client_port}
+        w.on 'connect', seem ->
           debug 'Client is connected'
-          @end()
+          yield @command 'bridge', 'foo'
+          debug 'Client sending again'
+          yield @command 'ping', 'bar'
+          debug 'Client requesting end'
+          yield @end()
+          done()
 
         return
