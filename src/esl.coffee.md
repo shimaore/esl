@@ -20,12 +20,8 @@ The parser will be the one receiving the actual data from the socket. We will pr
 Make the command responses somewhat unique. This is required since FreeSwitch doesn't provide us a way to match responses with requests.
 
       call.on 'CHANNEL_EXECUTE_COMPLETE', (res) ->
-        application = res.body['Application']
-        application_data = res.body['Application-Data'] ? ''
-        call.emit "CHANNEL_EXECUTE_COMPLETE #{application} #{application_data}", res
-        unique_id = res.body['Unique-ID']
-        if unique_id?
-          call.emit "CHANNEL_EXECUTE_COMPLETE #{unique_id} #{application} #{application_data}", res
+        event_uuid = res.body['Application-UUID']
+        call.emit "CHANNEL_EXECUTE_COMPLETE #{event_uuid}", res
 
       call.on 'BACKGROUND_JOB', (res) ->
         job_uuid = res.body['Job-UUID']
