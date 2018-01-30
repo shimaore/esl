@@ -46,7 +46,8 @@
   "dependencies": {
     "bluebird": "^3.5.1",
     "debug": "^3.1.0",
-    "eventemitter2": "^5.0.0"
+    "eventemitter2": "^5.0.0",
+    "uuid": "^3.2.1"
   },
   "devDependencies": {
     "chai": "^4.1.2",
@@ -56,8 +57,7 @@
     "mocha": "^4.0.1",
     "pouchdb-adapter-memory": "^6.4.1",
     "pouchdb-core": "^6.4.1",
-    "seem": "^2.0.0",
-    "uuid": "^3.1.0"
+    "seem": "^2.0.0"
   },
   "scripts": {
     "prepublishOnly": "npm install --only=dev && rm package-lock.json && coffee -c -o lib/ src/*.coffee.md && docco src/*",

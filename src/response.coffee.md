@@ -2,6 +2,7 @@ Response and associated API
 ===========================
 
     {EventEmitter2} = require 'eventemitter2'
+    UUID = require 'uuid'
     Promise = require 'bluebird'
     Promise.config
       cancellation: true
@@ -493,11 +494,12 @@ execute_uuid
 
 Execute an application for the given UUID (in client mode).
 
-      execute_uuid: (uuid,app_name,app_arg,loops) ->
+      execute_uuid: (uuid,app_name,app_arg,loops,event_uuid) ->
         options =
           'execute-app-name': app_name
           'execute-app-arg':  app_arg
         options.loops = loops if loops?
+        options['Event-UUID'] = event_uuid if event_uuid?
         @sendmsg_uuid uuid, 'execute', options
 
 TODO: Support the alternate format (with no `execute-app-arg` header but instead a `text/plain` body containing the argument).
@@ -509,10 +511,8 @@ Execute an application synchronously. Return a Promise.
 
       command_uuid: (uuid,app_name,app_arg,timeout = @default_command_timeout) ->
         app_arg ?= ''
-        event = if uuid?
-            "CHANNEL_EXECUTE_COMPLETE #{uuid} #{app_name} #{app_arg}"
-          else
-            "CHANNEL_EXECUTE_COMPLETE #{app_name} #{app_arg}"
+        event_uuid = UUID.v4()
+        event = "CHANNEL_EXECUTE_COMPLETE #{event_uuid}"
 
 The Promise is only fulfilled when the command has completed.
 
@@ -524,7 +524,7 @@ FIXME There should be no need to catch the error here, however things break if I
             debug "command_uuid: response #{error}", uuid,app_name,app_arg
             null
 
-        q = @execute_uuid uuid,app_name,app_arg
+        q = @execute_uuid uuid,app_name,app_arg,null,event_uuid
           .catch (error) ->
             debug "command_uuid: execute_uuid #{error}", uuid,app_name,app_arg
             p.cancel()

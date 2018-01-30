@@ -24,7 +24,6 @@
               yield sleep 100
               debug "Server run ##{run} writing (reply ok)"
               c.write '''
-
                 Content-Type: command/reply
                 Reply-Text: +OK accepted
 
@@ -33,31 +32,36 @@
               if data.match /bridge[^]*foo/
                 yield sleep 100
                 debug "Server run ##{run} writing (execute-complete for bridge)"
-                c.write '''
-
+                event_uuid = data.match(/Event-UUID: (\S+)/)[1]
+                msg = """
                   Content-Type: text/event-plain
-                  Content-Length: 78
+                  Content-Length: #{97+event_uuid.length}
 
                   Event-Name: CHANNEL_EXECUTE_COMPLETE
                   Application: bridge
                   Application-Data: foo
+                  Application-UUID: #{event_uuid}
 
 
-                '''
+                """
+                c.write msg
               if data.match /ping[^]*bar/
                 yield sleep 100
                 debug "Server run ##{run} writing (execute-complete for ping)"
-                c.write '''
+                event_uuid = data.match(/Event-UUID: (\S+)/)[1]
+                msg = """
 
                   Content-Type: text/event-plain
-                  Content-Length: 76
+                  Content-Length: #{95+event_uuid.length}
 
                   Event-Name: CHANNEL_EXECUTE_COMPLETE
                   Application: ping
                   Application-Data: bar
+                  Application-UUID: #{event_uuid}
 
 
-                '''
+                """
+                c.write msg
             c.on 'end', ->
               debug "Server run ##{run} end"
 
