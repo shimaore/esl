@@ -210,6 +210,7 @@ We inherit from the `Server` class of Node.js' `net` module. This way any method
 
     class FreeSwitchServer extends net.Server
       constructor: (requestListener) ->
+        super()
 
         @on 'connection', (socket) ->
 
@@ -217,26 +218,24 @@ For every new connection to our server we get a new `Socket` object, which we wr
 
           call = new FreeSwitchResponse socket
 
-The `freeswitch_connect` event is triggered by our `connectionListener` once the parser is set up and ready.
-
-          call.once 'freeswitch_connect', ->
-
-The request-listener is called within the context of the `FreeSwitchResponse` object.
-
-            try
-              requestListener.call call
-
-All errors are reported on `FreeSwitchResponse`.
-
-            catch exception
-              call.emit 'error.listener', exception
-
 The connection-listener is called last to set the parser up and trigger the request-listener.
 
           connectionListener call
+
+The `freeswitch_connect` event is triggered by our `connectionListener` once the parser is set up and ready.
+
+The request-listener is called within the context of the `FreeSwitchResponse` object.
+
+          try
+            requestListener.call call
+
+All errors are reported on `FreeSwitchResponse`.
+
+          catch exception
+            call.emit 'error.listener', exception
+
           return
 
-        super()
         return
 
 The `server` we export is only slightly more complex. It sets up a filter so that the application only gets its own events, and sets up automatic cleanup which will be used before disconnecting the socket.
@@ -300,6 +299,7 @@ We inherit from the `Socket` class of Node.js' `net` module. This way any method
 
     class FreeSwitchClient extends net.Socket
       constructor: ->
+        super()
 
 Contrarily to the server which will handle multiple socket connections over its lifetime, a client only handles one socket, so only one `FreeSwitchResponse` object is needed as well.
 
@@ -309,7 +309,6 @@ Parsing of incoming messages is handled by the connection-listener.
 
         @once 'connect', ->
           connectionListener call
-        super()
         return
 
 The `client` function we provide wraps `FreeSwitchClient` in order to provide some defaults.
