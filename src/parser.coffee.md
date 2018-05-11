@@ -85,7 +85,7 @@ Parse the header lines
 Figure out whether a body is expected
 
         if @headers["Content-Length"]
-          @body_length = @headers["Content-Length"]
+          @body_length = parseInt @headers["Content-Length"], 10
 
 Parse the body (and eventually process)
 
