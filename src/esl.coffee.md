@@ -403,7 +403,7 @@ Options are socket.connect options plus `password`.
             if self.listeners('error').length > 0
               self.emit 'error', error
           else
-            self.emit 'event', args...
+            self.emit event, args...
           return
 
         handler = ->
