@@ -8,15 +8,19 @@ Response and associated API
       cancellation: true
 
     class FreeSwitchError extends Error
-      constructor: (@res,@args) ->
+      constructor: (res,args) ->
         super()
+        @res = res
+        @args = args
         return
       toString: ->
         "FreeSwitchError: #{JSON.stringify @args}"
 
     class FreeSwitchTimeout extends Error
-      constructor: (@timeout,@text) ->
+      constructor: (timeout,text) ->
         super()
+        @timeout = timeout
+        @text = text
         return
       toString: ->
         "FreeSwitchTimeout: Timeout after #{@timeout}ms waiting for #{@text}"
@@ -25,9 +29,13 @@ Response and associated API
 
 The `FreeSwitchResponse` is bound to a single socket (dual-stream). For outbound (server) mode this would represent a single socket call from FreeSwitch.
 
-      constructor: (@socket) ->
+      constructor: (socket) ->
 
-        assert @socket?, 'Missing socket parameter'
+        assert socket?, 'Missing socket parameter'
+
+        super wildcard: true, verboseMemoryLeak: true
+
+        @socket = socket
 
 The object also provides a queue for operations which need to be submitted one after another on a given socket because FreeSwitch does not provide ways to map event socket requests and responses in the general case.
 
@@ -62,7 +70,6 @@ After the socket is closed or errored, this object is no longer usable.
           @__later = null
           return
 
-        super wildcard: true, verboseMemoryLeak: true
         null
 
       error: (res,data) ->

@@ -1,5 +1,5 @@
     describe 'api', ->
-      Response = require '../src/response'
+      Response = require '../lib/response'
       it 'should throw properly on closed', (done) ->
         t = new Response
           on: ->
@@ -12,7 +12,7 @@
         null
 
     describe 'bgapi', ->
-      Response = require '../src/response'
+      Response = require '../lib/response'
       it 'should throw properly on closed', (done) ->
         t = new Response
           on: ->

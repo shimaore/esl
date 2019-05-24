@@ -1,8 +1,7 @@
-    FS = require '../src/esl'
+    FS = require '..'
     pkg = require '../package'
     debug = (require 'debug') "#{pkg.name}:test:reconnect"
     net = require 'net'
-    seem = require 'seem'
     sleep = (timeout) -> new Promise (resolve) -> setTimeout resolve, timeout
 
     describe 'createClient', ->
@@ -18,10 +17,10 @@
             c.on 'error', (error) ->
               debug "Server run ##{run} received error #{error}"
               return
-            c.on 'data', seem (data) ->
+            c.on 'data', (data) ->
               data = data.toString 'utf-8'
               debug "Server run ##{run} received data", data
-              yield sleep 100
+              await sleep 100
               debug "Server run ##{run} writing (reply ok)"
               c.write '''
                 Content-Type: command/reply
@@ -30,7 +29,7 @@
 
               '''
               if data.match /bridge[^]*foo/
-                yield sleep 100
+                await sleep 100
                 debug "Server run ##{run} writing (execute-complete for bridge)"
                 event_uuid = data.match(/Event-UUID: (\S+)/)[1]
                 msg = """
@@ -46,7 +45,7 @@
                 """
                 c.write msg
               if data.match /ping[^]*bar/
-                yield sleep 100
+                await sleep 100
                 debug "Server run ##{run} writing (execute-complete for ping)"
                 event_uuid = data.match(/Event-UUID: (\S+)/)[1]
                 msg = """
@@ -89,13 +88,13 @@
         start()
 
         w = FS.createClient {host:'127.0.0.1',port:client_port}
-        w.on 'connect', seem ->
+        w.on 'connect', ->
           debug 'Client is connected'
-          yield @command 'bridge', 'foo'
+          await @command 'bridge', 'foo'
           debug 'Client sending again'
-          yield @command 'ping', 'bar'
+          await @command 'ping', 'bar'
           debug 'Client requesting end'
-          yield @end()
+          await @end()
           done()
 
         return

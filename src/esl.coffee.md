@@ -5,8 +5,9 @@ We use the same connection-listener for both client (FreeSwitch "inbound" socket
 This is modelled after Node.js' http.js; the connection-listener is called either when FreeSwitch connects to our server, or when we connect to FreeSwitch from our client.
 
     class FreeSwitchParserError extends Error
-      constructor: (@args) ->
-        super JSON.stringify @args
+      constructor: (args) ->
+        super JSON.stringify args
+        @args = args
         return
 
     connectionListener = (call) ->
@@ -210,6 +211,7 @@ We inherit from the `Server` class of Node.js' `net` module. This way any method
 
     class FreeSwitchServer extends net.Server
       constructor: (requestListener) ->
+        super()
 
         @on 'connection', (socket) ->
 
@@ -236,7 +238,6 @@ The connection-listener is called last to set the parser up and trigger the requ
           connectionListener call
           return
 
-        super()
         return
 
 The `server` we export is only slightly more complex. It sets up a filter so that the application only gets its own events, and sets up automatic cleanup which will be used before disconnecting the socket.
@@ -300,6 +301,7 @@ We inherit from the `Socket` class of Node.js' `net` module. This way any method
 
     class FreeSwitchClient extends net.Socket
       constructor: ->
+        super()
 
 Contrarily to the server which will handle multiple socket connections over its lifetime, a client only handles one socket, so only one `FreeSwitchResponse` object is needed as well.
 
@@ -309,7 +311,6 @@ Parsing of incoming messages is handled by the connection-listener.
 
         @once 'connect', ->
           connectionListener call
-        super()
         return
 
 The `client` function we provide wraps `FreeSwitchClient` in order to provide some defaults.
@@ -397,6 +398,7 @@ Options are socket.connect options plus `password`.
 
     class Wrapper extends EventEmitter2
       constructor: (options) ->
+        super()
         self = this
         notify = (event,args...) ->
           if event is 'error'

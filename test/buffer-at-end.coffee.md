@@ -1,4 +1,4 @@
-    FS = require '../src/esl'
+    FS = require '..'
     pkg = require '../package'
     debug = (require 'debug') "#{pkg.name}:test:buffer-at-end"
     net = require 'net'

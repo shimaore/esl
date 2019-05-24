@@ -1,8 +1,7 @@
-    FS = require '../src/esl'
+    FS = require '..'
     pkg = require '../package'
     debug = (require 'debug') "#{pkg.name}:test:reconnect"
     net = require 'net'
-    seem = require 'seem'
     sleep = (timeout) -> new Promise (resolve) -> setTimeout resolve, timeout
 
     describe 'The client', ->
@@ -15,27 +14,27 @@
             c.on 'error', (error) ->
               debug "Server run ##{run} received error #{error}"
               return
-            c.on 'data', seem (data) ->
+            c.on 'data', (data) ->
               debug "Server run ##{run} received data", data
               switch run
                 when 1
                   debug 'Server run #1 sleeping'
-                  yield sleep 500
+                  await sleep 500
                   debug 'Server run #1 close'
-                  yield c.destroy()
-                  yield spoof.close()
+                  await c.destroy()
+                  await spoof.close()
 
                 when 2
                   debug 'Server run #2 writing (auth)'
-                  yield c.write '''
+                  await c.write '''
                     Content-Type: auth/request
 
 
                   '''
                   debug 'Server run #2 sleeping'
-                  yield sleep 500
+                  await sleep 500
                   debug 'Server run #2 writing (reply)'
-                  yield c.write '''
+                  await c.write '''
 
                     Content-Type: command/reply
                     Reply-Text: +OK accepted
@@ -45,13 +44,13 @@
 
                   '''
                   debug 'Server run #2 sleeping'
-                  yield sleep 500
+                  await sleep 500
                   debug 'Server run #2 close'
-                  yield spoof.close()
+                  await spoof.close()
 
                 when 3
                   debug 'Server run #3 close'
-                  yield spoof.close()
+                  await spoof.close()
                   done()
 
             c.resume()

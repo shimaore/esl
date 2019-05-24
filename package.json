@@ -45,24 +45,24 @@
   ],
   "dependencies": {
     "bluebird": "^3.5.1",
-    "debug": "^3.1.0",
+    "debug": "^4.1.1",
     "eventemitter2": "^5.0.0",
     "uuid": "^3.2.1"
   },
   "devDependencies": {
     "chai": "^4.1.2",
-    "coffee-script": "^1.12.7",
+    "coffeescript": "^2.4.1",
     "docco": "^0.8.0",
-    "memdown": "^1.4.1",
-    "mocha": "^4.0.1",
-    "pouchdb-adapter-memory": "^6.4.1",
-    "pouchdb-core": "^6.4.1",
-    "seem": "^2.0.0"
+    "memdown": "^4.0.0",
+    "mocha": "^6.1.4",
+    "nyc": "^14.1.1",
+    "pouchdb-adapter-memory": "^7.0.0",
+    "pouchdb-core": "^7.0.0"
   },
   "scripts": {
     "build": "coffee -c -o lib/ src/*.coffee.md && docco src/*",
     "prepublishOnly": "npm install --only=dev && rm -f package-lock.json && npm run build",
-    "pretest": "npm install && npm run prepublishOnly",
+    "pretest": "npm install && npm run prepublishOnly && coffee -c test/*.coffee.md",
     "test": "(cd test && ./setup.sh) && mocha && (cd test && ./cleanup.sh; exit 0)",
     "test-debug": "(cd test && ./setup.sh) && DEBUG='*,-mocha*' mocha && (cd test && ./cleanup.sh; exit 0)",
     "clean": "rm -rf cov/ lib/ routes/ node_modules/ test/*.log"

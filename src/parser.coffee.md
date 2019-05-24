@@ -5,8 +5,10 @@ Event Socket stream parser
     util = require 'util'
 
     class FreeSwitchParserError extends Error
-      constructor: (@error,@buffer) ->
-        super JSON.stringify {error:@error,buffer:@buffer}
+      constructor: (error,buffer) ->
+        super JSON.stringify {error:error,buffer:buffer}
+        @error = error
+        @buffer = buffer
         return
 
     module.exports = class FreeSwitchParser
