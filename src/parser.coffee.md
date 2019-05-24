@@ -6,7 +6,7 @@ Event Socket stream parser
 
     class FreeSwitchParserError extends Error
       constructor: (error,buffer) ->
-        super JSON.stringify {error:error,buffer:buffer}
+        super JSON.stringify {error,buffer}
         @error = error
         @buffer = buffer
         return

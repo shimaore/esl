@@ -44,7 +44,6 @@
     "lib/response.js"
   ],
   "dependencies": {
-    "bluebird": "^3.5.1",
     "debug": "^4.1.1",
     "eventemitter2": "^5.0.0",
     "uuid": "^3.2.1"
@@ -63,8 +62,8 @@
     "build": "coffee -c -o lib/ src/*.coffee.md && docco src/*",
     "prepublishOnly": "npm install --only=dev && rm -f package-lock.json && npm run build",
     "pretest": "npm install && npm run prepublishOnly && coffee -c test/*.coffee.md",
-    "test": "(cd test && ./setup.sh) && mocha && (cd test && ./cleanup.sh; exit 0)",
-    "test-debug": "(cd test && ./setup.sh) && DEBUG='*,-mocha*' mocha && (cd test && ./cleanup.sh; exit 0)",
+    "test": "(cd test && ./setup.sh) && nyc mocha && (cd test && ./cleanup.sh; exit 0)",
+    "test-debug": "(cd test && ./setup.sh) && DEBUG='*,-mocha*' nyc mocha && (cd test && ./cleanup.sh; exit 0)",
     "clean": "rm -rf cov/ lib/ routes/ node_modules/ test/*.log"
   },
   "publishConfig": {

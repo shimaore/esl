@@ -257,7 +257,7 @@ The call handler will receive a `FreeSwitchResponse` object, `options` are optio
       assert.ok handler?, "server handler is required"
       assert.strictEqual typeof handler, 'function', "server handler must be a function"
 
-      server = new FreeSwitchServer ->
+      server = new FreeSwitchServer (args...) ->
 
 Here starts our default request-listener.
 
@@ -266,23 +266,20 @@ Here starts our default request-listener.
 
 Confirm connection with FreeSwitch.
 
-          @connect()
-          .then (res) ->
-            @data = res.body
-            @uuid = @data[Unique_ID]
+          res = await @connect()
+          @data = res.body
+          @uuid = @data[Unique_ID]
 
 Restricting events using `filter` is required so that `event_json` will only obtain our events.
 
-            @filter Unique_ID, @uuid if options.my_events
-          .then ->
-            @auto_cleanup()
-          .then ->
-            if options.all_events
-              @event_json 'ALL'
-            else
-              @event_json 'CHANNEL_EXECUTE_COMPLETE', 'BACKGROUND_JOB'
-          .then -> handler.apply this, arguments
-          .catch -> report.apply this, arguments
+          await @filter Unique_ID, @uuid if options.my_events
+          await @auto_cleanup()
+          if options.all_events
+            await @event_json 'ALL'
+          else
+            await @event_json 'CHANNEL_EXECUTE_COMPLETE', 'BACKGROUND_JOB'
+
+          await handler.apply this, args
 
         catch exception
           report exception
@@ -338,15 +335,14 @@ If neither `options` not `password` is provided, the default password is assumed
 Normally when the client connects, FreeSwitch will first send us an authentication request. We use it to trigger the remainder of the stack.
 
       client.call.onceAsync 'freeswitch_auth_request'
-      .then ->
-        @auth options.password
-      .then -> @auto_cleanup()
-      .then -> @event_json 'CHANNEL_EXECUTE_COMPLETE', 'BACKGROUND_JOB'
-      .then -> handler.apply this, arguments
-      .catch -> report.apply this, arguments
+      .then =>
+        await client.call.auth options.password
+        await client.call.auto_cleanup()
+        await client.call.event_json 'CHANNEL_EXECUTE_COMPLETE', 'BACKGROUND_JOB'
+        await handler.call client.call
+      .catch report
 
-      debug "Ready to start #{pkg.name} #{pkg.version} client."
-      return client
+      client
 
     exports.reconnect = (connect_options, options, handler, report) ->
       connect_options ?=
