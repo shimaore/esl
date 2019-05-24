@@ -56,7 +56,7 @@ We also must track connection close in order to prevent writing to a closed sock
 
 Default handler for `error` events to prevent `Unhandled 'error' event` reports.
 
-        @socket.once 'error', (err) =>
+        @socket.on 'error', (err) =>
           debug 'Socket Error', {err}
           @emit 'socket.error', err
           return
