@@ -377,7 +377,9 @@ Normally when the client connects, FreeSwitch will first send us an authenticati
           return
 
         client.connect connect_options
-        ->
+          .catch (error) -> console.error 'connect', error
+
+        end = ->
           debug "reconnect attempt ##{attempt}: end requested by application."
           notify? 'end'
           running = false

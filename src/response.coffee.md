@@ -4,6 +4,12 @@ Response and associated API
     {EventEmitter2} = require 'eventemitter2'
     UUID = require 'uuid'
 
+    async_log = (msg,af) ->
+      ->
+        af().catch (error) ->
+          console.log msg, error
+          Promise.reject error
+
     class FreeSwitchError extends Error
       constructor: (res,args) ->
         super()
@@ -45,23 +51,24 @@ We also must track connection close in order to prevent writing to a closed sock
 
         @closed = false
 
-        @socket.once 'close', =>
+        @socket.once 'close', socket_once_close = =>
           debug 'Socket closed'
           @emit 'socket.close'
           return
 
 Default handler for `error` events to prevent `Unhandled 'error' event` reports.
 
-        @socket.on 'error', (err) =>
+        @socket.on 'error', socket_on_error = (err) =>
           debug 'Socket Error', err
           @emit 'socket.error', err
           return
 
 After the socket is closed or errored, this object is no longer usable.
 
-        @once 'socket.*', =>
+        @once 'socket.*', once_socket_star = =>
           @closed = true
           @removeAllListeners()
+          try await @__queue
           @__queue = null
           @__later = null
           @socket.end()
@@ -95,7 +102,7 @@ onceAsync
 
       onceAsync: (event,timeout,comment) ->
         trace 'onceAsync', event, timeout
-        new Promise (resolve,reject) =>
+        onceAsyncHandler = (resolve,reject) =>
 
           on_event = (args...) ->
             trace "onceAsync: on_event #{event} in #{comment}", args
@@ -126,6 +133,8 @@ onceAsync
           timer = setTimeout on_timeout, timeout if timeout?
           return
 
+        new Promise onceAsyncHandler
+
 Queueing
 ========
 
@@ -136,14 +145,15 @@ The function is only called when all previously enqueued functions-that-return-P
         if not @__queue?
           return @error {}, {when:'enqueue on closed socket'}
 
-        if not @__queue.then?
+        unless @__queue.catch?
           throw new Error "Queue should be a Promise"
 
         q = @__queue
-
-        @__queue = do =>
-          try await q
+        queueHandler = =>
+          await q.catch -> yes
           await f()
+
+        @__queue = do queueHandler
 
 Sync/Async event
 ================
@@ -188,7 +198,7 @@ Send a single command to FreeSwitch; `args` is a hash of headers sent with the c
         if @closed
           return @error {}, {when:'write on closed socket',command,args}
 
-        new Promise (resolve,reject) =>
+        writeHandler = (resolve,reject) =>
           try
             trace 'write', {command,args}
 
@@ -210,6 +220,8 @@ Cancel any pending Promise started with `@onceAsync`, and close the connection.
 
           return
 
+        new Promise writeHandler
+
 send
 ----
 
@@ -217,16 +229,18 @@ A generic way of sending commands to FreeSwitch, wrapping `write` into a Promise
 
       send: (command,args,timeout = @command_timeout) ->
 
+        msg = "send #{command} #{JSON.stringify args}"
+
         if @closed
           return @error {}, {when:'send on closed socket',command,args}
 
 Typically `command/reply` will contain the status in the `Reply-Text` header while `api/response` will contain the status in the body.
 
-        await @enqueue =>
-          p = @onceAsync 'freeswitch_command_reply', timeout, "send #{command} #{args}"
+        sendHandler = =>
+          p = @onceAsync 'freeswitch_command_reply', timeout, msg
+          q = @write command, args
 
-          await @write command, args
-          res = await p
+          [res] = await Promise.all [p,q]
 
           trace 'send: received reply', {command,args}
           reply = res?.headers['Reply-Text']
@@ -246,13 +260,16 @@ The promise will be fulfilled with the `{headers,body}` object provided by the p
           trace 'send: success', {command,args}
           res
 
+        await @enqueue async_log msg, sendHandler
+
 end
 ---
 
 Closes the socket.
 
       end: ->
-        @emit 'socket.end'
+        trace 'end'
+        try @emit 'socket.end'
         return
 
 Channel-level commands
@@ -267,15 +284,16 @@ Use `bgapi` if you need to make sure responses are correct, since it provides th
 
       api: (command,timeout) ->
         trace 'api', {command}
+        msg = "api #{command}"
 
         if @closed
           return @error {}, {when:'api on closed socket',command}
 
-        await @enqueue =>
-          p = @onceAsync 'freeswitch_api_response', timeout, "api #{command}"
+        apiHandler = =>
+          p = @onceAsync 'freeswitch_api_response', timeout, msg
+          q = @write "api #{command}"
 
-          await @write "api #{command}"
-          res = await p
+          [res] = await Promise.all [p,q]
 
           trace 'api: response', {command}
           reply = res?.body
@@ -295,6 +313,7 @@ The Promise that will be fulfilled with `{headers,body,uuid}` from the parser; u
           res.uuid = (reply.match /^\+OK ([\da-f-]{36})/)?[1]
           res
 
+        await @enqueue async_log msg, apiHandler
 
 bgapi
 -----
@@ -593,7 +612,7 @@ The default behavior in linger mode is to disconnect the socket after 4 seconds,
 
         linger_delay = 4000
 
-        @once 'freeswitch_linger', ->
+        @once 'freeswitch_linger', once_freeswitch_linger = ->
           trace 'auto_cleanup/linger'
           if @emit 'cleanup_linger'
             debug 'auto_cleanup/linger: cleanup_linger processed, make sure you call exit()'
@@ -612,13 +631,13 @@ On disconnect (no linger) mode, you may intercept the event `cleanup_disconnect`
 
 Normal behavior on disconnect is to close the socket with `end()`.
 
-        @once 'freeswitch_disconnect', ->
+        @once 'freeswitch_disconnect', once_freeswitch_disconnect = ->
           trace 'auto_cleanup/disconnect'
           if @emit 'cleanup_disconnect', this
             debug 'auto_cleanup/disconnect: cleanup_disconnect processed, make sure you call end()'
           else
             trace 'auto_cleanup/disconnect: end()'
-            @end()
+            try @end()
           return
 
         return null
