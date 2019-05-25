@@ -58,7 +58,7 @@ We also must track connection close in order to prevent writing to a closed sock
 
 Default handler for `error` events to prevent `Unhandled 'error' event` reports.
 
-        @socket.on 'error', socket_on_error = (err) =>
+        @socket.once 'error', socket_on_error = (err) =>
           debug 'Socket Error', err
           @emit 'socket.error', err
           return
@@ -66,9 +66,9 @@ Default handler for `error` events to prevent `Unhandled 'error' event` reports.
 After the socket is closed or errored, this object is no longer usable.
 
         @once 'socket.*', once_socket_star = =>
+          debug 'Terminate'
           @closed = true
           @removeAllListeners()
-          try await @__queue
           @__queue = null
           @__later = null
           @socket.end()
@@ -149,7 +149,8 @@ The function is only called when all previously enqueued functions-that-return-P
           throw new Error "Queue should be a Promise"
 
         q = @__queue
-        queueHandler = =>
+
+        queueHandler = ->
           await q.catch -> yes
           await f()
 
@@ -229,12 +230,12 @@ A generic way of sending commands to FreeSwitch, wrapping `write` into a Promise
 
       send: (command,args,timeout = @command_timeout) ->
 
-        msg = "send #{command} #{JSON.stringify args}"
-
         if @closed
           return @error {}, {when:'send on closed socket',command,args}
 
 Typically `command/reply` will contain the status in the `Reply-Text` header while `api/response` will contain the status in the body.
+
+        msg = "send #{command} #{JSON.stringify args}"
 
         sendHandler = =>
           p = @onceAsync 'freeswitch_command_reply', timeout, msg
@@ -284,10 +285,11 @@ Use `bgapi` if you need to make sure responses are correct, since it provides th
 
       api: (command,timeout) ->
         trace 'api', {command}
-        msg = "api #{command}"
 
         if @closed
           return @error {}, {when:'api on closed socket',command}
+
+        msg = "api #{command}"
 
         apiHandler = =>
           p = @onceAsync 'freeswitch_api_response', timeout, msg
