@@ -10,10 +10,9 @@
     "name": "Stéphane Alnet",
     "email": "stephane@shimaore.net"
   },
-  "homepage": "http://shimaore.github.io/esl",
   "repository": {
     "type": "git",
-    "url": "git://github.com/shimaore/esl.git"
+    "url": "git://gitlab.com/shimaore/esl.git"
   },
   "contributors": [
     {
