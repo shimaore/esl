@@ -14,17 +14,11 @@ FS = require('esl');
 var fs_command = function(cmd) {
 
   var client = FS.client(function(){
-    this.api(cmd)
-    .then( function(res) {
-      // res contains the headers and body of FreeSwitch's response.
-      res.body.should.match(/\+OK/);
-    })
-    .then( function(){
-      this.exit();
-    })
-    .then( function(){
-      client.end();
-    })
+    var res = await this.api(cmd)
+    // res contains the headers and body of FreeSwitch's response.
+    res.body.should.match(/\+OK/);
+    await this.exit();
+    client.end();
   });
   client.connect(8021,'127.0.0.1');
 
@@ -43,9 +37,9 @@ FS = require 'esl'
 fs_command = (cmd) ->
 
   client = FS.client ->
-    @api cmd
-    .then -> @exit()
-    .then -> client.end()
+    await @api cmd
+    await @exit()
+    client.end()
 
   client.connect 8021, '127.0.0.1'
 
@@ -67,17 +61,10 @@ Here is a simplistic event server:
 
 ```javascript
 var call_handler = function() {
-  this
-  .command('play-file', 'voicemail/vm-hello')
-  .then(function(res) {
-     var foo = res.body.variable_foo;
-  })
-  .then(function() {
-    this.hangup() // hang-up the call
-  })
-  .then(function() {
-    this.exit()   // tell FreeSwitch we're disconnecting
-  })
+  res = await this.command('play-file', 'voicemail/vm-hello')
+  var foo = res.body.variable_foo;
+  await this.hangup() // hang-up the call
+  await this.exit()   // tell FreeSwitch we're disconnecting
 };
 
 require('esl').server(call_handler).listen(7000);
@@ -89,7 +76,7 @@ Message tracing
 During development it is often useful to be able to see what messages are sent to FreeSwitch or received from FreeSwitch.
 This module uses the [debug](https://github.com/visionmedia/debug) module for tracing; simply call your application with
 
-    DEBUG='esl:*'
+    DEBUG='esl:*,-esl:*:trace'
 
 to see traces.
 
