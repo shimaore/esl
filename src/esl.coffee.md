@@ -210,7 +210,7 @@ We inherit from the `Server` class of Node.js' `net` module. This way any method
     net = require 'net'
 
     class FreeSwitchServer extends net.Server
-      constructor: (requestListener) ->
+      constructor: (report,requestListener) ->
         super()
 
         @on 'connection', (socket) ->
@@ -226,12 +226,12 @@ The `freeswitch_connect` event is triggered by our `connectionListener` once the
 The request-listener is called within the context of the `FreeSwitchResponse` object.
 
             try
-              requestListener.call call
+              await requestListener.call call
 
 All errors are reported on `FreeSwitchResponse`.
 
             catch exception
-              call.emit 'error.listener', exception
+              report exception
 
 The connection-listener is called last to set the parser up and trigger the request-listener.
 
@@ -257,7 +257,7 @@ The call handler will receive a `FreeSwitchResponse` object, `options` are optio
       assert.ok handler?, "server handler is required"
       assert.strictEqual typeof handler, 'function', "server handler must be a function"
 
-      server = new FreeSwitchServer (args...) ->
+      server = new FreeSwitchServer report, (args...) ->
 
 Here starts our default request-listener.
 
@@ -334,13 +334,17 @@ If neither `options` not `password` is provided, the default password is assumed
 
 Normally when the client connects, FreeSwitch will first send us an authentication request. We use it to trigger the remainder of the stack.
 
-      client.call.onceAsync 'freeswitch_auth_request'
-      .then =>
-        await client.call.auth options.password
-        await client.call.auto_cleanup()
-        await client.call.event_json 'CHANNEL_EXECUTE_COMPLETE', 'BACKGROUND_JOB'
-        await handler.call client.call
-      .catch report
+      connectionHandler = ->
+        try
+          await @onceAsync 'freeswitch_auth_request'
+          await @auth options.password
+          await @auto_cleanup()
+          await @event_json 'CHANNEL_EXECUTE_COMPLETE', 'BACKGROUND_JOB'
+          await handler.call this
+        catch error
+          report error
+
+      connectionHandler.call client.call
 
       client
 
@@ -376,8 +380,11 @@ Normally when the client connects, FreeSwitch will first send us an authenticati
           notify? 'close', had_error
           return
 
-        client.connect connect_options
-          .catch (error) -> console.error 'connect', error
+        do ->
+          try
+            await client.connect connect_options
+          catch error
+            console.error 'connect', error
 
         end = ->
           debug "reconnect attempt ##{attempt}: end requested by application."

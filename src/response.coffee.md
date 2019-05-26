@@ -7,7 +7,7 @@ Response and associated API
     async_log = (msg,af) ->
       ->
         af().catch (error) ->
-          console.log msg, error
+          debug msg, error
           Promise.reject error
 
     class FreeSwitchError extends Error
@@ -28,6 +28,10 @@ Response and associated API
       toString: ->
         "FreeSwitchTimeout: Timeout after #{@timeout}ms waiting for #{@text}"
 
+Uniquely identify each instance, for tracing purposes.
+
+    ref = 0
+
     module.exports = class FreeSwitchResponse extends EventEmitter2
 
 The `FreeSwitchResponse` is bound to a single socket (dual-stream). For outbound (server) mode this would represent a single socket call from FreeSwitch.
@@ -36,6 +40,8 @@ The `FreeSwitchResponse` is bound to a single socket (dual-stream). For outbound
         assert socket?, 'Missing socket parameter'
 
         super wildcard: true, verboseMemoryLeak: true
+
+        @__ref = (ref = (ref+1) % 1000000000)
 
         @socket = socket
 
@@ -52,21 +58,21 @@ We also must track connection close in order to prevent writing to a closed sock
         @closed = false
 
         @socket.once 'close', socket_once_close = =>
-          debug 'Socket closed'
+          debug 'Socket closed', @__ref
           @emit 'socket.close'
           return
 
 Default handler for `error` events to prevent `Unhandled 'error' event` reports.
 
         @socket.once 'error', socket_on_error = (err) =>
-          debug 'Socket Error', err
+          debug 'Socket Error', @__ref, err
           @emit 'socket.error', err
           return
 
 After the socket is closed or errored, this object is no longer usable.
 
         @once 'socket.*', once_socket_star = =>
-          debug 'Terminate'
+          debug 'Terminate', @__ref
           @closed = true
           @removeAllListeners()
           @__queue = null
@@ -78,7 +84,7 @@ After the socket is closed or errored, this object is no longer usable.
         null
 
       error: (res,data) ->
-        debug "error: new FreeSwitchError", {res,data}
+        debug "error: new FreeSwitchError", @__ref, {res,data}
         Promise.reject new FreeSwitchError res, data
 
 Event Emitter
@@ -101,25 +107,25 @@ onceAsync
 ---------
 
       onceAsync: (event,timeout,comment) ->
-        trace 'onceAsync', event, timeout
+        trace 'onceAsync', @__ref, event, timeout
         onceAsyncHandler = (resolve,reject) =>
 
           on_event = (args...) ->
-            trace "onceAsync: on_event #{event} in #{comment}", args
+            trace "onceAsync: on_event #{event} in #{comment}", @__ref, args
             cleanup()
             resolve args...
             return
 
           on_error = (error) ->
-            trace "onceAsync: on_error #{event}", error
+            trace "onceAsync: on_error #{event}", @__ref, error
             cleanup()
-            reject error ? new Error "Socket closed while waiting for #{event} in #{comment}"
+            reject error ? new Error "Socket closed (#{@__ref}) while waiting for #{event} in #{comment}"
             return
 
           on_timeout = ->
-            trace "onceAsync: on_timeout #{event}"
+            trace "onceAsync: on_timeout #{event}", @__ref
             cleanup()
-            reject new FreeSwitchTimeout timeout, "event #{event} in #{comment}"
+            reject new FreeSwitchTimeout timeout, "(#{@__ref}) event #{event} in #{comment}"
             return
 
           cleanup = =>
@@ -145,16 +151,14 @@ The function is only called when all previously enqueued functions-that-return-P
         if not @__queue?
           return @error {}, {when:'enqueue on closed socket'}
 
-        unless @__queue.catch?
-          throw new Error "Queue should be a Promise"
-
         q = @__queue
 
-        queueHandler = ->
-          await q.catch -> yes
+        next = do ->
+          await q
           await f()
 
-        @__queue = do queueHandler
+        @__queue = next.catch -> yes
+        next
 
 Sync/Async event
 ================
@@ -201,7 +205,7 @@ Send a single command to FreeSwitch; `args` is a hash of headers sent with the c
 
         writeHandler = (resolve,reject) =>
           try
-            trace 'write', {command,args}
+            trace 'write', @__ref, {command,args}
 
             text = "#{command}\n"
             if args?
@@ -243,22 +247,22 @@ Typically `command/reply` will contain the status in the `Reply-Text` header whi
 
           [res] = await Promise.all [p,q]
 
-          trace 'send: received reply', {command,args}
+          trace 'send: received reply', @__ref, {command,args}
           reply = res?.headers['Reply-Text']
 
 The Promise might fail if FreeSwitch's notification indicates an error.
 
           if not reply?
-            trace 'send: no reply', {command, args}
+            trace 'send: no reply', @__ref, {command, args}
             return @error res, {when:'no reply to command',command,args}
 
           if reply.match /^-/
-            debug 'send: failed', reply, {command, args}
+            debug 'send: failed', @__ref, reply, {command, args}
             return @error res, {when:'command reply',reply,command,args}
 
 The promise will be fulfilled with the `{headers,body}` object provided by the parser.
 
-          trace 'send: success', {command,args}
+          trace 'send: success', @__ref, {command,args}
           res
 
         await @enqueue async_log msg, sendHandler
@@ -269,7 +273,7 @@ end
 Closes the socket.
 
       end: ->
-        trace 'end'
+        trace 'end', @__ref
         try @emit 'socket.end'
         return
 
@@ -284,7 +288,7 @@ Returns a Promise that is fulfilled as soon as FreeSwitch sends a reply. Request
 Use `bgapi` if you need to make sure responses are correct, since it provides the proper semantices.
 
       api: (command,timeout) ->
-        trace 'api', {command}
+        trace 'api', @__ref, {command}
 
         if @closed
           return @error {}, {when:'api on closed socket',command}
@@ -297,17 +301,17 @@ Use `bgapi` if you need to make sure responses are correct, since it provides th
 
           [res] = await Promise.all [p,q]
 
-          trace 'api: response', {command}
+          trace 'api: response', @__ref, {command}
           reply = res?.body
 
 The Promise might fail if FreeSwitch indicates there was an error.
 
           if not reply?
-            debug 'api: no reply', {command}
+            debug 'api: no reply', @__ref, {command}
             return @error res, {when:'no reply to api',command}
 
           if reply.match /^-/
-            debug 'api response failed', {reply, command}
+            debug 'api response failed', @__ref, {reply, command}
             return @error res, {when:'api response',reply,command}
 
 The Promise that will be fulfilled with `{headers,body,uuid}` from the parser; uuid is the API UUID if one is provided by FreeSwitch.
@@ -323,7 +327,7 @@ bgapi
 Send an API command in the background. Wraps it inside a Promise.
 
       bgapi: (command,timeout) ->
-        trace 'bgapi', {command,timeout}
+        trace 'bgapi', @__ref, {command,timeout}
 
         if @closed
           return @error {}, {when:'bgapi on closed socket',command}
@@ -337,7 +341,7 @@ Send an API command in the background. Wraps it inside a Promise.
         r ?= res.headers['Job-UUID']
         return error() unless r?
 
-        trace 'bgapi retrieve', r
+        trace 'bgapi retrieve', @__ref, r
 
         await @waitAsync "BACKGROUND_JOB #{r}", timeout, "bgapi #{command}"
 
@@ -516,8 +520,9 @@ Execute an application synchronously. Return a Promise.
 The Promise is only fulfilled when the command has completed.
 
         p = @onceAsync event, timeout, "uuid #{uuid} #{app_name} #{app_arg}"
-        await @execute_uuid uuid,app_name,app_arg,null,event_uuid
-        await p
+        q = @execute_uuid uuid,app_name,app_arg,null,event_uuid
+        [res] = await Promise.all [p,q]
+        res
 
 hangup_uuid
 -----------
@@ -593,16 +598,16 @@ Automatically called by the client and server.
       auto_cleanup: ->
 
         @once 'freeswitch_disconnect_notice', (res) ->
-          trace 'auto_cleanup: Received ESL disconnection notice', res
+          trace 'auto_cleanup: Received ESL disconnection notice', @__ref, res
           switch res.headers['Content-Disposition']
             when 'linger'
-              trace 'Sending freeswitch_linger'
+              trace 'Sending freeswitch_linger', @__ref
               @emit 'freeswitch_linger'
             when 'disconnect'
-              trace 'Sending freeswitch_disconnect'
+              trace 'Sending freeswitch_disconnect', @__ref
               @emit 'freeswitch_disconnect'
             else # Header might be absent?
-              trace 'Sending freeswitch_disconnect'
+              trace 'Sending freeswitch_disconnect', @__ref
               @emit 'freeswitch_disconnect'
           return
 
@@ -615,13 +620,13 @@ The default behavior in linger mode is to disconnect the socket after 4 seconds,
         linger_delay = 4000
 
         @once 'freeswitch_linger', once_freeswitch_linger = ->
-          trace 'auto_cleanup/linger'
+          trace 'auto_cleanup/linger', @__ref
           if @emit 'cleanup_linger'
-            debug 'auto_cleanup/linger: cleanup_linger processed, make sure you call exit()'
+            debug 'auto_cleanup/linger: cleanup_linger processed, make sure you call exit()', @__ref
           else
-            trace "auto_cleanup/linger: exit() in #{linger_delay}ms"
+            trace "auto_cleanup/linger: exit() in #{linger_delay}ms", @__ref
             setTimeout =>
-              trace 'auto_cleanup/linger: exit()'
+              trace 'auto_cleanup/linger: exit()', @__ref
               @exit().catch -> yes
               return
             , linger_delay
@@ -634,12 +639,14 @@ On disconnect (no linger) mode, you may intercept the event `cleanup_disconnect`
 Normal behavior on disconnect is to close the socket with `end()`.
 
         @once 'freeswitch_disconnect', once_freeswitch_disconnect = ->
-          trace 'auto_cleanup/disconnect'
+          trace 'auto_cleanup/disconnect', @__ref
           if @emit 'cleanup_disconnect', this
-            debug 'auto_cleanup/disconnect: cleanup_disconnect processed, make sure you call end()'
+            debug 'auto_cleanup/disconnect: cleanup_disconnect processed, make sure you call end()', @__ref
           else
-            trace 'auto_cleanup/disconnect: end()'
-            try @end()
+            setTimeout =>
+              trace 'auto_cleanup/disconnect: end()', @__ref
+              @end()
+            , 100
           return
 
         return null
