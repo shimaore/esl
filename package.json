@@ -36,34 +36,43 @@
       "email": "willyaranda@gmail.com"
     }
   ],
-  "main": "lib/esl.js",
-  "files": [
-    "lib/esl.js",
-    "lib/parser.js",
-    "lib/response.js"
-  ],
-  "dependencies": {
-    "debug": "^4.1.1",
-    "eventemitter2": "^5.0.0",
-    "uuid": "^3.2.1"
+  "main": "esl.cjs",
+  "module": "esl.mjs",
+  "types": "esl.d.ts",
+  "type": "module",
+  "exports": {
+    "require": "./esl.cjs",
+    "import": "./esl.mjs"
   },
+  "files": [
+    "esl.cjs",
+    "esl.mjs"
+  ],
   "devDependencies": {
-    "chai": "^4.1.2",
-    "coffeescript": "^2.4.1",
-    "docco": "^0.8.0",
-    "memdown": "^4.0.0",
-    "mocha": "^6.1.4",
-    "nyc": "^14.1.1",
-    "pouchdb-adapter-memory": "^7.0.0",
-    "pouchdb-core": "^7.0.0"
+    "@types/node": "20.3.2",
+    "ava": "5.3.1",
+    "coffeescript": "2.7.0",
+    "docco": "^0.9.1",
+    "esbuild": "0.18.10",
+    "esbuild-coffeescript": "2.2.0",
+    "memdown": "6.1.1",
+    "nyc": "15.1.0",
+    "pouchdb-adapter-memory": "8.0.1",
+    "pouchdb-core": "8.0.1",
+    "should": "13.2.3",
+    "typescript": "5.1.3",
+    "ulidx": "2.0.0",
+    "uuid": "^9.0.0"
   },
   "scripts": {
-    "build": "coffee -c -o lib/ src/*.coffee.md && docco src/*",
-    "prepublishOnly": "npm install --only=dev && rm -f package-lock.json && npm run build",
-    "pretest": "npm install && npm run prepublishOnly && coffee -c test/*.coffee.md",
-    "test": "(cd test && ./setup.sh) && nyc mocha && (cd test && ./cleanup.sh; exit 0)",
-    "test-debug": "(cd test && ./setup.sh) && DEBUG='*,-mocha*' nyc mocha && (cd test && ./cleanup.sh; exit 0)",
-    "clean": "rm -rf cov/ lib/ routes/ node_modules/ test/*.log"
+    "build": "node build.mjs",
+    "build:doc": "docco src/*",
+    "prepublishOnly": "yarn install --only=dev && yarn build",
+    "syntax:test": "tsc --allowJs --outDir dist --lib esnext --target esnext --noEmit --strict --checkJs --moduleResolution node -m nodenext -noUnusedLocals --noUnusedParameters --strict --strictFunctionTypes --strictNullChecks --noImplicitAny false test/*.mjs",
+    "pretest": "yarn install && yarn prepublishOnly && coffee --bare -c test/*.litcoffee && (cd test && for f in *.js; do mv $f $(basename $f .js).mjs; done)",
+    "test": "nyc ava test/0001-uuid.mjs",
+    "syntax": "mkdir -p build && coffee -c -b -l -M -o build src/*.litcoffee && (cd build && sed -i -e 's/[.]litcoffee/.mjs/' *.js && for f in *.js; do mv $f $(basename $f .js).mjs; done) && tsc --allowJs --outDir dist --lib esnext --target esnext --noEmit --strict --checkJs --moduleResolution node -m nodenext -noUnusedLocals --noUnusedParameters --strict --strictFunctionTypes --strictNullChecks --noImplicitAny false build/*.mjs",
+    "test-debug": "DEBUG='*,-mocha*' nyc ava"
   },
   "publishConfig": {
     "tag": "latest"

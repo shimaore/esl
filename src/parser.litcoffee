@@ -1,30 +1,40 @@
 Event Socket stream parser
 ==========================
 
-    querystring = require 'querystring'
-    util = require 'util'
+    import querystring from 'node:querystring'
 
-    class FreeSwitchParserError extends Error
+    export class FreeSwitchParserError extends Error
       constructor: (error,buffer) ->
         super JSON.stringify {error,buffer}
         @error = error
         @buffer = buffer
         return
 
-    module.exports = class FreeSwitchParser
+    export class FreeSwitchParser
 
 The Event Socket parser will parse an incoming ES stream, whether your code is acting as a client (connected to the FreeSwitch ES server) or as a server (called back by FreeSwitch due to the "socket" application command).
 
-      constructor: (@socket) ->
+      constructor: (@socket,@process) ->
         @body_length = 0
-        @buffer = new Buffer 0
+        @buffer = Buffer.alloc 0
         @buffer_length = 0
 
-        @socket.on 'data', (data) =>
-          @on_data data
+### Dispatch incoming data into the header or body parsers.
 
-        @socket.on 'end', =>
-          @on_end()
+Capture the body as needed
+
+        @socket.on 'data', (data) =>
+          if @body_length > 0
+            @capture_body data
+          else
+            @capture_headers data
+
+For completeness provide an `on_end()` method.
+
+        @socket.once 'end', =>
+          if @buffer_length > 0
+            @socket.emit 'error', new FreeSwitchParserError 'Buffer is not empty at end of stream', @buffer
+          return
 
         return
 
@@ -56,7 +66,7 @@ Process the content at each step.
 
 Re-parse whatever data was left after the body was fully consumed.
 
-        @capture_headers new Buffer 0
+        @capture_headers Buffer.alloc 0
         return
 
 ### Capture headers
@@ -91,7 +101,7 @@ Figure out whether a body is expected
 
 Parse the body (and eventually process)
 
-          @capture_body new Buffer 0
+          @capture_body Buffer.alloc 0
 
         else
 
@@ -102,27 +112,8 @@ Process the (header-only) content
 
 Re-parse whatever data was left after these headers were fully consumed.
 
-          @capture_headers new Buffer 0
+          @capture_headers Buffer.alloc 0
 
-        return
-
-### Dispatch incoming data into the header or body parsers.
-
-      on_data: (data) ->
-
-Capture the body as needed
-
-        if @body_length > 0
-          return @capture_body data
-        else
-          return @capture_headers data
-        return
-
-For completeness provide an `on_end()` method.
-
-      on_end: () ->
-        if @buffer_length > 0
-          @socket.emit 'error', new FreeSwitchParserError 'Buffer is not empty at end of stream', @buffer
         return
 
 Headers parser
@@ -131,7 +122,7 @@ Headers parser
 Event Socket framing contains headers and a body.
 The header must be decoded first to learn the presence and length of the body.
 
-    parse_header_text = (header_text) ->
+    export parse_header_text = (header_text) ->
 
       header_lines = header_text.split '\n'
       headers = {}
@@ -144,8 +135,6 @@ Decode headers: in the case of the "connect" command, the headers are all URI-en
 
       if headers['Reply-Text']?[0] is '%'
         for name of headers
-          headers[name] = querystring.unescape(headers[name])
+          headers[name] = querystring.unescape(headers[name] ? '')
 
       return headers
-
-    module.exports.parse_header_text = parse_header_text

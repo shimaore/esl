@@ -1,0 +1,17 @@
+test/Dockerfile
+.dockerignore
+yarn-error.log
+build/
+docs/
+esl.cjs
+esl.mjs
+lib/
+local_docs/
+Makefile
+node_modules/
+.nyc_output/
+routes/
+test/*.log
+test/log/
+test/*.mjs
+test/routes/

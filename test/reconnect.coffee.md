@@ -1,81 +1,81 @@
-    FS = require '..'
-    pkg = require '../package'
-    debug = (require 'debug') "#{pkg.name}:test:reconnect"
-    net = require 'net'
+    import test from 'ava'
+    import { FreeSwitchClient } from 'esl'
+    import { createServer } from 'node:net'
     sleep = (timeout) -> new Promise (resolve) -> setTimeout resolve, timeout
 
-    describe 'The client', ->
-      client_port = 5623
-      it 'should reconnect', (done) ->
-        @timeout 30000
-        start = (run = 1) ->
-          service = (c) ->
-            debug "Server run ##{run} received connection"
-            c.on 'error', (error) ->
-              debug "Server run ##{run} received error #{error}"
-              return
-            c.on 'data', (data) ->
-              debug "Server run ##{run} received data", data
-              switch run
-                when 1
-                  debug 'Server run #1 sleeping'
-                  await sleep 500
-                  debug 'Server run #1 close'
-                  await c.destroy()
-                  await spoof.close()
+    client_port = 5623
+    test 'should reconnect', (t) ->
+      t.timeout 30000
 
-                when 2
-                  debug 'Server run #2 writing (auth)'
-                  await c.write '''
-                    Content-Type: auth/request
+      start = ->
+        run = 0
+        service = (c) ->
+          run++
+          t.log "Server run ##{run} received connection"
+          c.on 'error', (error) ->
+            t.log "Server run ##{run} received error #{error}"
+            return
+          c.on 'data', (data) ->
+            t.log "Server run ##{run} received data", data
+            switch run
+              when 1
+                t.log 'Server run #1 sleeping'
+                await sleep 500
+                t.log 'Server run #1 close'
+                await c.destroy()
 
-
-                  '''
-                  debug 'Server run #2 sleeping'
-                  await sleep 500
-                  debug 'Server run #2 writing (reply)'
-                  await c.write '''
-
-                    Content-Type: command/reply
-                    Reply-Text: +OK accepted
-
-                    Content-Type: text/disconnect-notice
-                    Content-Length: 0
-
-                  '''
-                  debug 'Server run #2 sleeping'
-                  await sleep 500
-                  debug 'Server run #2 close'
-                  await spoof.close()
-
-                when 3
-                  debug 'Server run #3 close'
-                  await spoof.close()
-                  done()
-
-            c.resume()
-            c.write '''
-              Content-Type: auth/request
+              when 2
+                t.log 'Server run #2 writing (auth)'
+                await c.write '''
+                  Content-Type: auth/request
 
 
-            '''
+                '''
+                t.log 'Server run #2 sleeping'
+                await sleep 500
+                t.log 'Server run #2 writing (reply)'
+                await c.write '''
+
+                  Content-Type: command/reply
+                  Reply-Text: +OK accepted
+
+                  Content-Type: text/disconnect-notice
+                  Content-Length: 0
+
+                '''
+                t.log 'Server run #2 sleeping'
+                await sleep 500
+                t.log 'Server run #2 end'
+                await c.end()
+
+              when 3
+                t.log 'Server run #3 end'
+                try await client.end()
+                await c.end()
+                t.log 'Server run #3 close'
+                await spoof.close()
+                t.pass()
+
             return
 
-          spoof = net.createServer service
-          spoof.listen client_port, ->
-            debug "Server run ##{run} ready"
-          spoof.on 'close', ->
-            debug 'Server received close event'
-            run++
-            if run < 4
-              setTimeout (-> start run+1), 1400
-            return
+          c.resume()
+          c.write '''
+            Content-Type: auth/request
+
+
+          '''
           return
 
-        after ->
-          stop_client()
+        spoof = createServer service
+        spoof.listen client_port, ->
+          t.log "Server ready"
+        spoof.on 'close', ->
+          t.log "Server received close event"
+        return
 
-        start()
-        stop_client = FS.reconnect {host:'127.0.0.1',port:client_port}, ->
-          debug 'Client is connected'
-          @end()
+      start()
+      client = new FreeSwitchClient host:'127.0.0.1', port:client_port
+      client.on 'error', (error) ->
+        t.log 'client error', error
+      await client.connect()
+      await sleep 20000

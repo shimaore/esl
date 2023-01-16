@@ -7,5 +7,8 @@ test/*.log
 test/routes/
 Makefile
 routes/
-test/0001-client/conf/tls/
-test/0001-server/conf/tls/
+build/
+esl.cjs
+esl.mjs
+.nyc_output/
+test/*.mjs

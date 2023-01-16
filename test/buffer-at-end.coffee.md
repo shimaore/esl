@@ -1,38 +1,40 @@
-    FS = require '..'
-    pkg = require '../package'
-    debug = (require 'debug') "#{pkg.name}:test:buffer-at-end"
-    net = require 'net'
+    import test from 'ava'
+    import { FreeSwitchClient } from 'esl'
+    import { createServer } from 'node:net'
+    import { once } from 'node:events'
 
-    describe 'The buffer', ->
-      client_port = 5621
-      it 'should be empty at end of stream', (done) ->
-        spoof = net.createServer (c) ->
+    client_port = 5621
+    test 'should be empty at end of stream', (t) ->
+      spoof = createServer (c) ->
+        c.write '''
+          Content-Type: auth/request
+
+
+        '''
+        c.on 'data', ->
           c.write '''
-            Content-Type: auth/request
 
+            Content-Type: command/reply
+            Reply-Text: +OK accepted
+
+            Content-Type: text/disconnect-notice
+            Content-Length: 3
+
+            Disconnected, filling your buffer with junk.
 
           '''
-          c.on 'data', ->
-            c.write '''
+      spoof.listen client_port, ->
+        t.log 'Server ready'
 
-              Content-Type: command/reply
-              Reply-Text: +OK accepted
+      client = new FreeSwitchClient { host: '127.0.0.1', port: client_port }
+      await client.connect()
+      [call] = await once client, 'connect'
 
-              Content-Type: text/disconnect-notice
-              Content-Length: 3
+      [error] = await once call.socket, 'error'
+      t.log "Got error #{error}", error
+      t.is error.error, 'Buffer is not empty at end of stream'
 
-              Disconnected, filling your buffer with junk.
+      await client.end()
+      await spoof.close()
 
-            '''
-        after ->
-          spoof.close()
-        client = FS.client ->
-          client.end()
-        client.call.on 'socket.error', (error) ->
-          debug "Got error #{error}", error
-          if error.error is 'Buffer is not empty at end of stream'
-            done()
-        spoof.listen client_port, ->
-          debug 'Server ready'
-
-        client.connect client_port, '127.0.0.1'
+      return
