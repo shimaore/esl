@@ -47,7 +47,7 @@ Using UUID (in client mode)
     console.log 'Waiting for FS to stabilize'
     await sleep 2*second
 
-    test.only 'should handle UUID-based commands', (t) ->
+    test 'should handle UUID-based commands', (t) ->
 
       t.timeout 20000
 
@@ -158,38 +158,33 @@ Using UUID (in client mode)
       t.not uuid_1, uuid_2, "UUIDs should be unique"
       return
 
-Actually FreeSwitch doesn't generate any error since the command doesn't get executed.
-See comment in https://github.com/shimaore/esl/issues/16 : to trigger an error do a `command_uuid(..'play_and_get_digits',...)` and hang up the call before entering any digit.
-
     test 'should handle errors', (t) ->
       t.timeout 2000
-      correct = false
 
       client = new FreeSwitchClient port: server_port
       client.connect()
       [call] = await once client, 'connect'
-      call_uuid = null
       await call.event_json 'ALL'
       res = await call.api "originate sofia/test-server/sip:answer-wait-30000@#{domain} &park"
       t.true 'uuid' of res
       call_uuid = res.uuid
-      ref = new Date()
-      incorrect = true
-      do =>  # parallel
-        res = await call.command_uuid call_uuid, 'play_and_get_digits', '4 5 3 20000 # silence_stream://4000 silence_stream://4000 choice \\d 1000'
-        now = new Date()
+      ref = process.hrtime.bigint()
+      p = do =>  # parallel
+        res = await call.command_uuid call_uuid, 'play_and_get_digits', '4 5 3 20000 # silence_stream://4000 silence_stream://4000 choice \\d 1000', 4200
+        now = process.hrtime.bigint()
         duration = now - ref
-        t.true duration > 1000
-        t.true duration < 1200
+        t.true duration > 1000000000n
+        t.true duration < 1200000000n
         t.like res,
           body:
             'Answer-State': 'hangup'
             'Hangup-Cause': 'NO_PICKUP'
         return
       await sleep 1000
-      try await call.hangup_uuid call_uuid, 'NO_PICKUP'
+      await call.hangup_uuid call_uuid, 'NO_PICKUP'
       await sleep 500
       client.end()
+      await p
       return
 
 Test DTMF
