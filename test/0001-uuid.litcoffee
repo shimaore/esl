@@ -240,3 +240,9 @@ This test should work but I haven't taken the time to finalize it.
       t.is count, 0, "Oops, #{count} active connections leftover"
       await server.close()
       t.log 'server closed'
+
+    test 'Stop FreeSWITCH', (t) ->
+      await sleep 2*second
+      await stop()
+      await sleep 2*second
+      t.true yes

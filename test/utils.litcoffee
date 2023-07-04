@@ -33,7 +33,7 @@
       fs_client.once 'exit', (code,signal) ->
         console.error code, signal
         stop()
-        process.exit 1
+        process.exit 1 unless code is 0
         return
       await once fs_client, 'spawn'
 
@@ -55,7 +55,7 @@
       fs_server.once 'exit', (code,signal) ->
         console.error code, signal
         stop()
-        process.exit 1
+        process.exit 1 unless code is 0
         return
       await once fs_server, 'spawn'
       return

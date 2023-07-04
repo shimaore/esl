@@ -70,7 +70,7 @@
     "prepublishOnly": "yarn install --only=dev && yarn build",
     "syntax:test": "tsc --allowJs --outDir dist --lib esnext --target esnext --noEmit --strict --checkJs --moduleResolution node -m nodenext -noUnusedLocals --noUnusedParameters --strict --strictFunctionTypes --strictNullChecks --noImplicitAny false test/*.mjs",
     "pretest": "yarn install && yarn prepublishOnly && coffee --bare -c test/*.litcoffee && (cd test && for f in *.js; do mv $f $(basename $f .js).mjs; done)",
-    "test": "nyc ava test/reconnect.mjs",
+    "test": "nyc ava test/*.mjs",
     "syntax": "mkdir -p build && coffee -c -b -l -M -o build src/*.litcoffee && (cd build && sed -i -e 's/[.]litcoffee/.mjs/' *.js && for f in *.js; do mv $f $(basename $f .js).mjs; done) && tsc --allowJs --outDir dist --lib esnext --target esnext --noEmit --strict --checkJs --moduleResolution node -m nodenext -noUnusedLocals --noUnusedParameters --strict --strictFunctionTypes --strictNullChecks --noImplicitAny false build/*.mjs",
     "test-debug": "DEBUG='*,-mocha*' nyc ava"
   },
