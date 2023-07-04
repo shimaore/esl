@@ -49,11 +49,11 @@
     "esl.mjs"
   ],
   "devDependencies": {
-    "@types/node": "20.3.2",
+    "@types/node": "20.3.3",
     "ava": "5.3.1",
     "coffeescript": "2.7.0",
     "docco": "^0.9.1",
-    "esbuild": "0.18.10",
+    "esbuild": "0.18.11",
     "esbuild-coffeescript": "2.2.0",
     "memdown": "6.1.1",
     "nyc": "15.1.0",
@@ -70,7 +70,7 @@
     "prepublishOnly": "yarn install --only=dev && yarn build",
     "syntax:test": "tsc --allowJs --outDir dist --lib esnext --target esnext --noEmit --strict --checkJs --moduleResolution node -m nodenext -noUnusedLocals --noUnusedParameters --strict --strictFunctionTypes --strictNullChecks --noImplicitAny false test/*.mjs",
     "pretest": "yarn install && yarn prepublishOnly && coffee --bare -c test/*.litcoffee && (cd test && for f in *.js; do mv $f $(basename $f .js).mjs; done)",
-    "test": "nyc ava test/0001-uuid.mjs",
+    "test": "nyc ava test/reconnect.mjs",
     "syntax": "mkdir -p build && coffee -c -b -l -M -o build src/*.litcoffee && (cd build && sed -i -e 's/[.]litcoffee/.mjs/' *.js && for f in *.js; do mv $f $(basename $f .js).mjs; done) && tsc --allowJs --outDir dist --lib esnext --target esnext --noEmit --strict --checkJs --moduleResolution node -m nodenext -noUnusedLocals --noUnusedParameters --strict --strictFunctionTypes --strictNullChecks --noImplicitAny false build/*.mjs",
     "test-debug": "DEBUG='*,-mocha*' nyc ava"
   },

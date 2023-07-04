@@ -9,4 +9,5 @@ COPY build.mjs /opt/
 COPY src /opt/src
 RUN yarn build
 COPY test /opt/test
+RUN yarn syntax
 RUN yarn test
