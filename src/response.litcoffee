@@ -53,6 +53,7 @@ The `FreeSwitchResponse` is bound to a single socket (dual-stream). For outbound
 Uniquely identify each instance, for tracing purposes.
 
         @__ref = ulid()
+        @__uuid = null
 
         @__socket = socket
         @logger = logger
@@ -87,7 +88,7 @@ Make the command responses somewhat unique. This is required since FreeSwitch do
 The parser is responsible for de-framing messages coming from FreeSwitch and splitting it into headers and a body.
 We then process those in order to generate higher-level events.
 
-        @parser = new FreeSwitchParser @__socket, (headers,body) => @process headers, body
+        @__parser = new FreeSwitchParser @__socket, (headers,body) => @process headers, body
 
 The object also provides a queue for operations which need to be submitted one after another on a given socket because FreeSwitch does not provide ways to map event socket requests and responses in the general case.
 
@@ -115,21 +116,14 @@ Default handler for `error` events to prevent `Unhandled 'error' event` reports.
           return
         @__socket.on 'error', socket_on_error
 
-Default handler for `warning` events
-
-        socket_on_warning = (err) =>
-          @logger.debug 'FreeSwitchResponse: Socket warning', ref: @__ref, warning: err
-          @emit 'socket.warning', err
-          return
-        @__socket.on 'warning', socket_on_warning
-
 After the socket is closed or errored, this object is no longer usable.
 
         once_socket_star = (reason) =>
           @logger.debug 'FreeSwitchResponse: Terminate', { ref: @__ref, reason }
           if not @closed
             @closed = true
-            @__socket.resetAndDestroy()
+            # @__socket.resetAndDestroy()
+            @__socket.end()
           @removeAllListeners()
           @__queue = Promise.resolve null
           @__later.clear()
@@ -145,6 +139,9 @@ After the socket is closed or errored, this object is no longer usable.
       setUUID: (uuid) ->
         @__uuid = uuid
         return
+
+      uuid: -> @__uuid
+      ref: -> @__ref
 
       error: (res,data) ->
         @logger.error "FreeSwitchResponse: error: new FreeSwitchError", { ref: @__ref, res, data }
@@ -314,7 +311,7 @@ Send a single command to FreeSwitch; `args` is a hash of headers sent with the c
             resolve null
 
           catch error
-            @logger.error 'FreeSwitchResponse: write error', error
+            @logger.error 'FreeSwitchResponse: write error', { ref: @__ref, error }
 
 Cancel any pending Promise started with `@onceAsync`, and close the connection.
 
@@ -387,12 +384,12 @@ Process data from the parser
 Rewrite headers as needed to work around some weirdnesses in the protocol; and assign unified event IDs to the Event Socket's Content-Types.
 
       process: (headers,body) ->
-        @logger.debug 'FreeSwitchResponse::process', { headers, body }
+        @logger.debug 'FreeSwitchResponse::process', { ref: @__ref, headers, body }
 
         content_type = headers['Content-Type']
         if not content_type?
           @stats.missing_content_type++
-          @logger.error 'FreeSwitchResponse::process: missing-content-type', { headers, body }
+          @logger.error 'FreeSwitchResponse::process: missing-content-type', { ref: @__ref, headers, body }
           @emit 'error.missing-content-type', new FreeSwitchParserError {headers, body}
           return
 
@@ -451,7 +448,7 @@ Parse the JSON body.
 In case of error report it as an error.
 
             catch exception
-              @logger.error 'FreeSwitchResponse: Invalid JSON', { body }
+              @logger.error 'FreeSwitchResponse: Invalid JSON', { ref: @__ref, body }
               @stats.json_parse_errors++
 
               @emit 'error.invalid-json', exception
@@ -509,7 +506,7 @@ Others?
 
 Ideally other content-types should be individually specified. In any case we provide a fallback mechanism.
 
-            @logger.error 'FreeSwitchResponse: Unhandled Content-Type', { content_type }
+            @logger.error 'FreeSwitchResponse: Unhandled Content-Type', { ref: @__ref, content_type }
             event = "freeswitch_#{content_type.replace /[^a-z]/, '_'}"
             @emit 'error.unhandled-content-type', new FreeSwitchParserError {content_type}
             @stats.unhandled++
@@ -730,7 +727,7 @@ Send a command to a given UUID.
         else if @__uuid?
           execute_text = "sendmsg #{@__uuid}"
         res = @send execute_text, options
-        @logger.debug 'FreeSwitchResponse: sendmsg_uuid', { uuid, command, args, res }
+        @logger.debug 'FreeSwitchResponse: sendmsg_uuid', { ref: @__ref, uuid, command, args, res }
         res
 
 sendmsg
@@ -758,7 +755,7 @@ Execute an application for the given UUID (in client mode).
           loops: if loops? then loops else undefined
           'Event-UUID': if event_uuid? then event_uuid else undefined
         res = @sendmsg_uuid uuid, 'execute', options
-        @logger.debug 'FreeSwitchResponse: execute_uuid', { uuid, app_name, app_arg, loops, event_uuid, res }
+        @logger.debug 'FreeSwitchResponse: execute_uuid', { ref: @__ref, uuid, app_name, app_arg, loops, event_uuid, res }
         res
 
 TODO: Support the alternate format (with no `execute-app-arg` header but instead a `text/plain` body containing the argument).
@@ -778,7 +775,7 @@ The Promise is only fulfilled when the command has completed.
         p = @onceAsync event, timeout, "uuid #{uuid} #{app_name} #{app_arg}"
         q = @execute_uuid uuid,app_name,app_arg,null,event_uuid
         [res] = await Promise.all [p,q]
-        @logger.debug 'FreeSwitchResponse: command_uuid', { uuid, app_name, app_arg, timeout, event_uuid, res }
+        @logger.debug 'FreeSwitchResponse: command_uuid', { ref: @__ref, uuid, app_name, app_arg, timeout, event_uuid, res }
         res
 
 hangup_uuid

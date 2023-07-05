@@ -188,9 +188,8 @@ Normally when the client connects, FreeSwitch will first send us an authenticati
           setTimeout (=> @connect()), @retry
           return
 
-        @current_call.on 'close', (had_error) =>
-          @logger.debug 'FreeSwitchClient::connect: client received `close` event (ignored)', { @attempt, @retry, had_error }
-          @emit 'close', had_error
+        socket.on 'warning', (data) =>
+          @emit 'warning', data
           return
 
         try

@@ -14,7 +14,7 @@ Event Socket stream parser
 
 The Event Socket parser will parse an incoming ES stream, whether your code is acting as a client (connected to the FreeSwitch ES server) or as a server (called back by FreeSwitch due to the "socket" application command).
 
-      constructor: (@socket,@process) ->
+      constructor: (socket,@process) ->
         @body_length = 0
         @buffer = Buffer.alloc 0
         @buffer_length = 0
@@ -23,17 +23,18 @@ The Event Socket parser will parse an incoming ES stream, whether your code is a
 
 Capture the body as needed
 
-        @socket.on 'data', (data) =>
+        socket.on 'data', (data) =>
           if @body_length > 0
             @capture_body data
           else
             @capture_headers data
+          return
 
 For completeness provide an `on_end()` method.
 
-        @socket.once 'end', =>
+        socket.once 'end', =>
           if @buffer_length > 0
-            @socket.emit 'warning', new FreeSwitchParserError 'Buffer is not empty at end of stream', @buffer
+            socket.emit 'warning', new FreeSwitchParserError 'Buffer is not empty at end of stream', @buffer
           return
 
         return

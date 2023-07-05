@@ -6,13 +6,15 @@
     client_port = 5621
     test 'should be empty at end of stream', (t) ->
       try
-        spoof = createServer (c) ->
+        spoof = createServer keepAlive: true
+        spoof.on 'connection', (c) ->
           c.write '''
             Content-Type: auth/request
 
 
           '''
           c.on 'data', ->
+            await new Promise (resolve) -> setTimeout resolve, 250
             c.write '''
 
               Content-Type: command/reply
@@ -24,18 +26,24 @@
               Disconnected, filling your buffer with junk.
 
             '''
+            spoof.close()
           return
-        spoof.listen client_port, ->
+        spoof.on 'listening', ->
           t.log 'Server ready'
+        spoof.listen port: client_port
 
         client = new FreeSwitchClient { host: '127.0.0.1', port: client_port }
         pCall = once client, 'connect'
-        await client.connect()
+        pExpect = once client, 'warning'
+        client.connect()
         t.log 'buffer-at-end: called connect'
-        [call] = await pCall
-        t.log 'buffer-at-end: got call', call
 
-        [error] = await once call, 'socket.warning'
+        [call] = await pCall
+        t.log 'buffer-at-end: got call', { ref: call.ref(), uuid: call.uuid() }
+
+        await new Promise (resolve) -> setTimeout resolve, 200
+
+        [error] = await pExpect
         t.log "buffer-at-end: got error #{error}", error
         t.is error.error, 'Buffer is not empty at end of stream'
 
