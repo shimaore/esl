@@ -33,7 +33,7 @@ For completeness provide an `on_end()` method.
 
         @socket.once 'end', =>
           if @buffer_length > 0
-            @socket.emit 'error', new FreeSwitchParserError 'Buffer is not empty at end of stream', @buffer
+            @socket.emit 'warning', new FreeSwitchParserError 'Buffer is not empty at end of stream', @buffer
           return
 
         return

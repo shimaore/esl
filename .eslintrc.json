@@ -1,0 +1,24 @@
+{
+  "plugins": [
+    "promise"
+  ],
+  "extends": [
+    "eslint:recommended",
+    "plugin:promise/recommended"
+  ],
+  "env": {
+    "node": true,
+    "es2024": true
+  },
+  "parserOptions": {
+    "sourceType": "module"
+  },
+  "rules": {
+    "no-promise-executor-return": "warn",
+    "prefer-promise-reject-errors": "warn",
+    "no-control-regex": "warn",
+    "no-extra-semi": "off",
+    "no-empty": "warn",
+    "consistent-return": "error"
+  }
+}

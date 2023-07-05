@@ -43,6 +43,7 @@ The `server` will emit `connection` for every new (incoming) connection, with tw
         @__server = new net.Server noDelay: true, keepAlive: true
 
         @__server.on 'error', (exception) =>
+          @logger.error 'FreeSwitchServer: server error', exception
           @emit 'error', exception
           return
 
@@ -82,6 +83,7 @@ Restricting events using `filter` is required so that `event_json` will only obt
             @emit 'connection', call, { ...connect_response, data, uuid }
 
           catch exception
+            @logger.error 'FreeSwitchServer: connection handling error', exception
             @emit 'error', exception
 
           return
@@ -101,6 +103,7 @@ Restricting events using `filter` is required so that `event_json` will only obt
         new Promise (resolve,reject) =>
           @__server.getConnections (err,count) ->
             if err then reject err else resolve count
+          return
 
 Client
 ======
@@ -163,6 +166,7 @@ Normally when the client connects, FreeSwitch will first send us an authenticati
             await @current_call?.auto_cleanup()
             await @current_call?.event_json 'CHANNEL_EXECUTE_COMPLETE', 'BACKGROUND_JOB'
           catch error
+            @logger.error 'FreeSwitchClient: connect error', error
             @emit 'error', error
 
           if @running and @current_call

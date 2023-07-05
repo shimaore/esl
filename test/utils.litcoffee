@@ -28,10 +28,10 @@
           stdio: ['ignore', 'inherit', 'inherit'],
         }
       fs_client.on 'error', (error) ->
-        console.error error
+        console.error 'fs_client error', error
         return
       fs_client.once 'exit', (code,signal) ->
-        console.error code, signal
+        console.error 'fs_client exit', { code, signal }
         stop()
         process.exit 1 unless code is 0
         return
@@ -50,10 +50,10 @@
           stdio: ['ignore', 'inherit', 'inherit'],
         }
       fs_server.on 'error', (error) ->
-        console.error error
+        console.error 'fs_server error', error
         return
       fs_server.once 'exit', (code,signal) ->
-        console.error code, signal
+        console.error 'fs_server exit', { code, signal }
         stop()
         process.exit 1 unless code is 0
         return

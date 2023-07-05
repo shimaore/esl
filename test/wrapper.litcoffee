@@ -2,7 +2,7 @@
     import { FreeSwitchClient } from 'esl'
     import { createServer } from 'node:net'
     import { once } from 'node:events'
-    sleep = (timeout) -> new Promise (resolve) -> setTimeout resolve, timeout
+    sleep = (timeout) -> new Promise (resolve) -> setTimeout resolve, timeout; return
 
     client_port = 5624
     test 'should send commands', (t) ->
@@ -58,6 +58,8 @@
 
             """
             c.write msg
+
+          return
         c.on 'end', ->
           t.log "Server end"
 

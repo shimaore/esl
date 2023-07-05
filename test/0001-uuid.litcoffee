@@ -7,7 +7,7 @@
     import { start_server, stop } from './utils.mjs'
 
     second = 1000
-    sleep = (t) -> new Promise (r) -> setTimeout r, t
+    sleep = (t) -> new Promise (resolve) -> setTimeout resolve, t; return
 
 Using UUID (in client mode)
 ---------------------------
@@ -41,7 +41,7 @@ Using UUID (in client mode)
 
     server = new FreeSwitchServer all_events:yes, my_events:false
     server.on 'connection', service
-    server.on 'error', (err) -> console.log 'Service', error
+    server.on 'error', (error) -> console.log 'Service', error
     await server.listen port: 7000
 
     console.log 'Waiting for FS to stabilize'
@@ -194,44 +194,42 @@ This test should work but I haven't taken the time to finalize it.
 
     test.skip 'should detect DTMF', (t) ->
       t.timeout 9000
-      await new Promise (resolve,reject) ->
+      server = new FreeSwitchServer all_events:no
+      server.on 'connection', (call) ->
 
-        caught = 0
-        server = FS.server all_events:no, ->
-
-          await @event_json 'DTMF'
-          await call.api 'sofia global siptrace on'
-          await @command "answer"
-          await @command "start_dtmf"
-          t.log 'answered'
-          await @command 'sleep', 10000
-          await sleep 10000
-          await @exit
-          return
-
-        server.listen 7012
-
-        client = new FreeSwitchClient port: server_port
-        client.on 'connect', (call) ->
-          @trace on
-          channel_uuid = null
-          core_uuid = null
-          @on 'CHANNEL_OUTGOING', (msg) ->
-            core_uuid = msg.body['Unique-ID']
-            t.log 'CHANNEL_OUTGOING', {core_uuid}
-
-          await @event_json 'ALL'
-          await call.api 'sofia status'
-          await call.api 'sofia global siptrace on'
-          msg = await call.api "originate sofia/test-server/sip:server7012@#{domain} &park"
-          channel_uuid = (msg.body.match /\+OK ([\da-f-]+)/)?[1]
-          t.log 'originate', {channel_uuid}
-          await sleep 2000
-          msg = await call.api "uuid_send_dtmf #{channel_uuid} 1234"
-          t.log 'api', msg
-          await sleep 5000
-        client.connect()
+        await call.event_json 'DTMF'
+        await call.api 'sofia global siptrace on'
+        await call.command "answer"
+        await call.command "start_dtmf"
+        t.log 'answered'
+        await call.command 'sleep', 10000
+        await sleep 10000
+        await call.exit
         return
+
+      server.listen 7012
+
+      client = new FreeSwitchClient port: server_port
+      client.on 'connect', (call) ->
+        call.trace on
+        channel_uuid = null
+        core_uuid = null
+        call.on 'CHANNEL_OUTGOING', (msg) ->
+          core_uuid = msg.body['Unique-ID']
+          t.log 'CHANNEL_OUTGOING', {core_uuid}
+
+        await call.event_json 'ALL'
+        await call.api 'sofia status'
+        await call.api 'sofia global siptrace on'
+        msg = await call.api "originate sofia/test-server/sip:server7012@#{domain} &park"
+        channel_uuid = (msg.body.match /\+OK ([\da-f-]+)/)?[1]
+        t.log 'originate', {channel_uuid}
+        await sleep 2000
+        msg = await call.api "uuid_send_dtmf #{channel_uuid} 1234"
+        t.log 'api', msg
+        await sleep 5000
+      client.connect()
+      return
 
     test 'server cleans up properly', (t) ->
       t.timeout 10*second

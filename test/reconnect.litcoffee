@@ -1,7 +1,7 @@
     import test from 'ava'
     import { FreeSwitchClient } from 'esl'
     import { createServer } from 'node:net'
-    sleep = (timeout) -> new Promise (resolve) -> setTimeout resolve, timeout
+    sleep = (timeout) -> new Promise (resolve) -> setTimeout resolve, timeout; return
 
     client_port = 5623
     test 'should reconnect', (t) ->

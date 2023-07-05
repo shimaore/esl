@@ -21,6 +21,8 @@
         .catch (error) ->
           t.log error
           resolve() if error.args.when is 'api on closed socket'
+          return
+        return
       t.pass()
       null
 
@@ -33,5 +35,7 @@
         .catch (error) ->
           t.log error
           resolve() if error.args.when is 'bgapi on closed socket'
+          return
+        return
       t.pass()
       null

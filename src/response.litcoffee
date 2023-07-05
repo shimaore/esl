@@ -13,7 +13,7 @@ Response and associated API
       ->
         af().catch (error) ->
           logger.error "FreeSwitchResponse::async_log: #{msg}", { error }
-          Promise.reject error
+          throw error
 
     class FreeSwitchError extends Error
       constructor: (res,args) ->
@@ -113,7 +113,15 @@ Default handler for `error` events to prevent `Unhandled 'error' event` reports.
           @logger.debug 'FreeSwitchResponse: Socket Error', ref: @__ref, error: err
           @emit 'socket.error', err
           return
-        @__socket.once 'error', socket_on_error
+        @__socket.on 'error', socket_on_error
+
+Default handler for `warning` events
+
+        socket_on_warning = (err) =>
+          @logger.debug 'FreeSwitchResponse: Socket warning', ref: @__ref, warning: err
+          @emit 'socket.warning', err
+          return
+        @__socket.on 'warning', socket_on_warning
 
 After the socket is closed or errored, this object is no longer usable.
 
@@ -139,8 +147,8 @@ After the socket is closed or errored, this object is no longer usable.
         return
 
       error: (res,data) ->
-        @logger.debug "FreeSwitchResponse: error: new FreeSwitchError", { ref: @__ref, res, data }
-        Promise.reject new FreeSwitchError res, data
+        @logger.error "FreeSwitchResponse: error: new FreeSwitchError", { ref: @__ref, res, data }
+        throw new FreeSwitchError res, data
 
 Event Emitter
 =============
@@ -199,7 +207,7 @@ onceAsync
             return
 
           on_end = =>
-            @logger.error "FreeSwitchResponse: onceAsync: on_socket_close", { event, comment, ref: @__ref }
+            @logger.error "FreeSwitchResponse: onceAsync: on_end", { event, comment, ref: @__ref }
             cleanup()
             reject new Error "end() called (#{@__ref}) while waiting for #{event} in #{comment}"
             return
@@ -306,6 +314,7 @@ Send a single command to FreeSwitch; `args` is a hash of headers sent with the c
             resolve null
 
           catch error
+            @logger.error 'FreeSwitchResponse: write error', error
 
 Cancel any pending Promise started with `@onceAsync`, and close the connection.
 
@@ -369,7 +378,7 @@ Closes the socket.
 
       end: ->
         @logger.debug 'FreeSwitchResponse: end', ref: @__ref
-        try @emit 'socket.end'
+        @emit 'socket.end', 'Socket close requested by application'
         return
 
 Process data from the parser
