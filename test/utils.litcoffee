@@ -1,6 +1,7 @@
     import { spawn } from 'node:child_process'
     import { once } from 'node:events'
-    import { mkdir } from 'node:fs/promises'
+    import { mkdir, rm } from 'node:fs/promises'
+    import { ulid } from 'ulidx'
 
     fs_client = null
     fs_server = null
@@ -16,13 +17,14 @@
       await start_server()
 
     export start_client = () =>
+      dir = "/tmp/client-#{ulid()}"
       console.log 'Starting FS with client profile'
-      await mkdir '/tmp/client'
+      await mkdir dir
       fs_client = spawn '/usr/bin/freeswitch', [
-          ...common_options,
-          '-cfgname', '0001-client.xml',
-          '-log', '/tmp/client',
-          '-db', '/tmp/client',
+          ...common_options
+          '-cfgname', 'client.xml'
+          '-log', dir
+          '-db', dir
         ],
         {
           stdio: ['ignore', 'inherit', 'inherit'],
@@ -32,19 +34,22 @@
         return
       fs_client.once 'exit', (code,signal) ->
         console.error 'fs_client exit', { code, signal }
-        stop()
+        try await rm dir, recursive: true, force: true
         process.exit 1 unless code is 0
         return
       await once fs_client, 'spawn'
+      console.info 'fs_client spawned'
+      return
 
     export start_server = () =>
+      dir = "/tmp/server-#{ulid()}"
       console.log 'Starting FS with server profile'
-      await mkdir '/tmp/server'
+      await mkdir dir
       fs_server = spawn '/usr/bin/freeswitch', [
           ...common_options,
-          '-cfgname', '0001-server.xml',
-          '-log', '/tmp/server',
-          '-db', '/tmp/server',
+          '-cfgname', 'server.xml',
+          '-log', dir
+          '-db', dir
         ],
         {
           stdio: ['ignore', 'inherit', 'inherit'],
@@ -54,10 +59,11 @@
         return
       fs_server.once 'exit', (code,signal) ->
         console.error 'fs_server exit', { code, signal }
-        stop()
+        try await rm dir, recursive: true, force: true
         process.exit 1 unless code is 0
         return
       await once fs_server, 'spawn'
+      console.info 'fs_server spawned'
       return
 
     export stop = () =>
