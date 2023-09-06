@@ -1,5 +1,5 @@
     import test from 'ava'
-    import { FreeSwitchResponse } from '../build/response.mjs'
+    import { FreeSwitchResponse } from 'esl'
 
     socket =
       once: ->

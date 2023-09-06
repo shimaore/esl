@@ -39,6 +39,7 @@ The `FreeSwitchResponse` is bound to a single socket (dual-stream). For outbound
 
       constructor: (socket,logger) ->
         super captureRejections: true
+        @setMaxListeners 2000
 
         assert socket?, 'Missing socket parameter'
         assert.equal 'function', typeof socket.once, 'FreeSwitchResponse: socket.once must be a function'

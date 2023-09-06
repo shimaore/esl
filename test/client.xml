@@ -1,7 +1,7 @@
 <?xml version="1.0"?>
 <document type="freeswitch/xml">
   <X-PRE-PROCESS cmd="set" data="name=client"/>
-  <X-PRE-PROCESS cmd="set" data="local_ip=0.0.0.0"/>
+  <X-PRE-PROCESS cmd="set" data="local_ip=127.0.0.1"/>
   <X-PRE-PROCESS cmd="set" data="sip_port=5064"/>
 
   <section name="configuration" description="Various Configuration">
@@ -9,8 +9,10 @@
       <settings>
         <param name="switchname" value="freeswitch-$${name}"/>
         <param name="core-db-name" value="/dev/shm/freeswitch/core-$${name}.db" />
-        <param name="rtp-start-port" value="49152"/>
-        <param name="rtp-end-port" value="65535"/>
+        <param name="rtp-start-port" value="29152"/>
+        <param name="rtp-end-port" value="45535"/>
+        <param name="max-sessions" value="20000"/>
+        <param name="sessions-per-second" value="200" />
         <param name="loglevel" value="err"/>
       </settings>
     </configuration>
@@ -49,8 +51,10 @@
           <settings>
             <param name="user-agent-string" value="esl test-$${name}-$${sip_port}"/>
             <param name="username" value="esl-test-$${name}"/>
+            <!--
             <param name="debug" value="2"/>
             <param name="sip-trace" value="false"/>
+            -->
 
             <param name="sip-port" value="$${sip_port}"/>
             <param name="bind-params" value="transport=udp"/>
@@ -93,8 +97,8 @@
             <param name="dtmf-type" value="rfc2833"/>
             <param name="dtmf-duration" value="2000"/>
             <param name="rfc2833-pt" value="101"/>
-            <param name="use-rtp-timer" value="true"/>
-            <param name="rtp-timer-name" value="soft"/>
+            <!-- <param name="use-rtp-timer" value="true"/> -->
+            <!-- <param name="rtp-timer-name" value="soft"/> -->
             <param name="pass-rfc2833" value="true"/>
             <!--<param name="rtp-rewrite-timestamps" value="true"/>-->
 

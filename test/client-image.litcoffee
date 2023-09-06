@@ -1,42 +1,47 @@
-    import * as test from 'ava'
-    import * as should from 'should'
+    import test from 'ava'
+    import { once } from 'node:events'
     import {
       FreeSwitchClient
       FreeSwitchServer
     } from 'esl'
+    import { start_server, start_client, stop } from './utils.mjs'
 
+    second = 1000
     sleep = (timeout) -> new Promise (resolve) -> setTimeout resolve, timeout
 
 We start two FreeSwitch docker.io instances, one is used as the "client" (and is basically our SIP test runner), while the other one is the "server" (and is used to test the `server` side of the package).
 
     client_port = 8024
 
+    await start_server()
+    await start_client()
+    await sleep 2*second
+
     test 'should be reachable', (t) ->
-      await new Promise (resolve) ->
-        client = new FreeSwitchClient port: client_port
-        client.on 'connect', ->
-          await client.end()
-          resolve()
-        client.connect()
+      client = new FreeSwitchClient port: client_port
+      p = once client, 'connect'
+      client.connect()
+      await p
+      await client.end()
       t.pass()
       return
 
     test 'should report @once errors', (t) ->
-      await new Promise (resolve,reject) ->
-        client = new FreeSwitchClient port: client_port
-        client.on 'connect',
-          call.on 'socket.error', (err) ->
-            resolve()
-          client.end ->
-            client.call.send 'catchme'
-              .then ->
-                reject new Error 'Should not be successful'
-              .catch -> yes
-
-        client.connect()
-      t.pass()
+      client = new FreeSwitchClient port: client_port
+      p = once client, 'connect'
+      client.connect()
+      call = await p
+      success = once call, 'socket.error'
+      failure = call.send 'catchme'
+      await client.end()
+      await success
+      if await failure.then (-> no), (-> yes)
+        t.pass()
+      else
+        t.fail()
       return
 
+    ###
     test 'should detect and report login errors', (t) ->
       await new Promise (resolve,reject) ->
         client = new FreeSwitchClient port: client_port, password: 'barfood'
@@ -133,3 +138,4 @@ FIXME re-write another test that actually detects that the call went to FreeSwit
         client.connect()
       t.pass()
       return
+    ###

@@ -178,14 +178,16 @@ Normally when the client connects, FreeSwitch will first send us an authenticati
           if @retry < 5000
             @retry = (@retry * 1200) // 1000 if code is 'ECONNREFUSED'
           @logger.error 'FreeSwitchClient::connect: client received `error` event', { @attempt, @retry, error, code }
-          @emit 'reconnecting', @retry
-          setTimeout (=> @connect()), @retry
+          if @running
+            @emit 'reconnecting', @retry
+            setTimeout (=> @connect()), @retry
           return
 
         socket.once 'end', =>
           @logger.debug 'FreeSwitchClient::connect: client received `end` event (remote end sent a FIN packet)', { @attempt, @retry }
-          @emit 'reconnecting', @retry
-          setTimeout (=> @connect()), @retry
+          if @running
+            @emit 'reconnecting', @retry
+            setTimeout (=> @connect()), @retry
           return
 
         socket.on 'warning', (data) =>
@@ -217,4 +219,5 @@ Toolbox
 -------
 
     import { FreeSwitchResponse } from './response.litcoffee'
+    export { FreeSwitchResponse }
     import assert from 'node:assert'
