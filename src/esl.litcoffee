@@ -42,16 +42,27 @@ The `server` will emit `connection` for every new (incoming) connection, with tw
 
         @__server = new net.Server noDelay: true, keepAlive: true
 
+        @stats =
+          error: 0n
+          drop: 0n
+          connection: 0n
+          connected: 0n
+          connection_error: 0n
+
         @__server.on 'error', (exception) =>
+          @stats.error++
           @logger.error 'FreeSwitchServer: server error', exception
           @emit 'error', exception
           return
 
         @__server.on 'drop', (data) =>
+          @stats.drop++
+          @logger.error 'FreeSwitchServer: server drop', data
           @emit 'drop', data
           return
 
         @__server.on 'connection', (socket) =>
+          @stats.connection++
           @logger.debug 'FreeSwitchServer received connection'
 
 Here starts our default request-listener.
@@ -67,6 +78,7 @@ Confirm connection with FreeSwitch.
             data = connect_response.body
             uuid = data[Unique_ID]
 
+            @stats.connected++
             @logger.debug 'FreeSwitchServer received connection: connected', { uuid }
             call.setUUID uuid if uuid?
 
@@ -83,6 +95,7 @@ Restricting events using `filter` is required so that `event_json` will only obt
             @emit 'connection', call, { ...connect_response, data, uuid }
 
           catch exception
+            @stats.connection_error++
             @logger.error 'FreeSwitchServer: connection handling error', exception
             @emit 'error', exception
 
@@ -93,11 +106,11 @@ Restricting events using `filter` is required so that `event_json` will only obt
 
       listen: (options) ->
         @__server.listen options
-        once @__server, 'listening'
+        await once @__server, 'listening'
 
       close: ->
         @__server.close()
-        once @__server, 'close'
+        await once @__server, 'close'
 
       getConnectionCount: ->
         new Promise (resolve,reject) =>

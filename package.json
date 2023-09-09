@@ -75,13 +75,14 @@
     "lint": "eslint build/*.mjs test/*.mjs",
     "build:test": "coffee --bare -c test/*.litcoffee && (cd test && for f in *.js; do mv $f $(basename $f .js).mjs; done)",
     "pretest": "yarn install && yarn prepublishOnly && yarn build:test",
-    "test": "nyc ava -c 1 test/*.mjs",
+    "test": "ulimit -a && nyc ava -c 1 test/benchmark.mjs",
     "presyntax": "mkdir -p build && coffee -c -b -l -M -o build src/*.litcoffee && (cd build && sed -i -e 's/[.]litcoffee/.mjs/' *.js && for f in *.js; do mv $f $(basename $f .js).mjs; done)",
     "syntax": "tsc --allowJs --outDir dist --lib esnext --target esnext --noEmit --strict --checkJs --moduleResolution node -m nodenext -noUnusedLocals --noUnusedParameters --strict --strictFunctionTypes --strictNullChecks --noImplicitAny false build/*.mjs",
-    "test-debug": "DEBUG='*,-mocha*' nyc ava"
+    "test-debug": "ulimit -a && DEBUG='*,-mocha*' nyc ava"
   },
   "publishConfig": {
     "tag": "latest"
   },
+  "usage": "Test with podman  build --ulimit nofile=1048576:1048576 -f test/Dockerfile .",
   "ok": true
 }

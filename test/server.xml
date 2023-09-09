@@ -85,7 +85,7 @@
             <param name="apply-inbound-acl" value="any"/>
             <!--<param name="apply-register-acl" value="domains"/>-->
 
-            <param name="dialplan" value="inline:'socket:127.0.0.1:7000 async full'"/>
+            <param name="dialplan" value="inline:'socket:127.0.0.1:7000|127.0.0.1:7001 async full'"/>
             <param name="auth-calls" value="false"/>
             <param name="auth-all-packets" value="false"/>
             <param name="accept-blind-reg" value="true"/>

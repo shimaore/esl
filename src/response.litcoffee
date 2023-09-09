@@ -40,6 +40,8 @@ The `FreeSwitchResponse` is bound to a single socket (dual-stream). For outbound
       constructor: (socket,logger) ->
         super captureRejections: true
         @setMaxListeners 2000
+        socket.setKeepAlive true
+        socket.setNoDelay true
 
         assert socket?, 'Missing socket parameter'
         assert.equal 'function', typeof socket.once, 'FreeSwitchResponse: socket.once must be a function'
@@ -308,7 +310,9 @@ Send a single command to FreeSwitch; `args` is a hash of headers sent with the c
             text += "\n"
 
             @logger.debug 'FreeSwitchResponse: write', { ref: @__ref, text }
-            @__socket.write text, 'utf8'
+            flushed = @__socket.write text, 'utf8'
+            if not flushed
+              @logger.debug 'FreeSwitchResponse: write did not flush'
             resolve null
 
           catch error
