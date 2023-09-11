@@ -1,5 +1,4 @@
     import test from 'ava'
-    import { once } from 'node:events'
     import {
       FreeSwitchClient
       FreeSwitchServer
@@ -7,7 +6,7 @@
     import { start, stop } from './utils.mjs'
 
     second = 1000
-    sleep = (timeout) -> new Promise (resolve) -> setTimeout resolve, timeout
+    sleep = (timeout) -> new Promise (resolve) -> setTimeout resolve, timeout; return
 
     client_port = 8024
     dialplan_port = 7000

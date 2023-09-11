@@ -42,7 +42,7 @@
     <configuration name="event_socket.conf" description="Socket Client">
       <settings>
         <param name="nat-map" value="false"/>
-        <param name="listen-ip" value="0.0.0.0"/>
+        <param name="listen-ip" value="::"/>
         <param name="listen-port" value="8022"/>
         <param name="password" value="ClueCon"/>
       </settings>

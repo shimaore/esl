@@ -6,6 +6,8 @@
       on: ->
       end: ->
       write: ->
+      setKeepAlive: ->
+      setNoDelay: ->
 
     logger = (t) ->
       debug: (msg,obj) -> t.log msg, obj

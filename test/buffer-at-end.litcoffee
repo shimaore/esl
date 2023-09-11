@@ -3,6 +3,8 @@
     import { createServer } from 'node:net'
     import { once } from 'node:events'
 
+    sleep = (timeout) -> new Promise (resolve) -> setTimeout resolve, timeout; return
+
     client_port = 5621
     test 'should be empty at end of stream', (t) ->
       try
@@ -14,7 +16,7 @@
 
           '''
           c.on 'data', ->
-            await new Promise (resolve) -> setTimeout resolve, 250
+            await sleep 250
             c.write '''
 
               Content-Type: command/reply
@@ -41,7 +43,7 @@
         [call] = await pCall
         t.log 'buffer-at-end: got call', { ref: call.ref(), uuid: call.uuid() }
 
-        await new Promise (resolve) -> setTimeout resolve, 200
+        await sleep 200
 
         [error] = await pExpect
         t.log "buffer-at-end: got error #{error}", error

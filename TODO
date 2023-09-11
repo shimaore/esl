@@ -1,3 +1,0 @@
-Move tests to use Docker.io FreeSwitch image.
-  use `esl` to generate calls (inbound to FS)
-  use `esl` to handle calls (outbound from FS)

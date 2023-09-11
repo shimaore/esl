@@ -1,20 +1,16 @@
     import test from 'ava'
     import { once } from 'node:events'
-    import {
-      FreeSwitchClient
-      FreeSwitchServer
-    } from 'esl'
-    import { start_server, start_client, stop } from './utils.mjs'
+    import { FreeSwitchClient } from 'esl'
+    import { start, stop } from './utils.mjs'
 
     second = 1000
-    sleep = (timeout) -> new Promise (resolve) -> setTimeout resolve, timeout
+    sleep = (timeout) -> new Promise (resolve) -> setTimeout resolve, timeout; return
 
 We start two FreeSwitch docker.io instances, one is used as the "client" (and is basically our SIP test runner), while the other one is the "server" (and is used to test the `server` side of the package).
 
     client_port = 8024
 
-    await start_server()
-    await start_client()
+    await start()
     await sleep 2*second
 
     test 'should be reachable', (t) ->
@@ -30,12 +26,12 @@ We start two FreeSwitch docker.io instances, one is used as the "client" (and is
       client = new FreeSwitchClient port: client_port
       p = once client, 'connect'
       client.connect()
-      call = await p
-      success = once call, 'socket.error'
-      failure = call.send 'catchme'
+      [ call ] = await p
+      failure = await call
+        .send 'catchme'
+        .then (-> no), (-> yes)
       await client.end()
-      await success
-      if await failure.then (-> no), (-> yes)
+      if failure
         t.pass()
       else
         t.fail()
@@ -50,37 +46,45 @@ We start two FreeSwitch docker.io instances, one is used as the "client" (and is
         client.on 'error', (error) ->
           resolve error
         client.connect()
+        return
       t.pass()
       return
+    ###
 
     test 'should reloadxml', (t) ->
       await new Promise (resolve) ->
         client = new FreeSwitchClient port: client_port
         cmd = 'reloadxml'
-        client.on 'connect',
+        client.on 'connect', (call) ->
           res = await call.api cmd
-          res.body.should.match /\+OK \[Success\]/
+          t.regex res.body, /\+OK \[Success\]/
           await client.end()
           resolve()
         client.connect()
+        return
       t.pass()
       return
 
-    test 'should properly parse plain events', (t) ->
-      t.timeout 2000
+    test 'should properly parse events', (t) ->
+
+      t.log 'Should properly parse plain events'
       await new Promise (resolve,reject) ->
         client = new FreeSwitchClient port: client_port
-        cmd = 'event plain ALL'
         client.on 'connect', (call) ->
           try
-            msg = await call.onceAsync 'CUSTOM'
-            msg.body.should.have.property 'Event-Name', 'CUSTOM'
-            msg.body.should.have.property 'Event-XBar', 'some'
 
-            res = await call.send cmd
-            res.headers['Reply-Text'].should.match /\+OK event listener enabled plain/
+            res = await call.send 'event plain ALL'
+            t.regex res.headers['Reply-Text'], /\+OK event listener enabled plain/
+
+            msg = call.onceAsync 'CUSTOM'
             await call.sendevent 'foo', 'Event-Name':'CUSTOM', 'Event-XBar':'some'
-            await sleep 1000
+            msg = await msg
+
+            t.like msg.body, {
+              'Event-Name': 'CUSTOM'
+              'Event-XBar': 'some'
+            }
+
             await call.exit()
             await client.end()
             resolve()
@@ -88,23 +92,26 @@ We start two FreeSwitch docker.io instances, one is used as the "client" (and is
             reject error
           return
         client.connect()
-      t.pass()
-      return
+        return
 
-    test 'should properly parse JSON events', (t) ->
-      t.timeout 2000
+      t.log 'Should properly parse JSON events'
       await new Promise (resolve,reject) ->
-        cmd = 'event json ALL'
         client = new FreeSwitchClient port: client_port
         client.on 'connect', (call) ->
           try
-            msg = await call.onceAsync 'CUSTOM'
-            msg.body.should.have.property 'Event-Name', 'CUSTOM'
-            msg.body.should.have.property 'Event-XBar', 'ë°ñ'
-            res = await call.send cmd
-            res.headers['Reply-Text'].should.match /\+OK event listener enabled json/
+
+            res = await call.send 'event json ALL'
+            t.regex res.headers['Reply-Text'], /\+OK event listener enabled json/
+
+            msg = call.onceAsync 'CUSTOM'
             await call.sendevent 'foo', 'Event-Name':'CUSTOM', 'Event-XBar':'ë°ñ'
-            await sleep 1000
+            msg = await msg
+
+            t.like msg.body, {
+              'Event-Name': 'CUSTOM'
+              'Event-XBar': 'ë°ñ'
+            }
+
             await call.exit()
             await client.end()
             resolve()
@@ -112,12 +119,12 @@ We start two FreeSwitch docker.io instances, one is used as the "client" (and is
             reject error
           return
         client.connect()
+        return
+
       t.pass()
       return
 
-FIXME re-write another test that actually detects that the call went to FreeSwitch but the socket was unavailable on the back-end.
-
-    test 'should detect failed socket', (t) ->
+    test.skip 'should detect failed socket', (t) ->
 
       t.timeout 1000
 
@@ -125,17 +132,23 @@ FIXME re-write another test that actually detects that the call went to FreeSwit
         client = new FreeSwitchClient port: client_port
         client.on 'connect', (call) ->
           try
-            error = api "originate sofia/test-client/sip:server-failed@127.0.0.1:34564 &park"
-            .catch (error) -> error
-            error.should.have.property 'args'
-            error.args.should.have.property 'reply'
-            error.args.reply.should.match /^-ERR NORMAL_TEMPORARY_FAILURE/
+            error = await call
+              .api "originate sofia/test-client/sip:server-failed@127.0.0.1:34564 &park"
+              .catch (error) -> error
+
+FIXME currently return CHAN_NOT_IMPLEMENTED
+
+            t.regex error.args.reply, /^-ERR NORMAL_TEMPORARY_FAILURE/
             await client.end()
             resolve()
           catch error
             reject error
 
         client.connect()
+        return
       t.pass()
       return
-    ###
+
+    test 'should stop', (t) ->
+      await stop()
+      t.pass()
