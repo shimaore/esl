@@ -2,3 +2,10 @@ src/
 local_docs/
 node_modules/
 test/
+.nyc_output/
+.git/
+.dockerignore
+.gitignore
+.npmignore
+.eslintrc.json
+build.mjs
