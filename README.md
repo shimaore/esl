@@ -1,8 +1,6 @@
 This module is a promise-based, chainable, client ('inbound' event socket) and server ('outbound' event socket) for FreeSwitch, written entirely in Javascript with no dependencies on the libesl library.
 This module is actively maintained and used in production systems.
 
-[![Build Status](https://travis-ci.org/shimaore/esl.svg?branch=master)](https://travis-ci.org/shimaore/esl)
-
 This is a beta release of version 11, a new major version of `esl`.
 
 Client Usage
