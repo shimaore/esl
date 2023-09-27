@@ -12,8 +12,11 @@
     dialplan_port = 7000
     domain = '127.0.0.1:5062'
 
-    await start()
-    await sleep 4*second
+    test.before (t) ->
+      t.timeout 5*second
+      await start()
+      await sleep 4*second
+      return
 
     test 'should be reachable', (t) ->
       t.timeout 35*second
@@ -94,7 +97,7 @@
 
       return
 
-    test 'Stop FreeSWITCH', (t) ->
+    test.after 'Stop FreeSWITCH', (t) ->
       t.timeout 35*second
 
 Ava runs tests in parallel, so let's wait long enough for the other tests to

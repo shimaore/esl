@@ -10,7 +10,8 @@
       setNoDelay: ->
 
     logger = (t) ->
-      debug: (msg,obj) -> t.log msg, obj
+      # debug: (msg,obj) -> t.log msg, obj
+      debug: ->
       info: (msg,obj) -> t.log msg, obj
       error: (msg,obj) -> t.log msg, obj
 

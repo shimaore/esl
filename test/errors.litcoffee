@@ -14,9 +14,15 @@
     client_port = 8024
     domain = '127.0.0.1:5062'
 
+    test.before (t) ->
+      t.timeout 9*second
+      await start()
+      await sleep 8*second
+      return
 
-    await start()
-    await sleep 8*second
+    test.after 'Stop FreeSWITCH', (t) ->
+      await stop()
+      t.pass()
 
     do_show_stats = false
 
@@ -34,7 +40,8 @@ FIXME: conversion in general terms is more complex, value may contain comma, quo
         new Date() - now
 
     logger = (t) ->
-      debug: (...args) -> t.log 'debug', ...args
+      # debug: (...args) -> t.log 'debug', ...args
+      debug: ->
       info: (...args) -> t.log 'info', ...args
       error: (...args) -> t.log 'error', ...args
 
@@ -51,9 +58,9 @@ The goal is to document how to detect error conditions, especially wrt LCR condi
 
     test.before (t) ->
 
-      service = (call) ->
+      service = (call, {data}) ->
 
-        destination = call.data.variable_sip_req_user
+        destination = data.variable_sip_req_user
 
         switch
           when destination is 'answer-wait-3010'
@@ -91,6 +98,20 @@ The goal is to document how to detect error conditions, especially wrt LCR condi
       t.is count, 0, "Oops, #{count} active connections leftover"
       await server.close()
       null
+
+    test 'should handle `sofia status`', (t) ->
+      client = new FreeSwitchClient port: client_port, logger: logger t
+
+      p = once client, 'connect'
+      client.connect()
+      [ service ] = await p
+
+      res = await service.api 'sofia status'
+      t.log res
+
+      await client.end()
+      t.pass()
+      return
 
 The `exit` command must still return a valid response
 -----------------------------------------------------
@@ -145,6 +166,22 @@ Automatic cleanup should trigger a `cleanup_disconnect` event.
       await client.end()
       return
 
+    test 'should process normal call', (t) ->
+      t.timeout 5*second
+
+      client = new FreeSwitchClient port: client_port, logger: logger t
+
+      p = once client, 'connect'
+      client.connect()
+      [ service ] = await p
+
+      res = await service.api "originate sofia/test-client/sip:answer-wait-3010@#{domain} &park"
+      t.log 'API was successful', res
+      t.pass()
+
+      await client.end()
+      return
+
     test 'should detect invalid (late) syntax', (t) ->
       t.timeout 5*second
 
@@ -158,17 +195,19 @@ Automatic cleanup should trigger a `cleanup_disconnect` event.
       client.connect()
       [ service ] = await p
 
-      try
-        res = await service.api "originate [#{options_text options}]sofia/test-client/sip:answer-wait-3010@#{domain} &bridge(foobar)"
-        t.log 'API was successful', res
-      catch error
-        t.log 'API failed', error
-        t.regex error.args.reply, /-ERR CHAN_NOT_IMPLEMENTED/
+      service.once 'CHANNEL_EXECUTE_COMPLETE', (res) ->
+        t.is res.body.variable_tracer_uuid, id
+        t.is res.body.variable_originate_disposition, 'CHAN_NOT_IMPLEMENTED'
+
+      res = await service.api "originate [#{options_text options}]sofia/test-client/sip:answer-wait-3010@#{domain} &bridge(foobar)"
+      t.log 'API was successful', res
+
+      await sleep 1*second
 
       await client.end()
       return
 
-    test.skip 'should detect missing host', (t) ->
+    test 'should detect missing host', (t) ->
 
 It shouldn't take us more than 4 seconds (given the value of timer-T2 set to 2000).
 
@@ -176,57 +215,61 @@ It shouldn't take us more than 4 seconds (given the value of timer-T2 set to 200
 
 The client attempt to connect an non-existent IP address on a valid subnet ("host down").
 
-      await new Promise (resolve,reject) ->
-        client = FS.client ->
-          id = uuidv4()
-          options =
-            leg_progress_timeout: 8
-            leg_timeout: 16
-            tracer_uuid: id
+      client = new FreeSwitchClient port: client_port, logger: logger t
 
-          duration = timer()
-          @api "originate [#{options_text options}]sofia/test-client/sip:test@172.17.0.42 &park"
-          .catch (error) ->
-            error.should.have.property 'args'
-            error.args.should.have.property 'command'
-            error.args.command.should.contain "tracer_uuid=#{id}"
-            error.args.should.have.property 'reply'
-            error.args.reply.should.match /^-ERR RECOVERY_ON_TIMER_EXPIRE/
-            duration().should.be.above 1*second
-            duration().should.be.below 3*second
-            client.end()
-            resolve()
-          .catch reject
+      p = once client, 'connect'
+      client.connect()
+      [ service ] = await p
 
-        client.connect client_port, '127.0.0.1'
+      id = uuidv4()
+      options =
+        leg_progress_timeout: 8
+        leg_timeout: 16
+        tracer_uuid: id
+
+      duration = timer()
+      try
+        res = await service.api "originate [#{options_text options}]sofia/test-client/sip:test@172.16.0.42 &park"
+        t.log 'API was successful', res
+      catch error
+        t.log 'API failed', error
+        t.regex error.args.command, ///tracer_uuid=#{id}///
+        t.regex error.args.reply, /^-ERR RECOVERY_ON_TIMER_EXPIRE/
+        d = duration()
+        t.true d > 1*second, "Duration is too short (#{d}ms)"
+        t.true d < 3*second, "Duration is too long (#{d}ms)"
+
+      await client.end()
       return
 
-    test.skip 'should detect closed port', (t) ->
+    test 'should detect closed port', (t) ->
 
       t.timeout 2200
 
-      await new Promise (resolve,reject) ->
-        client = FS.client ->
-          id = uuidv4()
-          options =
-            leg_progress_timeout: 8
-            leg_timeout: 16
-            tracer_uuid: id
+      client = new FreeSwitchClient port: client_port, logger: logger t
 
-          duration = timer()
-          @api "originate [#{options_text options}]sofia/test-client/sip:test@127.0.0.1:1310 &park"
-          .catch (error) ->
-            error.should.have.property 'args'
-            error.args.should.have.property 'command'
-            error.args.command.should.contain "tracer_uuid=#{id}"
-            error.args.should.have.property 'reply'
-            error.args.reply.should.match /^-ERR NORMAL_TEMPORARY_FAILURE/
-            duration().should.be.below 4*second
-            client.end()
-            resolve()
-          .catch reject
+      p = once client, 'connect'
+      client.connect()
+      [ service ] = await p
 
-        client.connect client_port, '127.0.0.1'
+      id = uuidv4()
+      options =
+        leg_progress_timeout: 8
+        leg_timeout: 16
+        tracer_uuid: id
+
+      duration = timer()
+      try
+        res = await service.api "originate [#{options_text options}]sofia/test-client/sip:test@127.0.0.1:1310 &park"
+        t.log 'API was successful', res
+      catch error
+        t.log 'API failed', error
+        t.regex error.args.command, ///tracer_uuid=#{id}///
+        t.regex error.args.reply, /^-ERR NORMAL_TEMPORARY_FAILURE/
+        d = duration()
+        t.true d < 4*second, "Duration is too long (#{d}ms)"
+
+      await client.end()
       return
 
     test.skip 'should detect invalid destination', (t) ->
@@ -350,7 +393,3 @@ SIP Error detection
     test.skip 'should detect 603', should_detect '603', /^-ERR CALL_REJECTED/
     test.skip 'should detect 604', should_detect '604', /^-ERR NO_ROUTE_DESTINATION/
     test.skip 'should detect 606', should_detect '606', /^-ERR INCOMPATIBLE_DESTINATION/
-
-    test 'Stop FreeSWITCH', (t) ->
-      await stop()
-      t.pass()

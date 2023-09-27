@@ -7,9 +7,13 @@
     fs_server = null
 
     common_options = [
-      '-nf', '-c',
-      '-nosql', '-nonat', '-nocal', '-nort',
-      '-conf', '/opt/test',
+      '-nf' # No forking
+      '-c'  # Console and foreground
+      '-nosql'
+      '-nonat' # Disable auto nat detection
+      '-nocal' # Disable clock calibration
+      '-nort'
+      '-conf', '/opt/test'
     ]
 
     export start = () =>

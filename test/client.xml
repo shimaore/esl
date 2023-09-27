@@ -1,22 +1,26 @@
 <?xml version="1.0"?>
 <document type="freeswitch/xml">
   <X-PRE-PROCESS cmd="set" data="name=client"/>
-  <X-PRE-PROCESS cmd="set" data="local_ip=127.0.0.1"/>
+  <X-PRE-PROCESS cmd="set" data="local_ip=0.0.0.0"/>
   <X-PRE-PROCESS cmd="set" data="sip_port=5064"/>
+  <X-PRE-PROCESS cmd="set" data="socket_port=8024"/>
+  <X-PRE-PROCESS cmd="set" data="rtp_start=29152"/>
+  <X-PRE-PROCESS cmd="set" data="rtp_end=45535"/>
 
-  <section name="configuration" description="Various Configuration">
-    <configuration name="switch.conf" description="Core Configuration">
+  <section name="configuration">
+    <configuration name="switch.conf">
       <settings>
-        <param name="switchname" value="freeswitch-$${name}"/>
+        <param name="switchname" value="freeswitch-$${name}" />
         <param name="core-db-name" value="/dev/shm/freeswitch/core-$${name}.db" />
-        <param name="rtp-start-port" value="29152"/>
-        <param name="rtp-end-port" value="45535"/>
-        <param name="max-sessions" value="20000"/>
+        <param name="rtp-start-port" value="$${rtp_start}" />
+        <param name="rtp-end-port" value="$${rtp_end}" />
+        <param name="max-sessions" value="20000" />
         <param name="sessions-per-second" value="200" />
-        <param name="loglevel" value="err"/>
+        <param name="min-idle-cpu" value="0" />
+        <param name="loglevel" value="warn" />
       </settings>
     </configuration>
-    <configuration name="modules.conf" description="Modules">
+    <configuration name="modules.conf">
       <modules>
         <load module="mod_event_socket"/>
         <load module="mod_commands"/>
@@ -25,130 +29,111 @@
         <load module="mod_sofia"/>
       </modules>
     </configuration>
-    <configuration name="event_socket.conf" description="Socket Client">
+    <configuration name="event_socket.conf">
       <settings>
         <param name="nat-map" value="false"/>
         <param name="listen-ip" value="::"/>
-        <param name="listen-port" value="8024"/>
+        <param name="listen-port" value="$${socket_port}"/>
         <param name="password" value="ClueCon"/>
       </settings>
     </configuration>
-    <configuration name="acl.conf" description="Network Lists">
+    <configuration name="acl.conf">
       <network-lists>
         <list name="any" default="allow">
-          <node type="allow" cidr="0.0.0.0/8"/>
         </list>
       </network-lists>
     </configuration>
 
-    <configuration name="sofia.conf" description="sofia Endpoint">
+    <configuration name="sofia.conf">
       <global_settings>
-        <param name="log-level" value="1"/> <!-- anything below 9 makes FreeSwitch segfault??! -->
+        <param name="log-level" value="1"/>
         <param name="debug-presence" value="0"/>
       </global_settings>
       <profiles>
         <profile name="test-$${name}">
           <settings>
-            <param name="user-agent-string" value="esl test-$${name}-$${sip_port}"/>
-            <param name="username" value="esl-test-$${name}"/>
-            <!--
-            <param name="debug" value="2"/>
-            <param name="sip-trace" value="false"/>
-            -->
-
-            <param name="sip-port" value="$${sip_port}"/>
-            <param name="bind-params" value="transport=udp"/>
-
-            <param name="sip-ip" value="$${local_ip}"/>
-            <param name="ext-sip-ip" value="$${local_ip}"/>
-
-            <param name="rtp-ip" value="$${local_ip}"/>
-            <param name="ext-rtp-ip" value="$${local_ip}"/>
-
-            <param name="apply-inbound-acl" value="any"/>
-            <!--<param name="apply-register-acl" value="domains"/>-->
-
-            <param name="dialplan" value="XML"/>
-            <param name="context" value="private"/>
-            <param name="auth-calls" value="false"/>
-            <param name="auth-all-packets" value="false"/>
-            <param name="accept-blind-reg" value="true"/>
-            <param name="accept-blind-auth" value="true"/>
-            <param name="sip-options-respond-503-on-busy" value="true"/> 
-
-            <param name="manage-presence" value="false"/>
-
-            <param name="enable-soa" value="true"/>
-            <param name="inbound-codec-negotiation" value="greedy"/>
-            <param name="inbound-late-negotiation" value="false"/>
-
-            <param name="inbound-codec-prefs" value="PCMA,PCMU"/>
-            <param name="outbound-codec-prefs" value="PCMA,PCMU"/>
-            <param name="renegotiate-codec-on-reinvite" value="true"/>
-            <param name="inbound-bypass-media" value="false"/>
-            <param name="inbound-proxy-media" value="false"/>
-            <param name="media-option" value="resume-media-on-hold"/>
-            <param name="inbound-zrtp-passthru" value="false"/>
-            <param name="disable-transcoding" value="true"/>
-
-            <param name="inbound-use-callid-as-uuid" value="true"/>
-            <!-- <param name="outbound-use-uuid-as-callid" value="true"/> -->
-
-            <param name="dtmf-type" value="rfc2833"/>
-            <param name="dtmf-duration" value="2000"/>
-            <param name="rfc2833-pt" value="101"/>
-            <!-- <param name="use-rtp-timer" value="true"/> -->
-            <!-- <param name="rtp-timer-name" value="soft"/> -->
-            <param name="pass-rfc2833" value="true"/>
-            <!--<param name="rtp-rewrite-timestamps" value="true"/>-->
-
-            <!--<param name="hold-music" value="$${hold_music}"/>-->
-            <!--<param name="enable-100rel" value="false"/>-->
-            <!--<param name="disable-srv503" value="true"/>-->
-            <!--<param name="record-template" value="$${recordings_dir}/${caller_id_number}.${strftime(%Y-%m-%d-%H-%M-%S)}.wav"/>-->
-            <!--<param name="bitpacking" value="aal2"/> -->
-            <!--<param name="max-proceeding" value="1000"/>-->
-            <!--<param name="session-timeout" value="1800"/>-->
-            <!--<param name="multiple-registrations" value="true"/>-->
-            <!--<param name="unregister-on-options-fail" value="true"/>-->
-
-            <!--<param name="odbc-dsn" value="dsn:user:pass"/>-->
-
-            <!-- <param name="suppress-cng" value="true"/> -->
-            <param name="nonce-ttl" value="60"/>
-            <!--<param name="NDLB-broken-auth-hash" value="true"/>-->
-
-            <param name="NDLB-received-in-nat-reg-contact" value="false"/>
-            <param name="nat-options-ping" value="false"/>
-            <param name="all-reg-options-ping" value="false"/>
+            <!-- <param name="NDLB-broken-auth-hash" value="true"/>-->
+            <!-- <param name="NDLB-force-rport" value="true"/>-->
+            <!-- <param name="alias" value="sip:10.0.1.251:5555"/>-->
             <!-- <param name="apply-nat-acl" value="rfc1918"/> -->
-            <param name="aggressive-nat-detection" value="false"/>
-            <!--<param name="NDLB-force-rport" value="true"/>-->
-
-            <param name="rtp-timeout-sec" value="300"/>
-            <param name="rtp-hold-timeout-sec" value="1800"/>
+            <!-- <param name="apply-register-acl" value="domains"/>-->
+            <!-- <param name="bitpacking" value="aal2"/> -->
+            <!-- <param name="disable-naptr" value="false" />-->
+            <!-- <param name="disable-srv" value="false" />-->
+            <!-- <param name="disable-srv503" value="true"/>-->
+            <!-- <param name="enable-100rel" value="false"/>-->
+            <!-- <param name="force-register-db-domain" value="$${domain}"/> -->
+            <!-- <param name="force-register-domain" value="$${domain}"/> -->
+            <!-- <param name="hold-music" value="$${hold_music}"/>-->
+            <!-- <param name="multiple-registrations" value="true"/>-->
+            <!-- <param name="record-template" value="$${recordings_dir}/${caller_id_number}.${strftime(%Y-%m-%d-%H-%M-%S)}.wav"/>-->
+            <!-- <param name="rtp-rewrite-timestamps" value="true"/>-->
+            <!-- <param name="rtp-timer-name" value="soft"/> -->
+            <!-- <param name="session-timeout" value="1800"/>-->
+            <!-- <param name="stun-auto-disable" value="true"/>-->
+            <!-- <param name="unregister-on-options-fail" value="true"/>-->
+            <!-- <param name="use-rtp-timer" value="true"/> -->
+            <!-- <param name="vad" value="both"/> -->
             <!-- <param name="vad" value="in"/> -->
             <!-- <param name="vad" value="out"/> -->
-            <!-- <param name="vad" value="both"/> -->
-
-            <!--<param name="alias" value="sip:10.0.1.251:5555"/>-->
-
-            <!-- <param name="force-register-domain" value="$${domain}"/> -->
-            <!-- <param name="force-register-db-domain" value="$${domain}"/> -->
-
-            <param name="disable-transfer" value="true"/>
-            <param name="disable-register" value="true"/>
-            <param name="enable-3pcc" value="false"/>
-            <param name="stun-enabled" value="false"/>
-            <!--<param name="stun-auto-disable" value="true"/>-->
-
-            <!--<param name="disable-srv" value="false" />-->
-            <!--<param name="disable-naptr" value="false" />-->
+            <param name="NDLB-received-in-nat-reg-contact" value="false" />
+            <param name="accept-blind-auth" value="true" />
+            <param name="accept-blind-reg" value="false" />
+            <param name="aggressive-nat-detection" value="false" />
+            <param name="all-reg-options-ping" value="false" />
+            <param name="apply-inbound-acl" value="any" />
+            <param name="auth-all-packets" value="false" />
+            <param name="auth-calls" value="false" />
+            <param name="auto-jitterbuffer-msec" value="60" />
+            <param name="auto-rtp-bugs" value="clear" />
+            <param name="bind-params" value="transport=udp" />
+            <param name="caller-id-type"  value="pid" />
+            <param name="context" value="private"  />
+            <param name="debug" value="0" />
+            <param name="dialplan" value="XML" />
+            <param name="disable-register" value="true" />
+            <param name="disable-rtp-auto-adjust" value="false" />
+            <param name="disable-transcoding" value="true" />
+            <param name="disable-transfer" value="true" />
+            <param name="dtmf-duration" value="2000" />
+            <param name="dtmf-type" value="rfc2833" />
+            <param name="enable-3pcc" value="false" />
+            <param name="enable-soa" value="true" />
+            <param name="ext-rtp-ip" value="$${local_ip}" />
+            <param name="ext-sip-ip" value="$${local_ip}" />
+            <param name="inbound-bypass-media" value="false" />
+            <param name="inbound-codec-negotiation" value="greedy" />
+            <param name="inbound-codec-prefs" value="PCMA,PCMU" />
+            <param name="inbound-late-negotiation" value="false" />
+            <param name="inbound-proxy-media" value="false" />
+            <param name="inbound-use-callid-as-uuid" value="true" />
+            <param name="inbound-zrtp-passthru" value="false" />
+            <param name="log-auth-failures"  value="true" />
+            <param name="manage-presence" value="false" />
+            <param name="manage-shared-appearance"  value="false" />
+            <param name="max-proceeding" value="2000" />
+            <param name="media-option" value="resume-media-on-hold" />
+            <param name="nat-options-ping" value="false" />
+            <param name="nonce-ttl" value="60" />
+            <param name="outbound-codec-prefs" value="PCMA,PCMU" />
+            <param name="pass-rfc2833" value="true" />
+            <param name="renegotiate-codec-on-reinvite" value="true" />
+            <param name="rfc2833-pt" value="101" />
+            <param name="rtp-hold-timeout-sec" value="1800" />
+            <param name="rtp-ip" value="$${local_ip}" />
+            <param name="rtp-timeout-sec" value="300" />
+            <param name="sip-ip" value="$${local_ip}" />
+            <param name="sip-options-respond-503-on-busy" value="true" /> 
+            <param name="sip-port" value="$${sip_port}" />
+            <param name="sip-trace" value="false" />
+            <param name="stun-enabled" value="false" />
+            <param name="suppress-cng" value="false" />
             <param name="timer-T1" value="250" />
             <param name="timer-T1X64" value="2000" />
             <param name="timer-T2" value="2000" />
             <param name="timer-T4" value="4000" />
-
+            <param name="user-agent-string" value="esl test-$${name}-$${sip_port}"/>
+            <param name="username" value="esl-test-$${name}"/>
           </settings>
         </profile>
       </profiles>
