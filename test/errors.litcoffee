@@ -272,57 +272,58 @@ The client attempt to connect an non-existent IP address on a valid subnet ("hos
       await client.end()
       return
 
-    test.skip 'should detect invalid destination', (t) ->
+    test 'should detect invalid destination', (t) ->
 
       t.timeout 2200
 
-      await new Promise (resolve,reject) ->
-        client = FS.client ->
-          id = uuidv4()
-          options =
-            leg_progress_timeout: 8
-            leg_timeout: 16
-            tracer_uuid: id
+      client = new FreeSwitchClient port: client_port, logger: logger t
 
-          @api "originate [#{options_text options}]sofia/test-client/sip:foobared@#{domain} &park"
-          .catch (error) ->
-            error.should.have.property 'args'
-            error.args.should.have.property 'command'
-            error.args.command.should.contain "tracer_uuid=#{id}"
-            error.args.should.have.property 'reply'
-            error.args.reply.should.match /^-ERR NO_ROUTE_DESTINATION/
-            client.end()
-            resolve()
-          .catch reject
+      p = once client, 'connect'
+      client.connect()
+      [ service ] = await p
 
-        client.connect client_port, '127.0.0.1'
+      id = uuidv4()
+      options =
+        leg_progress_timeout: 8
+        leg_timeout: 16
+        tracer_uuid: id
+
+      try
+        await service.api "originate [#{options_text options}]sofia/test-client/sip:foobared@#{domain} &park"
+      catch error
+        t.regex error.args.command, ///tracer_uuid=#{id}///
+        t.regex error.args.reply, /^-ERR NO_ROUTE_DESTINATION/
+
+      await client.end()
+
       return
 
-    test.skip 'should detect late progress', (t) ->
+    test 'should detect late progress', (t) ->
 
       t.timeout 10000
 
-      await new Promise (resolve,reject) ->
-        client = FS.client ->
-          id = uuidv4()
-          options =
-            leg_progress_timeout: 8
-            leg_timeout: 16
-            tracer_uuid: id
+      client = new FreeSwitchClient port: client_port, logger: logger t
 
-          duration = timer()
-          @api "originate [#{options_text options}]sofia/test-client/sip:wait-24000-ring-ready@#{domain} &park"
-          .catch (error) ->
-            error.should.have.property 'args'
-            error.args.should.have.property 'reply'
-            error.args.reply.should.match /^-ERR PROGRESS_TIMEOUT/
-            duration().should.be.above (options.leg_progress_timeout - 1)*second
-            duration().should.be.below (options.leg_progress_timeout + 1)*second
-            client.end()
-            resolve()
-          .catch reject
+      p = once client, 'connect'
+      client.connect()
+      [ service ] = await p
 
-        client.connect client_port, '127.0.0.1'
+      id = uuidv4()
+      options =
+        leg_progress_timeout: 8
+        leg_timeout: 16
+        tracer_uuid: id
+
+      duration = timer()
+      try
+        await service.api "originate [#{options_text options}]sofia/test-client/sip:wait-24000-ring-ready@#{domain} &park"
+      catch error
+        t.regex error.args.reply, /^-ERR PROGRESS_TIMEOUT/
+        t.true duration() > (options.leg_progress_timeout - 1)*second
+        t.true duration() < (options.leg_progress_timeout + 1)*second
+
+      await client.end()
+
       return
 
 SIP Error detection
@@ -330,66 +331,77 @@ SIP Error detection
 
     should_detect = (code,pattern) -> (t) ->
       t.timeout 1000
-      await new Promise (resolve,reject) ->
-        client = FS.client ->
-          id = uuidv4()
-          options =
-            leg_timeout: 2
-            leg_progress_timeout: 16
-            tracer_uuid: id
 
-          @on 'CHANNEL_CREATE', (msg) ->
-            msg.should.have.property 'body'
-            msg.body.should.have.property 'variable_tracer_uuid', id
-          @on 'CHANNEL_ORIGINATE', (msg) ->
-            msg.should.have.property 'body'
-            msg.body.should.have.property 'variable_tracer_uuid', id
-          @once 'CHANNEL_HANGUP', (msg) ->
-            msg.should.have.property 'body'
-            msg.body.should.have.property 'variable_tracer_uuid', id
-            msg.body.should.have.property 'variable_sip_term_status', code
-          @on 'CHANNEL_HANGUP_COMPLETE', (msg) ->
-            msg.should.have.property 'body'
-            msg.body.should.have.property 'variable_tracer_uuid', id
-            msg.body.should.have.property 'variable_sip_term_status', code
-            msg.body.should.have.property 'variable_billmsec', '0'
-            client.end()
-            resolve()
-          await @filter 'variable_tracer_uuid', id
-          await @event_json 'ALL'
-          @api "originate {#{options_text options}}sofia/test-client/sip:wait-100-respond-#{code}@#{domain} &park"
-          .catch (error) ->
-            error.should.have.property 'args'
-            error.args.should.have.property 'reply'
-            error.args.reply.should.match pattern
-            error.should.have.property 'res'
-          .catch reject
+      client = new FreeSwitchClient port: client_port, logger: logger t
 
-        client.connect client_port, '127.0.0.1'
+      p = once client, 'connect'
+      client.connect()
+      [ service ] = await p
+
+      id = uuidv4()
+      options =
+        leg_timeout: 2
+        leg_progress_timeout: 16
+        tracer_uuid: id
+
+      t.log 'preparing'
+
+      service.on 'CHANNEL_CREATE', (msg) ->
+        t.like msg.body, variable_tracer_uuid: id
+        return
+      service.on 'CHANNEL_ORIGINATE', (msg) ->
+        t.like msg.body, variable_tracer_uuid: id
+        return
+      service.once 'CHANNEL_HANGUP', (msg) ->
+        t.like msg.body, {
+          variable_tracer_uuid: id
+          variable_sip_term_status: code
+        }
+        return
+      service.on 'CHANNEL_HANGUP_COMPLETE', (msg) ->
+        t.like msg.body, {
+          variable_tracer_uuid: id
+          variable_sip_term_status: code
+          variable_billmsec: '0'
+        }
+        return
+
+      await service.filter 'variable_tracer_uuid', id
+      await service.event_json 'ALL'
+
+      t.log "sending call for #{code}"
+      try
+        await service.api "originate {#{options_text options}}sofia/test-client/sip:wait-100-respond-#{code}@#{domain} &park"
+      catch error
+        t.regex error.args.reply, pattern
+        t.true 'res' of error
+
+      await sleep 50
+      await client.end()
       return
 
     # Anything below 4xx isn't an error
-    test.skip 'should detect 403', should_detect '403', /^-ERR CALL_REJECTED/
-    test.skip 'should detect 404', should_detect '404', /^-ERR UNALLOCATED_NUMBER/
+    test.serial 'should detect 403', should_detect '403', /^-ERR CALL_REJECTED/
+    test.serial 'should detect 404', should_detect '404', /^-ERR UNALLOCATED_NUMBER/
     # test 'should detect 407', should_detect '407', ... res has variable_sip_hangup_disposition: 'send_cancel' but no variable_sip_term_status
-    test.skip 'should detect 408', should_detect '408', /^-ERR RECOVERY_ON_TIMER_EXPIRE/
-    test.skip 'should detect 410', should_detect '410', /^-ERR NUMBER_CHANGED/
-    test.skip 'should detect 415', should_detect '415', /^-ERR SERVICE_NOT_IMPLEMENTED/
-    test.skip 'should detect 450', should_detect '450', /^-ERR NORMAL_UNSPECIFIED/
-    test.skip 'should detect 455', should_detect '455', /^-ERR NORMAL_UNSPECIFIED/
-    test.skip 'should detect 480', should_detect '480', /^-ERR NO_USER_RESPONSE/
-    test.skip 'should detect 481', should_detect '481', /^-ERR NORMAL_TEMPORARY_FAILURE/
-    test.skip 'should detect 484', should_detect '484', /^-ERR INVALID_NUMBER_FORMAT/
-    test.skip 'should detect 485', should_detect '485', /^-ERR NO_ROUTE_DESTINATION/
-    test.skip 'should detect 486', should_detect '486', /^-ERR USER_BUSY/
-    test.skip 'should detect 487', should_detect '487', /^-ERR ORIGINATOR_CANCEL/
-    test.skip 'should detect 488', should_detect '488', /^-ERR INCOMPATIBLE_DESTINATION/
-    test.skip 'should detect 491', should_detect '491', /^-ERR NORMAL_UNSPECIFIED/
-    test.skip 'should detect 500', should_detect '500', /^-ERR NORMAL_TEMPORARY_FAILURE/
-    test.skip 'should detect 502', should_detect '502', /^-ERR NETWORK_OUT_OF_ORDER/
-    test.skip 'should detect 503', should_detect '503', /^-ERR NORMAL_TEMPORARY_FAILURE/
-    test.skip 'should detect 504', should_detect '504', /^-ERR RECOVERY_ON_TIMER_EXPIRE/
-    test.skip 'should detect 600', should_detect '600', /^-ERR USER_BUSY/
-    test.skip 'should detect 603', should_detect '603', /^-ERR CALL_REJECTED/
-    test.skip 'should detect 604', should_detect '604', /^-ERR NO_ROUTE_DESTINATION/
-    test.skip 'should detect 606', should_detect '606', /^-ERR INCOMPATIBLE_DESTINATION/
+    test.serial 'should detect 408', should_detect '408', /^-ERR RECOVERY_ON_TIMER_EXPIRE/
+    test.serial 'should detect 410', should_detect '410', /^-ERR NUMBER_CHANGED/
+    test.serial 'should detect 415', should_detect '415', /^-ERR SERVICE_NOT_IMPLEMENTED/
+    test.serial 'should detect 450', should_detect '450', /^-ERR NORMAL_UNSPECIFIED/
+    test.serial 'should detect 455', should_detect '455', /^-ERR NORMAL_UNSPECIFIED/
+    test.serial 'should detect 480', should_detect '480', /^-ERR NO_USER_RESPONSE/
+    test.serial 'should detect 481', should_detect '481', /^-ERR NORMAL_TEMPORARY_FAILURE/
+    test.serial 'should detect 484', should_detect '484', /^-ERR INVALID_NUMBER_FORMAT/
+    test.serial 'should detect 485', should_detect '485', /^-ERR NO_ROUTE_DESTINATION/
+    test.serial 'should detect 486', should_detect '486', /^-ERR USER_BUSY/
+    test.serial 'should detect 487', should_detect '487', /^-ERR ORIGINATOR_CANCEL/
+    test.serial 'should detect 488', should_detect '488', /^-ERR INCOMPATIBLE_DESTINATION/
+    test.serial 'should detect 491', should_detect '491', /^-ERR NORMAL_UNSPECIFIED/
+    test.serial 'should detect 500', should_detect '500', /^-ERR NORMAL_TEMPORARY_FAILURE/
+    test.serial 'should detect 502', should_detect '502', /^-ERR NETWORK_OUT_OF_ORDER/
+    test.serial 'should detect 503', should_detect '503', /^-ERR NORMAL_TEMPORARY_FAILURE/
+    test.serial 'should detect 504', should_detect '504', /^-ERR RECOVERY_ON_TIMER_EXPIRE/
+    test.serial 'should detect 600', should_detect '600', /^-ERR USER_BUSY/
+    test.serial 'should detect 603', should_detect '603', /^-ERR CALL_REJECTED/
+    test.serial 'should detect 604', should_detect '604', /^-ERR NO_ROUTE_DESTINATION/
+    test.serial 'should detect 606', should_detect '606', /^-ERR INCOMPATIBLE_DESTINATION/

@@ -17,7 +17,7 @@
         <param name="max-sessions" value="20000" />
         <param name="sessions-per-second" value="200" />
         <param name="min-idle-cpu" value="0" />
-        <param name="loglevel" value="warn" />
+        <param name="loglevel" value="err" />
       </settings>
     </configuration>
     <configuration name="modules.conf">
@@ -46,7 +46,7 @@
 
     <configuration name="sofia.conf">
       <global_settings>
-        <param name="log-level" value="1"/>
+        <param name="log-level" value="0"/>
         <param name="debug-presence" value="0"/>
       </global_settings>
       <profiles>
