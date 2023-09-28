@@ -78,13 +78,13 @@ Make the command responses somewhat unique. This is required since FreeSwitch do
 
         @on 'CHANNEL_EXECUTE_COMPLETE', (res) =>
           event_uuid = res.body['Application-UUID']
-          @logger.debug 'FreeSwitchResponse: CHANNEL_EXECUTE_COMPLETE', { event_uuid }
+          @logger.debug 'FreeSwitchResponse: CHANNEL_EXECUTE_COMPLETE', { event_uuid, ref: @__ref }
           @emit "CHANNEL_EXECUTE_COMPLETE #{event_uuid}", res
           return
 
         @on 'BACKGROUND_JOB', (res) =>
           job_uuid = res.body['Job-UUID']
-          @logger.debug 'FreeSwitchResponse: BACKGROUND_JOB', { job_uuid }
+          @logger.debug 'FreeSwitchResponse: BACKGROUND_JOB', { job_uuid, ref: @__ref }
           @emit_later "BACKGROUND_JOB #{job_uuid}", {body:res.body._body}
           return
 
@@ -312,11 +312,11 @@ Send a single command to FreeSwitch; `args` is a hash of headers sent with the c
             @logger.debug 'FreeSwitchResponse: write', { ref: @__ref, text }
             flushed = @__socket.write text, 'utf8'
             if not flushed
-              @logger.debug 'FreeSwitchResponse: write did not flush'
+              @logger.debug 'FreeSwitchResponse: write did not flush', { ref: @__ref, command, args }
             resolve null
 
           catch error
-            @logger.error 'FreeSwitchResponse: write error', { ref: @__ref, error }
+            @logger.error 'FreeSwitchResponse: write error', { ref: @__ref, command, args, error }
 
 Cancel any pending Promise started with `@onceAsync`, and close the connection.
 
@@ -363,7 +363,7 @@ The Promise might fail if FreeSwitch's notification indicates an error.
             return @error res, {when:'no reply to command',command,args}
 
           if reply.match /^-/
-            @logger.debug 'FreeSwitchResponse: send: failed', { @__ref, reply, command, args }
+            @logger.debug 'FreeSwitchResponse: send: failed', { ref: @__ref, reply, command, args }
             return @error res, {when:'command reply',reply,command,args}
 
 The promise will be fulfilled with the `{headers,body}` object provided by the parser.
@@ -557,7 +557,7 @@ Use `bgapi` if you need to make sure responses are correct, since it provides th
 The Promise might fail if FreeSwitch indicates there was an error.
 
           if not reply?
-            @logger.debug 'FreeSwitchResponse: api: no reply', { @__ref, command }
+            @logger.debug 'FreeSwitchResponse: api: no reply', { ref: @__ref, command }
             return @error res, {when:'no reply to api',command}
 
           if reply.match /^-/

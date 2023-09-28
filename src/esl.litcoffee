@@ -27,7 +27,7 @@ The `server` will emit `connection` for every new (incoming) connection, with tw
     export class FreeSwitchServer extends EventEmitter
 
       ###*
-      # @params { { all_events?: boolean, my_events?: boolean, logger?: any } options
+      # @params { { all_events?: boolean, my_events?: boolean, logger?: { debug: (msg:string, data?: Object) -> void, info: function, error: function } } options
       ###
       constructor: (options = {}) ->
         super()
