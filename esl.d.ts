@@ -39,7 +39,13 @@ declare module "esl" {
     // timeout defaults to `default_send_timeout`
     send: (command: string, args?: StringMap, timeout?: number ) -> SendResult;
     end: () -> void;
+    /**
+     * @throws {FreeSwitchError}
+     */
     api: (command: string, timeout?: number) -> Promise<FreeSwitchError | { uuid: string, body: StringMap, headers: StringMap }>;
+    /**
+     * @throws {FreeSwitchError}
+     */
     bgapi: (command: string, timeout?: number ) -> Promise<FreeSwitchError | { body: StringMap }>;
 
     event_json: async (events...:string) -> SendResult;

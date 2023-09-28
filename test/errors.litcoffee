@@ -6,10 +6,10 @@
     import { start, stop } from './utils.mjs'
 
     second = 1000
-    sleep = (timeout) -> new Promise (resolve) -> setTimeout resolve, timeout
+    sleep = (timeout) -> new Promise (resolve) -> setTimeout resolve, timeout; return
 
     import { v4 as uuidv4 } from 'uuid'
-    import { EventEmitter, once } from 'node:events'
+    import { once } from 'node:events'
 
     client_port = 8024
     domain = '127.0.0.1:5062'
@@ -24,8 +24,6 @@
       await stop()
       t.pass()
 
-    do_show_stats = false
-
 `leg_progress_timeout` counts from the time the INVITE is placed until a progress indication (e.g. 180, 183) is received. Controls Post-Dial-Delay on this leg.
 
 `leg_timeout` restricts the length of ringback, à la `bridge_answer_timeout`
@@ -35,9 +33,9 @@ FIXME: conversion in general terms is more complex, value may contain comma, quo
     options_text = (options) -> ("#{key}=#{value}" for key, value of options).join ','
 
     timer = ->
-      now = new Date()
+      now = process.hrtime.bigint()
       ->
-        new Date() - now
+        Number(process.hrtime.bigint() - now) / 1_000_000
 
     logger = (t) ->
       # debug: (...args) -> t.log 'debug', ...args
@@ -53,8 +51,6 @@ Test for error conditions
 The goal is to document how to detect error conditions, especially wrt LCR conditions.
 
     server = null
-
-    ev = new EventEmitter
 
     test.before (t) ->
 
@@ -73,9 +69,10 @@ The goal is to document how to detect error conditions, especially wrt LCR condi
             await sleep 9999
 
           when m = destination.match /^wait-(\d+)-respond-(\d+)$/
-            await sleep parseInt m[1]
-            await call.command 'respond', m[2]
-            await sleep 9999
+            if m?
+              await sleep parseInt m[1]
+              await call.command 'respond', m[2]
+              await sleep 9999
 
           when destination is 'foobared'
             await call.command 'respond', 485

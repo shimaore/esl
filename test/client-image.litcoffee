@@ -10,8 +10,10 @@ We start two FreeSwitch docker.io instances, one is used as the "client" (and is
 
     client_port = 8024
 
-    await start()
-    await sleep 2*second
+    test.before ->
+      await start()
+      await sleep 2*second
+      return
 
     test 'should be reachable', (t) ->
       client = new FreeSwitchClient port: client_port
@@ -39,116 +41,108 @@ We start two FreeSwitch docker.io instances, one is used as the "client" (and is
 
     ###
     test 'should detect and report login errors', (t) ->
-      await new Promise (resolve,reject) ->
-        client = new FreeSwitchClient port: client_port, password: 'barfood'
-        client.on 'connect',
-          reject new Error 'Should not reach here'
-        client.on 'error', (error) ->
-          resolve error
-        client.connect()
+      client = new FreeSwitchClient port: client_port, password: 'barfood'
+      client.on 'connect',
+        t.fail new Error 'Should not reach here'
         return
-      t.pass()
-      return
+      client.on 'error', (error) ->
+        t.pass()
+        return
+      client.connect()
+    return
     ###
 
     test 'should reloadxml', (t) ->
-      await new Promise (resolve) ->
-        client = new FreeSwitchClient port: client_port
-        cmd = 'reloadxml'
-        client.on 'connect', (call) ->
-          res = await call.api cmd
-          t.regex res.body, /\+OK \[Success\]/
-          await client.end()
-          resolve()
-        client.connect()
+      client = new FreeSwitchClient port: client_port
+      cmd = 'reloadxml'
+      client.on 'connect', (call) ->
+        res = await call.api cmd
+        t.regex res.body, /\+OK \[Success\]/
+        await client.end()
+        t.pass()
         return
-      t.pass()
+      client.connect()
+      await sleep 500
       return
 
-    test 'should properly parse events', (t) ->
+    test 'should properly parse plainevents', (t) ->
 
-      t.log 'Should properly parse plain events'
-      await new Promise (resolve,reject) ->
-        client = new FreeSwitchClient port: client_port
-        client.on 'connect', (call) ->
-          try
+      client = new FreeSwitchClient port: client_port
+      client.on 'connect', (call) ->
+        try
 
-            res = await call.send 'event plain ALL'
-            t.regex res.headers['Reply-Text'], /\+OK event listener enabled plain/
+          res = await call.send 'event plain ALL'
+          t.regex res.headers['Reply-Text'], /\+OK event listener enabled plain/
 
-            msg = call.onceAsync 'CUSTOM'
-            await call.sendevent 'foo', 'Event-Name':'CUSTOM', 'Event-XBar':'some'
-            msg = await msg
+          msg = call.onceAsync 'CUSTOM'
+          await call.sendevent 'foo', 'Event-Name':'CUSTOM', 'Event-XBar':'some'
+          msg = await msg
 
-            t.like msg.body, {
-              'Event-Name': 'CUSTOM'
-              'Event-XBar': 'some'
-            }
+          t.like msg.body, {
+            'Event-Name': 'CUSTOM'
+            'Event-XBar': 'some'
+          }
 
-            await call.exit()
-            await client.end()
-            resolve()
-          catch error
-            reject error
-          return
-        client.connect()
+          await call.exit()
+          await client.end()
+          t.pass()
+        catch
+          t.fail()
         return
+      client.connect()
+      await sleep 500
+      return
 
-      t.log 'Should properly parse JSON events'
-      await new Promise (resolve,reject) ->
-        client = new FreeSwitchClient port: client_port
-        client.on 'connect', (call) ->
-          try
+    test 'Should properly parse JSON events', (t) ->
+      client = new FreeSwitchClient port: client_port
+      client.on 'connect', (call) ->
+        try
 
-            res = await call.send 'event json ALL'
-            t.regex res.headers['Reply-Text'], /\+OK event listener enabled json/
+          res = await call.send 'event json ALL'
+          t.regex res.headers['Reply-Text'], /\+OK event listener enabled json/
 
-            msg = call.onceAsync 'CUSTOM'
-            await call.sendevent 'foo', 'Event-Name':'CUSTOM', 'Event-XBar':'ë°ñ'
-            msg = await msg
+          msg = call.onceAsync 'CUSTOM'
+          await call.sendevent 'foo', 'Event-Name':'CUSTOM', 'Event-XBar':'ë°ñ'
+          msg = await msg
 
-            t.like msg.body, {
-              'Event-Name': 'CUSTOM'
-              'Event-XBar': 'ë°ñ'
-            }
+          t.like msg.body, {
+            'Event-Name': 'CUSTOM'
+            'Event-XBar': 'ë°ñ'
+          }
 
-            await call.exit()
-            await client.end()
-            resolve()
-          catch error
-            reject error
-          return
-        client.connect()
+          await call.exit()
+          await client.end()
+          t.pass()
+        catch
+          t.fail()
         return
-
-      t.pass()
+      client.connect()
+      await sleep 500
       return
 
     test.skip 'should detect failed socket', (t) ->
 
       t.timeout 1000
 
-      await new Promise (resolve,reject) ->
-        client = new FreeSwitchClient port: client_port
-        client.on 'connect', (call) ->
-          try
-            error = await call
-              .api "originate sofia/test-client/sip:server-failed@127.0.0.1:34564 &park"
-              .catch (error) -> error
+      client = new FreeSwitchClient port: client_port
+      client.on 'connect', (call) ->
+        try
+          error = await call
+            .api "originate sofia/test-client/sip:server-failed@127.0.0.1:34564 &park"
+            .catch (error) -> error
 
 FIXME currently return CHAN_NOT_IMPLEMENTED
 
-            t.regex error.args.reply, /^-ERR NORMAL_TEMPORARY_FAILURE/
-            await client.end()
-            resolve()
-          catch error
-            reject error
+          t.regex error.args.reply, /^-ERR NORMAL_TEMPORARY_FAILURE/
+          await client.end()
+          t.pass()
+        catch
+          t.fail()
 
-        client.connect()
-        return
-      t.pass()
+      client.connect()
+      await sleep 500
       return
 
-    test 'should stop', (t) ->
+    test.after 'should stop', ->
       await stop()
-      t.pass()
+      return

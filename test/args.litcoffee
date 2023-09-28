@@ -16,29 +16,21 @@
       error: (msg,obj) -> t.log msg, obj
 
     test 'should throw properly on closed (api)', (t) ->
-      await new Promise (resolve) ->
-        T = new FreeSwitchResponse socket, logger t
-        T.closed = true
-        T
+      T = new FreeSwitchResponse socket, logger t
+      T.closed = true
+      await T
         .api 'foo'
         .catch (error) ->
           t.log error
-          resolve() if error.args.when is 'api on closed socket'
-          return
-        return
-      t.pass()
-      null
+          t.is error.args.when, 'api on closed socket'
+      return
 
     test 'should throw properly on closed (bgapi)', (t) ->
-      await new Promise (resolve) ->
-        T = new FreeSwitchResponse socket, logger t
-        T.closed = true
-        T
+      T = new FreeSwitchResponse socket, logger t
+      T.closed = true
+      await T
         .bgapi 'foo'
         .catch (error) ->
           t.log error
-          resolve() if error.args.when is 'bgapi on closed socket'
-          return
-        return
-      t.pass()
-      null
+          t.is error.args.when, 'bgapi on closed socket'
+      return

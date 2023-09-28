@@ -12,7 +12,7 @@ const second = 1000;
 
 const sleep = function(timeout) {
   return new Promise(function(resolve) {
-    return setTimeout(resolve, timeout);
+    setTimeout(resolve, timeout);
   });
 };
 
