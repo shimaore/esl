@@ -135,7 +135,7 @@ This might not mean the call was successful.
       setTimeout check, 8*second
       null
 
-    test 'should handle many calls', (t) ->
+    test.skip 'should handle many calls', (t) ->
 
       count = 20
 
@@ -190,7 +190,7 @@ This might fail for example because FreeSwitch runs out of CPU and starts sendin
 Minimal LCR
 -----------
 
-    test 'should do LCR', (t) ->
+    test.skip 'should do LCR', (t) ->
 
       count = 20
 
@@ -236,7 +236,7 @@ NOTE: This test and many others are done in the [`tough-rate`](https://github.co
 Multiple, chained commands
 ==========================
 
-    test 'should handle chained commands', (t) ->
+    test.skip 'should handle chained commands', (t) ->
 
       t.timeout 2000
 

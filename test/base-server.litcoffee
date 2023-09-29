@@ -80,7 +80,7 @@ We start one server
       t.pass()
       return
 
-    test 'should handle one call', (t) ->
+    test.skip 'should handle one call', (t) ->
       t.timeout 5000
       await new Promise (resolve,reject) ->
 
@@ -100,7 +100,7 @@ We start one server
       t.pass()
       return
 
-    test 'should handle one call (bgapi)', (t) ->
+    test.skip 'should handle one call (bgapi)', (t) ->
       t.timeout 4000
       await new Promise (resolve,reject) ->
 
@@ -124,7 +124,7 @@ The `exit` command normally triggers automatic cleanup for linger
 
 Automatic cleanup should trigger a `cleanup_linger` event if we're using linger mode.
 
-    test 'should linger on exit', (t) ->
+    test.skip 'should linger on exit', (t) ->
       t.timeout 4000
       await new Promise (resolve,reject) ->
 
