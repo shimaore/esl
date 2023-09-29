@@ -78,8 +78,7 @@
     "pretest": "yarn install && yarn prepublishOnly && yarn build:test",
     "test": "ulimit -a && nyc ava -c 1",
     "presyntax": "mkdir -p build && coffee -c -b -l -M -o build src/*.litcoffee && (cd build && sed -i -e 's/[.]litcoffee/.mjs/' *.js && for f in *.js; do mv $f $(basename $f .js).mjs; done)",
-    "syntax": "tsc --allowJs --outDir dist --lib esnext --target esnext --noEmit --strict --checkJs --moduleResolution nodenext -m nodenext -noUnusedLocals --noUnusedParameters --strict --strictFunctionTypes --strictNullChecks --noImplicitAny false build/*.mjs",
-    "test-debug": "ulimit -a && DEBUG='*,-mocha*' nyc ava"
+    "syntax": "tsc esl.d.ts && tsc --allowJs --outDir dist --lib esnext --target esnext --noEmit --strict --checkJs --moduleResolution nodenext -m nodenext -noUnusedLocals --noUnusedParameters --strict --strictFunctionTypes --strictNullChecks --noImplicitAny false build/*.mjs"
   },
   "publishConfig": {
     "tag": "latest"

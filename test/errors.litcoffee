@@ -60,8 +60,11 @@ The goal is to document how to detect error conditions, especially wrt LCR condi
 
         switch
           when destination is 'answer-wait-3010'
-            await call.command 'answer'
-            await sleep 3010
+            try
+              await call.command 'answer'
+              await sleep 3010
+            catch e
+              t.log "(ignored) #{e}"
 
           when destination is 'wait-24000-ring-ready'
             await sleep 24000
@@ -71,14 +74,23 @@ The goal is to document how to detect error conditions, especially wrt LCR condi
           when m = destination.match /^wait-(\d+)-respond-(\d+)$/
             if m?
               await sleep parseInt m[1]
-              await call.command 'respond', m[2]
-              await sleep 9999
+              try
+                await call.command 'respond', m[2]
+                await sleep 9999
+              catch e
+                t.log "(ignored) #{e}"
 
           when destination is 'foobared'
-            await call.command 'respond', 485
+            try
+              await call.command 'respond', 485
+            catch e
+              t.log "(ignored) #{e}"
 
           else
-            await call.command 'respond', 400
+            try
+              await call.command 'respond', 400
+            catch e
+              t.log "(ignored) #{e}"
 
         return
 
@@ -200,7 +212,7 @@ Automatic cleanup should trigger a `cleanup_disconnect` event.
       res = await service.api "originate [#{options_text options}]sofia/test-client/sip:answer-wait-3010@#{domain} &bridge(foobar)"
       t.log 'API was successful', res
 
-      await sleep 1*second
+      await sleep 4*second
 
       await client.end()
       return

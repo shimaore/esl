@@ -5,9 +5,12 @@ Response and associated API
     import { ulid } from 'ulidx'
     import {
       FreeSwitchParser
-      FreeSwitchParserError
       parse_header_text
     } from './parser.litcoffee'
+
+For typing
+
+    import net from 'node:net'
 
     async_log = (msg,af,logger) ->
       ->
@@ -24,7 +27,28 @@ Response and associated API
       toString: ->
         "FreeSwitchError: #{JSON.stringify @args}"
 
+    class FreeSwitchUnhandledContentTypeError extends Error
+      constructor: (content_type) ->
+        super()
+        @content_type = content_type
+        return
+      toString: ->
+        "FreeSwitchUnhandledContentTypeError: #{@content_type}"
+
+    class FreeSwitchMissingContentTypeError extends Error
+      constructor: (headers, body) ->
+        super()
+        @headers = headers
+        @body = body
+        return
+      toString: ->
+        "FreeSwitchMissingContentTypeError: #{{ @headers, @body }}"
+
     class FreeSwitchTimeout extends Error
+      ###*
+      # @param {number} timeout
+      # @param {string} text
+      ###
       constructor: (timeout,text) ->
         super()
         @timeout = timeout
@@ -37,6 +61,10 @@ Response and associated API
 
 The `FreeSwitchResponse` is bound to a single socket (dual-stream). For outbound (server) mode this would represent a single socket call from FreeSwitch.
 
+      ###*
+      # @param { net.Socket } socket
+      # @param { {debug: (msg: string, data: { ref: string, [key:string]: unknown }) => void, info:(msg: string, data: { ref: string, [key:string]: unknown }) => void, error: (msg: string, data: { ref: string, [key:string]: unknown }) => void } } logger
+      ###
       constructor: (socket,logger) ->
         super captureRejections: true
         @setMaxListeners 2000
@@ -55,7 +83,13 @@ The `FreeSwitchResponse` is bound to a single socket (dual-stream). For outbound
 
 Uniquely identify each instance, for tracing purposes.
 
+        ###*
+        # @type {string}
+        ###
         @__ref = ulid()
+        ###*
+        # @type {string|null}
+        ###
         @__uuid = null
 
         @__socket = socket
@@ -139,6 +173,9 @@ After the socket is closed or errored, this object is no longer usable.
 
         null
 
+      ###*
+      # @param {string} uuid
+      ###
       setUUID: (uuid) ->
         @__uuid = uuid
         return
@@ -334,9 +371,9 @@ send
 A generic way of sending commands to FreeSwitch, wrapping `write` into a Promise that waits for FreeSwitch's notification that the command completed.
 
       ###*
-      # @param {string} command
-      # @param {object?} args
-      # @param {number} timeout
+      # @param { string } command
+      # @param { { [key:string]: string } | undefined } args
+      # @param { number | undefined } timeout
       ###
       send: (command,args = undefined,timeout = @default_send_timeout) ->
 
@@ -388,6 +425,10 @@ Process data from the parser
 
 Rewrite headers as needed to work around some weirdnesses in the protocol; and assign unified event IDs to the Event Socket's Content-Types.
 
+      ###*
+      # @param { { [key:string]: string } } headers
+      # @param { string } body
+      ###
       process: (headers,body) ->
         @logger.debug 'FreeSwitchResponse::process', { ref: @__ref, headers, body }
 
@@ -395,10 +436,15 @@ Rewrite headers as needed to work around some weirdnesses in the protocol; and a
         if not content_type?
           @stats.missing_content_type++
           @logger.error 'FreeSwitchResponse::process: missing-content-type', { ref: @__ref, headers, body }
-          @emit 'error.missing-content-type', new FreeSwitchParserError {headers, body}
+          @emit 'error.missing-content-type', new FreeSwitchMissingContentTypeError headers, body
           return
 
 Notice how all our (internal) event names are lower-cased; FreeSwitch always uses full-upper-case event names.
+
+        ###*
+        # @type { { [key:string]: string } | undefined }
+        ###
+        body_values = undefined
 
         switch content_type
 
@@ -424,11 +470,11 @@ Normally caught by `send`, there is no need for your code to monitor this event.
 Apparently a bug in the response to `connect` causes FreeSwitch to send the headers in the body.
 
             if headers['Event-Name'] is 'CHANNEL_DATA'
-              body = headers
+              body_values = headers
               headers = {}
               for n in ['Content-Type','Reply-Text','Socket-Mode','Control']
-                headers[n] = body[n]
-                delete body[n]
+                headers[n] = body_values[n]
+                delete body_values[n]
 
             @stats.command_reply++
 
@@ -448,7 +494,7 @@ Strip control characters that might be emitted by FreeSwitch.
 
 Parse the JSON body.
 
-              body = JSON.parse(body)
+              body_values = JSON.parse(body)
 
 In case of error report it as an error.
 
@@ -461,7 +507,7 @@ In case of error report it as an error.
 
 Otherwise trigger the proper event.
 
-            event = body['Event-Name']
+            event = body_values['Event-Name']
 
 text/event-plain
 ----------------
@@ -469,8 +515,8 @@ text/event-plain
 Same as `text/event-json` except the body is encoded using plain text. Either way the module provides you with a parsed body (a hash/Object).
 
           when 'text/event-plain'
-            body = parse_header_text(body)
-            event = body['Event-Name']
+            body_values = parse_header_text(body)
+            event = body_values['Event-Name']
             @stats.events++
 
 log/data
@@ -513,7 +559,7 @@ Ideally other content-types should be individually specified. In any case we pro
 
             @logger.error 'FreeSwitchResponse: Unhandled Content-Type', { ref: @__ref, content_type }
             event = "freeswitch_#{content_type.replace /[^a-z]/, '_'}"
-            @emit 'error.unhandled-content-type', new FreeSwitchParserError {content_type}
+            @emit 'error.unhandled-content-type', new FreeSwitchUnhandledContentTypeError content_type
             @stats.unhandled++
 
 Event content
@@ -521,8 +567,9 @@ Event content
 
 The messages sent at the server- or client-level only contain the headers and the body, possibly modified by the above code.
 
-        msg = {headers,body}
+        msg = {headers,body: body_values ? body}
 
+        @logger.debug 'FreeSwitchResponse::process emit', { ref: @__ref, event, msg }
         @emit event, msg
         return
 

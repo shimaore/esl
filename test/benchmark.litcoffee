@@ -105,4 +105,5 @@ complete!
 
       await sleep 30*second
       await stop()
+      await sleep 2*second
       t.true yes

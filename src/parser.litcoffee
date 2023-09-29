@@ -3,7 +3,7 @@ Event Socket stream parser
 
     import querystring from 'node:querystring'
 
-    export class FreeSwitchParserError extends Error
+    class FreeSwitchParserError extends Error
       constructor: (error,buffer) ->
         super JSON.stringify {error,buffer}
         @error = error

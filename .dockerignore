@@ -1,4 +1,4 @@
-test/Dockerfile
+test/Dockerfile*
 .dockerignore
 yarn-error.log
 build/

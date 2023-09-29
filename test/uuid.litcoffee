@@ -12,8 +12,10 @@
 Using UUID (in client mode)
 ---------------------------
 
-    await start_server()
-    await sleep 2*second
+    test.before ->
+      await start_server()
+      await sleep 2*second
+      return
 
     server_port = 8022
     domain = '127.0.0.1:5062'
@@ -239,8 +241,8 @@ This test should work but I haven't taken the time to finalize it.
       await server.close()
       t.log 'server closed'
 
-    test 'Stop FreeSWITCH', (t) ->
+    test.after 'Stop FreeSWITCH', (t) ->
+      t.timeout 5*second
       await sleep 2*second
       await stop()
       await sleep 2*second
-      t.true yes
