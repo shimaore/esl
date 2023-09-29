@@ -158,6 +158,7 @@ Automatic cleanup should trigger a `cleanup_disconnect` event.
         t.fail()
       catch error
         t.log error
+        # @ts-expect-error
         t.regex error.args.reply, /^-USAGE/
 
       await client.end()
@@ -230,7 +231,9 @@ The client attempt to connect an non-existent IP address on a valid subnet ("hos
         t.log 'API was successful', res
       catch error
         t.log 'API failed', error
+        # @ts-expect-error
         t.regex error.args.command, ///tracer_uuid=#{id}///
+        # @ts-expect-error
         t.regex error.args.reply, /^-ERR RECOVERY_ON_TIMER_EXPIRE/
         d = duration()
         t.true d > 1*second, "Duration is too short (#{d}ms)"
@@ -261,7 +264,9 @@ The client attempt to connect an non-existent IP address on a valid subnet ("hos
         t.log 'API was successful', res
       catch error
         t.log 'API failed', error
+        # @ts-expect-error
         t.regex error.args.command, ///tracer_uuid=#{id}///
+        # @ts-expect-error
         t.regex error.args.reply, /^-ERR NORMAL_TEMPORARY_FAILURE/
         d = duration()
         t.true d < 4*second, "Duration is too long (#{d}ms)"
@@ -288,7 +293,9 @@ The client attempt to connect an non-existent IP address on a valid subnet ("hos
       try
         await service.api "originate [#{options_text options}]sofia/test-client/sip:foobared@#{domain} &park"
       catch error
+        # @ts-expect-error
         t.regex error.args.command, ///tracer_uuid=#{id}///
+        # @ts-expect-error
         t.regex error.args.reply, /^-ERR NO_ROUTE_DESTINATION/
 
       await client.end()
@@ -315,6 +322,7 @@ The client attempt to connect an non-existent IP address on a valid subnet ("hos
       try
         await service.api "originate [#{options_text options}]sofia/test-client/sip:wait-24000-ring-ready@#{domain} &park"
       catch error
+        # @ts-expect-error
         t.regex error.args.reply, /^-ERR PROGRESS_TIMEOUT/
         t.true duration() > (options.leg_progress_timeout - 1)*second
         t.true duration() < (options.leg_progress_timeout + 1)*second
@@ -370,7 +378,9 @@ SIP Error detection
       try
         await service.api "originate {#{options_text options}}sofia/test-client/sip:wait-100-respond-#{code}@#{domain} &park"
       catch error
+        # @ts-expect-error
         t.regex error.args.reply, pattern
+        # @ts-expect-error
         t.true 'res' of error
 
       await sleep 50
