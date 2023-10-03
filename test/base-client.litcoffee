@@ -20,8 +20,7 @@
         Number(process.hrtime.bigint() - now) / 1_000_000
 
     logger = (t) ->
-      debug: (...args) -> t.log 'debug', ...args
-      # debug: ->
+      debug: ->
       info: (...args) -> t.log 'info', ...args
       error: (...args) -> t.log 'error', ...args
 
