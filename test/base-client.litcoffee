@@ -31,7 +31,6 @@ Client and server interaction
 These tests are long-runners.
 
     server = null
-    do_show_stats = true
     cps = 2
     client_port = 8024
 
@@ -177,43 +176,34 @@ These tests are long-runners.
 
 This is a simple test to make sure the client can work with both legs.
 
-    test.skip 'should work with simple routing', (t) ->
+    test 'should work with simple routing', (t) ->
 
       count = 40
       sent = 0
 
-      t.timeout 8000*count/cps
+      t.timeout 4000*count/cps
 
-      if do_show_stats
-        show_stats = ->
-          t.log "Sent #{ if show_stats.sent then sent - show_stats.sent else sent} (totals: #{sent})"
-          show_stats.sent = sent
-        for i in [1..15]
-          setTimeout show_stats, i*second
+      caught_client = 0
+      done_called = false
+      new_call = ->
+        client = new FreeSwitchClient port: client_port, logger: logger t
+        client.on 'connect', (call) ->
+          try
+            await call.api "originate sofia/test-client/sip:answer-wait-3000@#{domain} &bridge(sofia/test-client/sip:answer-wait-3000@#{domain})"
+            sent += 2
+            await sleep 4000
+            client.end()
+          catch error
+            t.fail()
+            caught_client++
+            t.log "Caught #{caught_client} client errors.", error
+        client.connect()
+        return
 
-      await new Promise (resolve) ->
-        caught_client = 0
-        done_called = false
-        new_call = ->
-          client = new FreeSwitchClient port: client_port
-          client.on 'connect', (call) ->
-            try
-              await call.api "originate sofia/test-client/sip:answer-wait-3000@#{domain} &bridge(sofia/test-client/sip:answer-wait-3000@#{domain})"
-              sent += 2
-              await sleep 4000
-              client.close()
-              if sent/2 is count and not done_called
-                done_called = true
-                await sleep 2*3500
-                done()
-            catch error
-              caught_client++
-              t.log "Caught #{caught_client} client errors."
-          client.connect()
-          return
+      for i in [1..count]
+        setTimeout new_call, i*second/cps
 
-        for i in [1..count]
-          setTimeout new_call, i*second/cps
+      await sleep 4000*count/cps-500
+      t.true sent/2 is count
 
-      t.pass()
       return
