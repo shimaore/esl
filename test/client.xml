@@ -48,6 +48,7 @@
       <global_settings>
         <param name="log-level" value="0"/>
         <param name="debug-presence" value="0"/>
+        <param name="sip-trace" value="false" />
       </global_settings>
       <profiles>
         <profile name="test-$${name}">
@@ -125,7 +126,6 @@
             <param name="sip-ip" value="$${local_ip}" />
             <param name="sip-options-respond-503-on-busy" value="true" /> 
             <param name="sip-port" value="$${sip_port}" />
-            <param name="sip-trace" value="false" />
             <param name="stun-enabled" value="false" />
             <param name="suppress-cng" value="false" />
             <param name="timer-T1" value="250" />
