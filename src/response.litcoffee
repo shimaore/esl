@@ -749,7 +749,7 @@ Event logging
 log
 ---
 
-Enable logging on the socket, optionnally setting the log level.
+Enable logging on the socket, optionally setting the log level.
 
       log: (level) ->
         if level?
