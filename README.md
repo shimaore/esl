@@ -279,8 +279,12 @@ Returns a Promise that is fulfilled as soon as FreeSwitch sends a reply.
 Requests are queued and each request is matched with the first-coming response,
 since there is no way to match between requests and responses.
 
-Use `bgapi` if you need to make sure responses are correct, since it provides
-the proper semantics.
+On the FreeSWITCH side, `api` command block the Event Socket until they respond.
+This is probably not what you want if using `FreeSwitchClient`, you should use
+`bgapi` in that case.
+
+Also use `bgapi` if you need to make sure responses are matched properly, since
+it provides the proper semantics.
 
 The timeout defaults to the value of `.default_send_timeout()`, i.e. 10s.
 
@@ -346,18 +350,19 @@ Interface media with the specified IP and port.
 
 #### `event_json(...events:string[]) : SendResult`
 
-Filter on the specified events.
+Add the specified events to the list of events forwarded to Node.js.
 
 By default this module already executes
 `call.event_json('CHANNEL_EXECUTE_COMPLETE', 'BACKGROUND_JOB')`, or, with the
 `all_events` flag of FreeSwitchServer, `call.event_json('ALL')`.
 
-If you use `event_json` in your code make sure to add these if you want
-`command`/`command_uuid` and `bgapi` to continue working.
+```javascript
+call.event_json('CHANNEL_HANGUP_COMPLETE','DTMF')
+```
 
 #### `nixevent(...events:string[]) : SendResult`
 
-Remove the specified events from the filter.
+Remove the specified events from the list of events forwarded to Node.js.
 
 Removing `CHANNEL_EXECUTE_COMPLETE` and `BACKGROUND_JOB` will break
 `command`/`command_uuid` and `bgapi`, respectively.
@@ -380,6 +385,8 @@ Remove an event filter for the specified event header and value.
 #### `sendevent(event_name:string, args:StringMap) : SendResult`
 
 Enqueue an event in the FreeSWITCH event queue.
+
+Requires the `full` flag when sending to FreeSwitchServer.
 
 #### `linger() : SendResult`
 
@@ -418,7 +425,7 @@ In most cases you should use one of the provided methods (`api`, `bgapi`, etc.) 
 
 The `FreeSwitchResponse` class may emit different events.
 
-### FreeSWITCH events
+#### FreeSWITCH events
 
 By default in FreeSwitchServer, `all_events` is `true` and your code will
 receive the different events for the call.
@@ -432,8 +439,24 @@ The event callback will receive a single argument, an object with two fields:
 
 Both are `Object`.
 
-```
-call.on('CHANNEL_BRIDGE', ({headers,body}) => { … })
+```javascript
+import { FreeSwitchServer } from 'esl'
+
+const server = new FreeSwitchServer()
+
+server.on('connection', (call) => {
+  // Only triggered once. `onceAsync` returns a Promise and might throw.
+  call.onceAsync('CHANNEL_ANSWER').then( function ({headers,body}) {
+    console.log('Call was answered');
+  });
+  // Might be triggered multiple times.
+  call.on('CHANNEL_ANSWER', function({headers,body}) {
+    console.log('Call was answered');
+  });
+  // By default `all_events` is true and we do not need to use `event_json`.
+})
+
+await server.listen({ port: 7000 })
 ```
 
 #### 'socket.close'
@@ -501,42 +524,9 @@ The test suite provides many examples.
 Support
 -------
 
-Please use [GitHub issues](https://github.com/shimaore/esl/issues).
+Please use [GitHub issues](https://github.com/shimaore/esl/issues) for community support.
 
 Commercial support is available as well from [the maintainer](https://del.igh.tf/ul/stephane-alnet/).
-
-Client Notes
-------------
-
-Use `call.event_json('CHANNEL_HANGUP_COMPLETE','DTMF')` to start receiving event notifications.
-
-(In server mode this is automatically done by the module.)
-
-Server Notes
-------------
-
-For some applications you might want to capture channel events instead of using the `command()` / callback pattern:
-
-```javascript
-import { FreeSwitchServer } from 'esl'
-
-const server = new FreeSwitchServer({all_events:false})
-
-server.on('connection', (call) => {
-  # These are called asynchronously.
-  call.onceAsync('CHANNEL_ANSWER').then( function () {
-    console.log('Call was answered');
-  });
-  call.on('CUSTOM', function(call) {
-    console.log('Got Some Message');
-  });
-  // Remember to accept the messages since we're using `all_events: false` below.
-  call.event_json('CHANNEL_ANSWER','CHANNEL_HANGUP','CHANNEL_HANGUP_COMPLETE','SOME_MESSAGE');
-  // …
-})
-
-await server.listen({ port: 7000 })
-```
 
 Migrating from earlier versions
 -------------------------------

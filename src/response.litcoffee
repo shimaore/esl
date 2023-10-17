@@ -894,6 +894,9 @@ unicast
       unicast: (args)              -> @unicast_uuid null, args
 
 TODO: `nomedia`
+TODO: `getvar`
+TODO: `divert_events` (?)
+TODO: `resume` (?)
 
 Cleanup at end of call
 ======================
