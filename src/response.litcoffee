@@ -749,7 +749,7 @@ Event logging
 log
 ---
 
-Enable logging on the socket, optionnally setting the log level.
+Enable logging on the socket, optionally setting the log level.
 
       log: (level) ->
         if level?
@@ -894,6 +894,9 @@ unicast
       unicast: (args)              -> @unicast_uuid null, args
 
 TODO: `nomedia`
+TODO: `getvar`
+TODO: `divert_events` (?)
+TODO: `resume` (?)
 
 Cleanup at end of call
 ======================
