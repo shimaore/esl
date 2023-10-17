@@ -177,9 +177,9 @@ declare module "esl" {
     unicast_uuid(uuid:string,args:{'local-ip':string, 'local-port':number, 'remote-ip':string, 'remote-port':number, transport:'tcp'|'udp', flags?:'native'}) : SendResult;
 
     execute(app_name:string,app_arg:string) : SendResult;
-    commnad(app_name:string,app_arg:string) : SendResult;
+    command(app_name:string,app_arg:string) : SendResult;
     hangup(hangup_cause?:string) : SendResult;
-    unicast(args: StringMap) : SendResult;
+    unicast(args: {'local-ip':string, 'local-port':number, 'remote-ip':string, 'remote-port':number, transport:'tcp'|'udp', flags?:'native'}) : SendResult;
 
     // Not listing internally-processed events.
     on(event:'socket.close', cb:() => void) : void;
