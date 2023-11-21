@@ -36,18 +36,20 @@
       "email": "willyaranda@gmail.com"
     }
   ],
-  "main": "esl.cjs",
-  "module": "esl.mjs",
-  "types": "esl.d.ts",
   "type": "module",
-  "exports": {
-    "require": "./esl.cjs",
-    "import": "./esl.mjs"
-  },
+  "module": "esl.mjs",
+  "main": "esl.cjs",
+  "types": "esl.d.ts",
   "files": [
     "esl.cjs",
-    "esl.mjs"
+    "esl.mjs",
+    "esl.d.ts"
   ],
+  "exports": {
+    "require": "./esl.cjs",
+    "import": "./esl.mjs",
+    "types": "./esl.d.ts"
+  },
   "devDependencies": {
     "@types/node": "20.8.6",
     "ava": "5.3.1",

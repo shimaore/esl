@@ -2,8 +2,10 @@ src/
 local_docs/
 node_modules/
 test/
+test-ts/
 .nyc_output/
 .git/
+.github/
 .dockerignore
 .gitignore
 .npmignore
