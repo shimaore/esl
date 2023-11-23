@@ -880,7 +880,8 @@ Execute an application for the current UUID (in server/outbound mode)
 command
 -------
 
-      command: (app_name,app_arg)  -> @command_uuid null, app_name, app_arg
+      command: (app_name,app_arg,timeout = @default_command_timeout) ->
+        @command_uuid null, app_name, app_arg, timeout
 
 
 hangup

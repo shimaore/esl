@@ -1,6 +1,6 @@
 {
   "name": "esl",
-  "version": "11.0.2",
+  "version": "11.0.3",
   "description": "Client and Server for FreeSwitch Event System",
   "keywords": [
     "freeswitch",
