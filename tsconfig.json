@@ -1,0 +1,15 @@
+{
+  "compilerOptions": {
+    "lib": [ "es2020", "esnext" ],
+    "strict": true,
+    "target": "es2020",
+    "module": "nodenext",
+    "moduleResolution": "NodeNext",
+    "declaration": true,
+    "sourceMap": true,
+    "declarationMap": true
+  },
+  "include": [
+    "src/*.ts"
+  ]
+}
