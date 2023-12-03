@@ -39,32 +39,36 @@
   "type": "module",
   "module": "esl.mjs",
   "main": "esl.cjs",
-  "types": "esl.d.ts",
+  "types": "./types/src/esl.d.ts",
   "files": [
     "esl.cjs",
     "esl.mjs",
-    "esl.d.ts"
+    "./types/src/esl.d.ts"
   ],
   "exports": {
     "require": "./esl.cjs",
     "import": "./esl.mjs",
-    "types": "./esl.d.ts"
+    "types": "./types/src/esl.d.ts"
   },
   "devDependencies": {
-    "@types/node": "20.8.6",
+    "@types/node": "20.10.3",
+    "@typescript-eslint/eslint-plugin": "^6.4.0",
+    "@typescript-eslint/parser": "^6.13.1",
     "ava": "5.3.1",
     "coffeescript": "2.7.0",
     "docco": "^0.9.1",
-    "esbuild": "0.19.5",
-    "esbuild-coffeescript": "2.2.0",
-    "eslint": "^8.51.0",
-    "eslint-plugin-promise": "^6.1.1",
+    "esbuild": "0.19.8",
+    "eslint": "^8.0.1",
+    "eslint-config-standard-with-typescript": "^40.0.0",
+    "eslint-plugin-import": "^2.25.2",
+    "eslint-plugin-n": "^15.0.0 || ^16.0.0 ",
+    "eslint-plugin-promise": "^6.0.0",
     "memdown": "6.1.1",
     "nyc": "15.1.0",
     "pouchdb-adapter-memory": "8.0.1",
     "pouchdb-core": "8.0.1",
     "should": "13.2.3",
-    "typescript": "5.2.2",
+    "typescript": "*",
     "ulidx": "2.2.1",
     "uuid": "^9.0.1"
   },
@@ -74,13 +78,13 @@
     "prepublishOnly": "yarn install --only=dev && yarn build",
     "presyntax:test": "yarn pretest",
     "syntax:test": "tsc --allowJs --outDir dist --rootDir . --lib esnext --target esnext --noEmit --strict --checkJs --moduleResolution nodenext -m nodenext -noUnusedLocals --noUnusedParameters --strict --strictFunctionTypes --strictNullChecks --noImplicitAny false test/*.mjs",
-    "prelint": "yarn presyntax && yarn build:test",
-    "lint": "eslint build/*.mjs test/*.mjs",
+    "prelint": "yarn build:test",
+    "lint": "eslint --fix src/*.ts",
     "build:test": "coffee --bare -c test/*.litcoffee && (cd test && for f in *.js; do mv $f $(basename $f .js).mjs; done)",
     "pretest": "yarn install && yarn prepublishOnly && yarn build:test",
     "test": "ulimit -a && nyc ava -c 1",
-    "presyntax": "mkdir -p build && coffee -c -b -l -M -o build src/*.litcoffee && (cd build && sed -i -e 's/[.]litcoffee/.mjs/' *.js && for f in *.js; do mv $f $(basename $f .js).mjs; done)",
-    "syntax": "tsc esl.d.ts && tsc --allowJs --outDir dist --lib esnext --target esnext --noEmit --strict --checkJs --moduleResolution nodenext -m nodenext -noUnusedLocals --noUnusedParameters --strict --strictFunctionTypes --strictNullChecks --noImplicitAny false build/*.mjs"
+    "syntax": "tsc",
+    "test:live": "podman  build --ulimit nofile=1048576:1048576 -f test/Dockerfile ."
   },
   "publishConfig": {
     "tag": "latest"

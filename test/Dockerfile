@@ -9,6 +9,7 @@ COPY build.mjs /opt/
 COPY src /opt/src
 RUN yarn build
 COPY test /opt/test
-COPY esl.d.ts /opt/
+COPY types /opt/types
+COPY tsconfig.json /opt/
 RUN yarn syntax
 RUN yarn test

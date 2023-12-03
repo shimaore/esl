@@ -491,6 +491,10 @@ Should normally not happen, report these as bug!
 
 Emitted when the JSON received from FreeSWITCH could not be parsed.
 
+### 'error.missing-event-name' (err:FreeSwitchMissingEventNameError)
+
+Emitted when the FreeSWITCH response could be parsed but no Event-Name is found.
+
 #### 'cleanup_linger'
 
 Emitted when you activated `.linger()` and it's time for your code to call

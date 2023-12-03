@@ -1,15 +1,26 @@
 {
   "compilerOptions": {
-    "lib": [ "es2020", "esnext" ],
+    "lib": ["esnext"],
     "strict": true,
-    "target": "es2020",
+    "target": "esnext",
     "module": "nodenext",
     "moduleResolution": "NodeNext",
-    "declaration": true,
     "sourceMap": true,
-    "declarationMap": true
+    "declarationMap": true,
+    "allowSyntheticDefaultImports": true,
+    "outDir": "build",
+    "rootDir": ".",
+    "noUnusedLocals": true,
+    "noUnusedParameters": true,
+    "strictFunctionTypes": true,
+    "strictNullChecks": true,
+    "noImplicitAny": true,
+    "declaration": true,
+    "declarationDir": "./types"
   },
-  "include": [
-    "src/*.ts"
+  "exclude": [
+    "build",
+    "test-ts",
+    "types"
   ]
 }

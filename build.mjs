@@ -1,4 +1,3 @@
-import coffeeScriptPlugin from 'esbuild-coffeescript'
 import esbuild from 'esbuild'
 
 esbuild.build({

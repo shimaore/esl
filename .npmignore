@@ -11,3 +11,4 @@ test-ts/
 .npmignore
 .eslintrc.json
 build.mjs
+build/

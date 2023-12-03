@@ -1,15 +1,19 @@
 {
   "plugins": [
+    "@typescript-eslint",
     "promise"
   ],
   "extends": [
     "eslint:recommended",
-    "plugin:promise/recommended"
+    "plugin:@typescript-eslint/recommended",
+    "plugin:promise/recommended",
+    "standard-with-typescript"
   ],
   "env": {
     "node": true,
     "es2024": true
   },
+  "parser": "@typescript-eslint/parser",
   "parserOptions": {
     "sourceType": "module"
   },
@@ -17,8 +21,9 @@
     "no-promise-executor-return": "warn",
     "prefer-promise-reject-errors": "warn",
     "no-control-regex": "warn",
-    "no-extra-semi": "off",
     "no-empty": "warn",
-    "consistent-return": "error"
-  }
+    "consistent-return": "error",
+    "@typescript-eslint/naming-convention": "warn"
+  },
+  "root": true
 }

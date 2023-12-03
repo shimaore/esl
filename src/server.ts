@@ -17,34 +17,42 @@
 // - the `FreeSwitchResponse` object
 // - { `headers`, `body`, `data`, `uuid` } retrieved from FreeSWITCH connection.
 
-type StringMap = { [key:string]: string };
-type Logger = (msg:string,data?:unknown) => void;
+import net from 'node:net'
 
-type FreeSwitchLogger = {
-  debug: Logger,
-  info: Logger,
-  error: Logger,
+import EventEmitter, {
+  once
+} from 'node:events'
+
+import {
+  FreeSwitchResponse
+} from './response.js'
+
+type StringMap = Record<string, string | undefined>
+type Logger = (msg: string, data?: unknown) => void
+
+interface FreeSwitchLogger {
+  debug: Logger
+  info: Logger
+  error: Logger
 }
 
-type FreeSwitchServerConstructorOptions = {
-  all_events?: boolean, // default true
-  my_events?: boolean, // default true
+interface FreeSwitchServerConstructorOptions {
+  all_events?: boolean // default true
+  my_events?: boolean // default true
   logger?: FreeSwitchLogger // default console
 }
 
-export declare interface FreeSwitchServer {
-  on(event:'error', cb:(exception:Error) => void) : this;
-  on(event:'drop', cb:(data:{localAddress:string,localPort:number,localFamily:string,remoteAddress:string,remotePort:number,remoteFamily:string}) => void) : this;
-  on(event:'connection', cb:(call:FreeSwitchResponse, data:{ uuid: string, headers: StringMap, body: StringMap, data: StringMap }) => void) : this;
+export declare interface FreeSwitchServerEventEmitter {
+  on: ((event: 'error', cb: (exception: Error) => void) => this) & ((event: 'drop', cb: (data: { localAddress: string, localPort: number, localFamily: string, remoteAddress: string, remotePort: number, remoteFamily: string }) => void) => this) & ((event: 'connection', cb: (call: FreeSwitchResponse, data: { uuid: string, headers: StringMap, body: StringMap, data: StringMap }) => void) => this)
 }
 
-export class FreeSwitchServer extends EventEmitter {
+export class FreeSwitchServer extends EventEmitter implements FreeSwitchServerEventEmitter {
   public stats: {
-      error: bigint;
-      drop: bigint;
-      connection: bigint;
-      connected: bigint;
-      connection_error: bigint;
+    error: bigint
+    drop: bigint
+    connection: bigint
+    connected: bigint
+    connection_error: bigint
   } = {
       error: 0n,
       drop: 0n,
@@ -52,101 +60,90 @@ export class FreeSwitchServer extends EventEmitter {
       connected: 0n,
       connection_error: 0n
     }
-  private readonly __server : net.Server
-  private readonly logger : FreeSwitchLogger
 
-  constructor(options? : FreeSwitchServerConstructorOptions ) {
+  private readonly __server: net.Server
+  private readonly logger: FreeSwitchLogger
+
+  constructor (options?: FreeSwitchServerConstructorOptions) {
     options ??= {}
-    super();
-    this.logger = options.logger ?? console;
-    const all_events = options.all_events ?? true;
-    const my_events = options.my_events ?? true;
+    super()
+    this.logger = options.logger ?? console
+    const allEvents = options.all_events ?? true
+    const myEvents = options.my_events ?? true
     this.__server = new net.Server({
       noDelay: true,
       keepAlive: true
-    });
+    })
     this.__server.on('error', (exception) => {
-      this.stats.error++;
-      this.logger.error('FreeSwitchServer: server error', exception);
-      this.emit('error', exception);
-    });
+      this.stats.error++
+      this.logger.error('FreeSwitchServer: server error', exception)
+      this.emit('error', exception)
+    })
     this.__server.on('drop', (data) => {
-      this.stats.drop++;
-      this.logger.error('FreeSwitchServer: server drop', data);
-      this.emit('drop', data);
-    });
-    this.__server.on('connection', async(socket) => {
-      this.stats.connection++;
-      this.logger.debug('FreeSwitchServer received connection');
-      try {
-        // Here starts our default request-listener.
-        const call = new FreeSwitchResponse(socket, this.logger);
-        const Unique_ID = 'Unique-ID';
-        // Confirm connection with FreeSwitch.
-        const connect_response = (await call.connect());
-        const data = connect_response.body;
-        const uuid = data[Unique_ID];
-        this.stats.connected++;
-        this.logger.debug('FreeSwitchServer received connection: connected', {uuid});
-        if (uuid != null) {
-          call.setUUID(uuid);
+      this.stats.drop++
+      this.logger.error('FreeSwitchServer: server drop', data)
+      this.emit('drop', data)
+    })
+    this.__server.on('connection', (socket) => {
+      void (async (): Promise<void> => {
+        this.stats.connection++
+        this.logger.debug('FreeSwitchServer received connection')
+        try {
+          // Here starts our default request-listener.
+          const call = new FreeSwitchResponse(socket, this.logger)
+          const Unique_ID = 'Unique-ID'
+          // Confirm connection with FreeSwitch.
+          const connectResponse = (await call.connect())
+          const data = connectResponse.body
+          const uuid = data[Unique_ID]
+          this.stats.connected++
+          this.logger.debug('FreeSwitchServer received connection: connected', { uuid })
+          if (uuid != null) {
+            call.setUUID(uuid)
+            if (myEvents) {
+              // Restricting events using `filter` is required so that `event_json` will only obtain our events.
+              await call.filter(Unique_ID, uuid)
+            }
+          }
+          call.auto_cleanup()
+          if (allEvents) {
+            await call.event_json('ALL')
+          } else {
+            await call.event_json('CHANNEL_EXECUTE_COMPLETE', 'BACKGROUND_JOB')
+          }
+          this.logger.debug('FreeSwitchServer received connection: sending `connection` event', { uuid })
+          this.emit('connection', call, { ...connectResponse, data, uuid })
+        } catch (error) {
+          this.stats.connection_error++
+          this.logger.error('FreeSwitchServer: connection handling error', error)
+          this.emit('error', error)
         }
-        if (my_events) {
-          // Restricting events using `filter` is required so that `event_json` will only obtain our events.
-          await call.filter(Unique_ID, uuid);
-        }
-        await call.auto_cleanup();
-        if (all_events) {
-          await call.event_json('ALL');
-        } else {
-          await call.event_json('CHANNEL_EXECUTE_COMPLETE', 'BACKGROUND_JOB');
-        }
-        this.logger.debug('FreeSwitchServer received connection: sending `connection` event', {uuid});
-        this.emit('connection', call, {...connect_response, data, uuid});
-      } catch (error) {
-        this.stats.connection_error++;
-        this.logger.error('FreeSwitchServer: connection handling error', error);
-        this.emit('error', error);
-      }
-    });
-    this.logger.info('FreeSwitchServer: Ready to start Event Socket server, use listen() to start.');
-    return;
+      })()
+    })
+    this.logger.info('FreeSwitchServer: Ready to start Event Socket server, use listen() to start.')
   }
 
-  async listen(options:{ host?: string, port: number }) : Promise<void> {
+  async listen (options: { host?: string, port: number }): Promise<void> {
     const p = once(this.__server, 'listening')
-    this.__server.listen(options);
-    await p;
+    this.__server.listen(options)
+    await p
   }
 
-  async close() : Promise<void> {
+  async close (): Promise<void> {
     const p = once(this.__server, 'close')
-    this.__server.close();
-    await p;
+    this.__server.close()
+    await p
   }
 
-  getConnectionCount() : Promise<number> {
-    return new Promise((resolve, reject) => {
-      this.__server.getConnections(function(err, count) {
-        if (err) {
-          return reject(err);
+  async getConnectionCount (): Promise<number> {
+    return await new Promise((resolve, reject) => {
+      this.__server.getConnections(function (err, count) {
+        if (err != null) {
+          reject(err)
         } else {
-          return resolve(count);
+          resolve(count)
         }
-      });
-    });
+      })
+    })
   }
-
-};
-
-import net from 'node:net';
-
-import EventEmitter, {
-  once
-} from 'node:events';
-
-import {
-  FreeSwitchResponse
-} from './response.js';
-
-import assert from 'node:assert';
+}
