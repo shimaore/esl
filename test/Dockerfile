@@ -1,15 +1,14 @@
-FROM node:20-alpine3.18
+FROM alpine:edge
 
-RUN apk --update add freeswitch
+RUN apk --update add nodejs-current freeswitch
 WORKDIR /opt
 COPY package.json /opt/
 COPY yarn.lock /opt/
-RUN yarn --frozen-lockfile --non-interactive
+RUN corepack enable && yarn --immutable
 COPY build.mjs /opt/
 COPY src /opt/src
 RUN yarn build
 COPY test /opt/test
-COPY types /opt/types
 COPY tsconfig.json /opt/
 RUN yarn syntax
-RUN yarn test
+RUN ulimit -a && yarn test

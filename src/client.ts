@@ -6,23 +6,32 @@
 
 import { Socket } from 'node:net'
 
-import EventEmitter from 'node:events'
+import { EventEmitter } from './event-emitter.js'
 
 import {
   FreeSwitchResponse
 } from './response.js'
+import { type FreeSwitchParserError } from './parser.js'
 
 const default_password = 'ClueCon'
 
 type Logger = (msg: string, data?: unknown) => void
 
-interface FreeSwitchLogger {
+export interface FreeSwitchClientLogger {
   debug: Logger
   info: Logger
   error: Logger
 }
 
-export class FreeSwitchClient extends EventEmitter {
+interface FreeSwitchClientEvents {
+  connect: (call: FreeSwitchResponse) => void
+  error: (error: unknown) => void
+  warning: (data: FreeSwitchParserError) => void
+  reconnecting: (retry_timeout: number) => void
+  end: () => void
+}
+
+export class FreeSwitchClient extends EventEmitter<keyof FreeSwitchClientEvents, FreeSwitchClientEvents> {
   private readonly options: {
     host: string
     port: number
@@ -33,12 +42,19 @@ export class FreeSwitchClient extends EventEmitter {
   private running: boolean = true
   private retry: number = 200
   private attempt: bigint = 0n
-  private readonly logger: FreeSwitchLogger
+  private readonly logger: FreeSwitchClientLogger
+  /**
+   * Create a new client that will attempt to connect to a FreeSWITCH Event Socket.
+   * @param options.host default: `127.0.0.1`
+   * @param options.port default: 8021
+   * @param options.password default: `ClueCon`
+   * @param options.logger default: `console` Object
+   */
   constructor (options?: {
     host?: string
     port: number
     password?: string
-    logger?: FreeSwitchLogger // default: console
+    logger?: FreeSwitchClientLogger
   }) {
     super()
     this.logger = options?.logger ?? console
@@ -104,7 +120,7 @@ export class FreeSwitchClient extends EventEmitter {
         }, this.retry)
       }
     })
-    socket.on('warning', (data) => {
+    socket.on('warning', (data: FreeSwitchParserError) => {
       this.emit('warning', data)
     })
     try {

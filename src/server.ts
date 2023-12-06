@@ -19,9 +19,7 @@
 
 import net from 'node:net'
 
-import EventEmitter, {
-  once
-} from 'node:events'
+import { EventEmitter } from './event-emitter.js'
 
 import {
   FreeSwitchResponse
@@ -30,7 +28,7 @@ import {
 type StringMap = Record<string, string | undefined>
 type Logger = (msg: string, data?: unknown) => void
 
-interface FreeSwitchLogger {
+export interface FreeSwitchServerLogger {
   debug: Logger
   info: Logger
   error: Logger
@@ -39,31 +37,43 @@ interface FreeSwitchLogger {
 interface FreeSwitchServerConstructorOptions {
   all_events?: boolean // default true
   my_events?: boolean // default true
-  logger?: FreeSwitchLogger // default console
+  logger?: FreeSwitchServerLogger // default console
 }
 
-export declare interface FreeSwitchServerEventEmitter {
-  on: ((event: 'error', cb: (exception: Error) => void) => this) & ((event: 'drop', cb: (data: { localAddress: string, localPort: number, localFamily: string, remoteAddress: string, remotePort: number, remoteFamily: string }) => void) => this) & ((event: 'connection', cb: (call: FreeSwitchResponse, data: { uuid: string, headers: StringMap, body: StringMap, data: StringMap }) => void) => this)
+interface FreeSwitchServerEvents {
+  error: (error: Error) => void
+  drop: (data?: { localAddress?: string, localPort?: number, localFamily?: string, remoteAddress?: string, remotePort?: number, remoteFamily?: string }) => void
+  connection: (call: FreeSwitchResponse, data: { uuid?: string, headers: StringMap, body: StringMap, data: StringMap }) => void
 }
 
-export class FreeSwitchServer extends EventEmitter implements FreeSwitchServerEventEmitter {
+export class FreeSwitchServer extends EventEmitter<keyof FreeSwitchServerEvents, FreeSwitchServerEvents> {
   public stats: {
     error: bigint
     drop: bigint
     connection: bigint
     connected: bigint
     connection_error: bigint
+    connection_handled: bigint
+    connection_not_handled: bigint
   } = {
       error: 0n,
       drop: 0n,
       connection: 0n,
       connected: 0n,
-      connection_error: 0n
+      connection_error: 0n,
+      connection_handled: 0n,
+      connection_not_handled: 0n
     }
 
   private readonly __server: net.Server
-  private readonly logger: FreeSwitchLogger
+  private readonly logger: FreeSwitchServerLogger
 
+  /**
+   * Create a new Node.js server that will accept Event Socket connections from FreeSWITCH.
+   * @param options.all_events request all events from FreeSWITCH. default: true
+   * @param options.my_events filter out events not related to the current session. default: true
+   * @param options.logger default: `console` Object
+   */
   constructor (options?: FreeSwitchServerConstructorOptions) {
     options ??= {}
     super()
@@ -82,13 +92,18 @@ export class FreeSwitchServer extends EventEmitter implements FreeSwitchServerEv
     this.__server.on('drop', (data) => {
       this.stats.drop++
       this.logger.error('FreeSwitchServer: server drop', data)
-      this.emit('drop', data)
+      if (data == null) {
+        this.emit('drop')
+      } else {
+        this.emit('drop', data)
+      }
     })
     this.__server.on('connection', (socket) => {
       void (async (): Promise<void> => {
         this.stats.connection++
-        this.logger.debug('FreeSwitchServer received connection')
         try {
+          this.logger.debug('FreeSwitchServer received connection')
+
           // Here starts our default request-listener.
           const call = new FreeSwitchResponse(socket, this.logger)
           const Unique_ID = 'Unique-ID'
@@ -112,25 +127,39 @@ export class FreeSwitchServer extends EventEmitter implements FreeSwitchServerEv
             await call.event_json('CHANNEL_EXECUTE_COMPLETE', 'BACKGROUND_JOB')
           }
           this.logger.debug('FreeSwitchServer received connection: sending `connection` event', { uuid })
-          this.emit('connection', call, { ...connectResponse, data, uuid })
+          if (this.emit('connection', call, { ...connectResponse, data, uuid })) {
+            this.stats.connection_handled++
+          } else {
+            this.stats.connection_not_handled++
+          }
         } catch (error) {
           this.stats.connection_error++
           this.logger.error('FreeSwitchServer: connection handling error', error)
-          this.emit('error', error)
+          if (error instanceof Error) {
+            this.emit('error', error)
+          } else {
+            this.emit('error', new Error(`${error}`))
+          }
         }
       })()
+    })
+    this.__server.on('listening', () => {
+      this.logger.debug('FreeSwitchServer listening', this.__server.address())
+    })
+    this.__server.on('close', () => {
+      this.logger.debug('FreeSwitchServer closed')
     })
     this.logger.info('FreeSwitchServer: Ready to start Event Socket server, use listen() to start.')
   }
 
   async listen (options: { host?: string, port: number }): Promise<void> {
-    const p = once(this.__server, 'listening')
+    const p = new Promise((resolve) => this.__server.once('listening', resolve))
     this.__server.listen(options)
     await p
   }
 
   async close (): Promise<void> {
-    const p = once(this.__server, 'close')
+    const p = new Promise((resolve) => this.__server.once('close', resolve))
     this.__server.close()
     await p
   }
@@ -146,4 +175,6 @@ export class FreeSwitchServer extends EventEmitter implements FreeSwitchServerEv
       })
     })
   }
+
+  getMaxConnections (): number { return this.__server.maxConnections }
 }

@@ -1,7 +1,7 @@
 <?xml version="1.0"?>
 <document type="freeswitch/xml">
   <X-PRE-PROCESS cmd="set" data="name=client"/>
-  <X-PRE-PROCESS cmd="set" data="local_ip=0.0.0.0"/>
+  <X-PRE-PROCESS cmd="set" data="local_ip=127.0.0.1"/>
   <X-PRE-PROCESS cmd="set" data="sip_port=5064"/>
   <X-PRE-PROCESS cmd="set" data="socket_port=8024"/>
   <X-PRE-PROCESS cmd="set" data="rtp_start=29152"/>
@@ -22,6 +22,7 @@
     </configuration>
     <configuration name="modules.conf">
       <modules>
+        <load module="mod_console"/>
         <load module="mod_event_socket"/>
         <load module="mod_commands"/>
         <load module="mod_dptools"/>
@@ -29,10 +30,18 @@
         <load module="mod_sofia"/>
       </modules>
     </configuration>
+    <configuration name="console.conf">
+      <mappings>
+        <map name="all" value="console,debug,info,notice,warning,err,crit,alert"/>
+      </mappings>
+      <settings>
+        <param name="loglevel" value="err" />
+      </settings>
+    </configuration>
     <configuration name="event_socket.conf">
       <settings>
         <param name="nat-map" value="false"/>
-        <param name="listen-ip" value="::"/>
+        <param name="listen-ip" value="127.0.0.1"/>
         <param name="listen-port" value="$${socket_port}"/>
         <param name="password" value="ClueCon"/>
       </settings>
@@ -53,6 +62,8 @@
       <profiles>
         <profile name="test-$${name}">
           <settings>
+            <param name="sip-trace" value="false" />
+            <param name="debug" value="0" />
             <!-- <param name="NDLB-broken-auth-hash" value="true"/>-->
             <!-- <param name="NDLB-force-rport" value="true"/>-->
             <!-- <param name="alias" value="sip:10.0.1.251:5555"/>-->
@@ -90,7 +101,6 @@
             <param name="bind-params" value="transport=udp" />
             <param name="caller-id-type"  value="pid" />
             <param name="context" value="private"  />
-            <param name="debug" value="0" />
             <param name="dialplan" value="XML" />
             <param name="disable-register" value="true" />
             <param name="disable-rtp-auto-adjust" value="false" />
@@ -134,6 +144,21 @@
             <param name="timer-T4" value="4000" />
             <param name="user-agent-string" value="esl test-$${name}-$${sip_port}"/>
             <param name="username" value="esl-test-$${name}"/>
+          </settings>
+        </profile>
+        <profile name="test-$${name}-open">
+          <settings>
+            <param name="sip-trace" value="true" />
+            <param name="debug" value="7" />
+            <param name="ext-rtp-ip" value="0.0.0.0" />
+            <param name="ext-sip-ip" value="0.0.0.0" />
+            <param name="rtp-ip" value="0.0.0.0" />
+            <param name="sip-ip" value="0.0.0.0" />
+            <param name="sip-port" value="9998" />
+            <param name="timer-T1" value="250" />
+            <param name="timer-T1X64" value="2000" />
+            <param name="timer-T2" value="2000" />
+            <param name="timer-T4" value="4000" />
           </settings>
         </profile>
       </profiles>

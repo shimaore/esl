@@ -27,8 +27,7 @@ Client Usage
 The following code does the equivalent of `fs_cli -x`: it connects to the Event Socket, runs a single command, then disconnects.
 
 ```javascript
-import { FreeSwitchClient } from 'esl'
-import { once } from 'node:events'
+import { FreeSwitchClient, once } from 'esl'
 
 const client = new FreeSwitchClient({
   port: 8021
@@ -51,8 +50,7 @@ Generally speaking though, the client might reconnect multiple times, and your
 code should handle reconnections:
 
 ```javascript
-import { FreeSwitchClient } from 'esl'
-import { once } from 'node:events'
+import { FreeSwitchClient, once } from 'esl'
 
 const client = new FreeSwitchClient({
   port: 8021

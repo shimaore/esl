@@ -3,7 +3,7 @@
 import { unescape } from 'node:querystring'
 import { type Socket } from 'node:net'
 
-type StringMap = Record<string, string | undefined>
+export type StringMap = Record<string, string | undefined>
 
 export class FreeSwitchParserError extends Error {
   public readonly error: string
@@ -15,82 +15,81 @@ export class FreeSwitchParserError extends Error {
   }
 }
 
-export class FreeSwitchParser {
-  private readonly process: (headers: StringMap, body: string) => void
-  private body_length: number = 0
-  private buffer: Buffer = Buffer.alloc(0)
-  private buffer_length: number = 0
-  private headers: StringMap = {}
-  // The Event Socket parser will parse an incoming ES stream, whether your code is acting as a client (connected to the FreeSwitch ES server) or as a server (called back by FreeSwitch due to the "socket" application command).
-  constructor (socket: Socket, process: (headers: StringMap, body: string) => void) {
-    this.process = process
-    // ### Dispatch incoming data into the header or body parsers.
+type Processor = (headers: StringMap, body: string) => void
 
-    // Capture the body as needed
-    socket.on('data', (data) => {
-      if (this.body_length > 0) {
-        this.capture_body(data)
-      } else {
-        this.capture_headers(data)
-      }
-    })
-    // For completeness provide an `on_end()` method.
-    socket.once('end', () => {
-      if (this.buffer_length > 0) {
-        socket.emit('warning', new FreeSwitchParserError('Buffer is not empty at end of stream', this.buffer))
-      }
-    })
-  }
+export const FreeSwitchParser = (socket: Socket, process: Processor): void => {
+  let body_length: number = 0
+  let buffer: Buffer = Buffer.alloc(0)
+  let buffer_length: number = 0
+  let headers: StringMap = {}
+
+  // The Event Socket parser will parse an incoming ES stream, whether your code is acting as a client (connected to the FreeSwitch ES server) or as a server (called back by FreeSwitch due to the "socket" application command).
+  // ### Dispatch incoming data into the header or body parsers.
+
+  // Capture the body as needed
+  socket.on('data', (data) => {
+    if (body_length > 0) {
+      capture_body(data)
+    } else {
+      capture_headers(data)
+    }
+  })
+  // For completeness provide an `on_end()` method.
+  socket.once('end', () => {
+    if (buffer_length > 0) {
+      socket.emit('warning', new FreeSwitchParserError('Buffer is not empty at end of stream', buffer))
+    }
+  })
 
   // ### Capture body
-  capture_body (data: Buffer): void {
+  const capture_body = (data: Buffer): void => {
     // When capturing the body, `buffer` contains the current data (text), and `body_length` contains how many bytes are expected to be read in the body.
-    this.buffer_length += data.length
-    this.buffer = Buffer.concat([this.buffer, data], this.buffer_length)
+    buffer_length += data.length
+    buffer = Buffer.concat([buffer, data], buffer_length)
     // As long as the whole body hasn't been received, keep adding the new data into the buffer.
-    if (this.buffer_length < this.body_length) {
+    if (buffer_length < body_length) {
       return
     }
     // Consume the body once it has been fully received.
-    const body = this.buffer.toString('utf8', 0, this.body_length)
-    this.buffer = this.buffer.slice(this.body_length)
-    this.buffer_length -= this.body_length
-    this.body_length = 0
+    const body = buffer.toString('utf8', 0, body_length)
+    buffer = buffer.slice(body_length)
+    buffer_length -= body_length
+    body_length = 0
     // Process the content at each step.
-    this.process(this.headers, body)
-    this.headers = {}
+    process(headers, body)
+    headers = {}
     // Re-parse whatever data was left after the body was fully consumed.
-    this.capture_headers(Buffer.alloc(0))
+    capture_headers(Buffer.alloc(0))
   }
 
   // ### Capture headers
-  capture_headers (data: Buffer): void {
+  const capture_headers = (data: Buffer): void => {
     // Capture headers, meaning up to the first blank line.
-    this.buffer_length += data.length
-    this.buffer = Buffer.concat([this.buffer, data], this.buffer_length)
+    buffer_length += data.length
+    buffer = Buffer.concat([buffer, data], buffer_length)
     // Wait until we reach the end of the header.
-    const header_end = this.buffer.indexOf('\n\n')
+    const header_end = buffer.indexOf('\n\n')
     if (header_end < 0) {
       return
     }
     // Consume the headers
-    const header_text = this.buffer.toString('utf8', 0, header_end)
-    this.buffer = this.buffer.slice(header_end + 2)
-    this.buffer_length -= header_end + 2
+    const header_text = buffer.toString('utf8', 0, header_end)
+    buffer = buffer.slice(header_end + 2)
+    buffer_length -= header_end + 2
     // Parse the header lines
-    this.headers = parse_header_text(header_text)
+    headers = parse_header_text(header_text)
     // Figure out whether a body is expected
-    const contentLength = this.headers['Content-Length']
+    const contentLength = headers['Content-Length']
     if (contentLength?.match(/^\d+$/) != null) {
-      this.body_length = parseInt(contentLength, 10)
+      body_length = parseInt(contentLength, 10)
       // Parse the body (and eventually process)
-      this.capture_body(Buffer.alloc(0))
+      capture_body(Buffer.alloc(0))
     } else {
       // Process the (header-only) content
-      this.process(this.headers, '')
-      this.headers = {}
+      process(headers, '')
+      headers = {}
       // Re-parse whatever data was left after these headers were fully consumed.
-      this.capture_headers(Buffer.alloc(0))
+      capture_headers(Buffer.alloc(0))
     }
   }
 }

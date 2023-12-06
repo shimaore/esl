@@ -1,3 +1,5 @@
 export * from './client.js'
 export * from './server.js'
 export * from './response.js'
+export type { StringMap } from './parser.js'
+export * from './event-emitter.js'

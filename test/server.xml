@@ -22,6 +22,7 @@
     </configuration>
     <configuration name="modules.conf">
       <modules>
+        <load module="mod_console"/>
         <load module="mod_event_socket"/>
         <load module="mod_commands"/>
         <load module="mod_dptools"/>
@@ -30,10 +31,18 @@
         <load module="mod_sofia"/>
       </modules>
     </configuration>
+    <configuration name="console.conf">
+      <mappings>
+        <map name="all" value="console,debug,info,notice,warning,err,crit,alert"/>
+      </mappings>
+      <settings>
+        <param name="loglevel" value="err" />
+      </settings>
+    </configuration>
     <configuration name="event_socket.conf">
       <settings>
         <param name="nat-map" value="false"/>
-        <param name="listen-ip" value="::"/>
+        <param name="listen-ip" value="127.0.0.1"/>
         <param name="listen-port" value="$${socket_port}"/>
         <param name="password" value="ClueCon"/>
       </settings>
@@ -49,10 +58,13 @@
       <global_settings>
         <param name="log-level" value="0"/>
         <param name="debug-presence" value="0"/>
+        <param name="sip-trace" value="false" />
       </global_settings>
       <profiles>
         <profile name="test-$${name}">
           <settings>
+            <param name="sip-trace" value="false" />
+            <param name="debug" value="0" />
             <!-- <param name="NDLB-broken-auth-hash" value="true"/>-->
             <!-- <param name="NDLB-force-rport" value="true"/>-->
             <!-- <param name="alias" value="sip:10.0.1.251:5555"/>-->
@@ -90,7 +102,6 @@
             <param name="bind-params" value="transport=udp" />
             <param name="caller-id-type"  value="pid" />
             <param name="context" value="private"  />
-            <param name="debug" value="0" />
             <param name="dialplan" value="inline:'socket:127.0.0.1:7000|127.0.0.1:7001 async full'"/>
             <param name="disable-register" value="true" />
             <param name="disable-rtp-auto-adjust" value="false" />
@@ -126,7 +137,6 @@
             <param name="sip-ip" value="$${local_ip}" />
             <param name="sip-options-respond-503-on-busy" value="true" /> 
             <param name="sip-port" value="$${sip_port}" />
-            <param name="sip-trace" value="false" />
             <param name="stun-enabled" value="false" />
             <param name="suppress-cng" value="false" />
             <param name="user-agent-string" value="esl test-$${name}-$${sip_port}"/>

@@ -16,7 +16,8 @@
     "strictNullChecks": true,
     "noImplicitAny": true,
     "declaration": true,
-    "declarationDir": "./types"
+    "declarationDir": "./types",
+    "skipLibCheck": true
   },
   "exclude": [
     "build",

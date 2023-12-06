@@ -1,6 +1,6 @@
 // Response and associated API
 // ===========================
-import { EventEmitter } from 'node:events'
+import { EventEmitter } from './event-emitter.js'
 
 import {
   ulid
@@ -17,7 +17,7 @@ type StringMap = Record<string, string | undefined>
 
 type ResponseLogger = (msg: string, data: { ref: string, [key: string]: unknown }) => void
 
-interface FreeSwitchResponseLogger {
+export interface FreeSwitchResponseLogger {
   debug: ResponseLogger
   info: ResponseLogger
   error: ResponseLogger
@@ -33,9 +33,9 @@ const async_log = function<T>(msg: string, ref: string, af: () => Promise<T>, lo
 }
 
 export class FreeSwitchError extends Error {
-  public readonly res: StringMap
+  public readonly res: FreeSwitchEventData | { headers: StringMap, body: string } | undefined
   public readonly args: Record<string, string | StringMap | undefined>
-  constructor (res: StringMap, args: Record<string, string | StringMap | undefined>) {
+  constructor (res: FreeSwitchEventData | { headers: StringMap, body: string } | undefined, args: Record<string, string | StringMap | undefined>) {
     super()
     this.res = res
     this.args = args
@@ -196,19 +196,233 @@ export class FreeSwitchTimeout extends Error {
     | 'SHUTDOWN_REQUESTED'
     | 'ALL'
 
-interface FreeSwitchEventData { headers: StringMap, body: StringMap }
+const EventNames = new Set<EventName>([
+  'CUSTOM',
+  'CLONE',
+  'CHANNEL_CREATE',
+  'CHANNEL_DESTROY',
+  'CHANNEL_STATE',
+  'CHANNEL_CALLSTATE',
+  'CHANNEL_ANSWER',
+  'CHANNEL_HANGUP',
+  'CHANNEL_HANGUP_COMPLETE',
+  'CHANNEL_EXECUTE',
+  'CHANNEL_EXECUTE_COMPLETE',
+  'CHANNEL_HOLD',
+  'CHANNEL_UNHOLD',
+  'CHANNEL_BRIDGE',
+  'CHANNEL_UNBRIDGE',
+  'CHANNEL_PROGRESS',
+  'CHANNEL_PROGRESS_MEDIA',
+  'CHANNEL_OUTGOING',
+  'CHANNEL_PARK',
+  'CHANNEL_UNPARK',
+  'CHANNEL_APPLICATION',
+  'CHANNEL_ORIGINATE',
+  'CHANNEL_UUID',
+  'API',
+  'LOG',
+  'INBOUND_CHAN',
+  'OUTBOUND_CHAN',
+  'STARTUP',
+  'SHUTDOWN',
+  'PUBLISH',
+  'UNPUBLISH',
+  'TALK',
+  'NOTALK',
+  'SESSION_CRASH',
+  'MODULE_LOAD',
+  'MODULE_UNLOAD',
+  'DTMF',
+  'MESSAGE',
+  'PRESENCE_IN',
+  'NOTIFY_IN',
+  'PRESENCE_OUT',
+  'PRESENCE_PROBE',
+  'MESSAGE_WAITING',
+  'MESSAGE_QUERY',
+  'ROSTER',
+  'CODEC',
+  'BACKGROUND_JOB',
+  'DETECTED_SPEECH',
+  'DETECTED_TONE',
+  'PRIVATE_COMMAND',
+  'HEARTBEAT',
+  'TRAP',
+  'ADD_SCHEDULE',
+  'DEL_SCHEDULE',
+  'EXE_SCHEDULE',
+  'RE_SCHEDULE',
+  'RELOADXML',
+  'NOTIFY',
+  'PHONE_FEATURE',
+  'PHONE_FEATURE_SUBSCRIBE',
+  'SEND_MESSAGE',
+  'RECV_MESSAGE',
+  'REQUEST_PARAMS',
+  'CHANNEL_DATA',
+  'GENERAL',
+  'COMMAND',
+  'SESSION_HEARTBEAT',
+  'CLIENT_DISCONNECTED',
+  'SERVER_DISCONNECTED',
+  'SEND_INFO',
+  'RECV_INFO',
+  'RECV_RTCP_MESSAGE',
+  'SEND_RTCP_MESSAGE',
+  'CALL_SECURE',
+  'NAT',
+  'RECORD_START',
+  'RECORD_STOP',
+  'PLAYBACK_START',
+  'PLAYBACK_STOP',
+  'CALL_UPDATE',
+  'FAILURE',
+  'SOCKET_DATA',
+  'MEDIA_BUG_START',
+  'MEDIA_BUG_STOP',
+  'CONFERENCE_DATA_QUERY',
+  'CONFERENCE_DATA',
+  'CALL_SETUP_REQ',
+  'CALL_SETUP_RESULT',
+  'CALL_DETAIL',
+  'DEVICE_STATE',
+  'TEXT',
+  'SHUTDOWN_REQUESTED',
+  'ALL'
+])
+const isEventName = (v: string): v is EventName => EventNames.has(v as EventName)
+
+export interface FreeSwitchEventData { headers: StringMap, body: StringMap }
 type SendResult = Promise<FreeSwitchEventData> // or FreeSwitchError
 
-export declare interface FreeSwitchResponseEventEmitter {
+interface FreeSwitchResponseEvents {
   // Not listing internally-processed events.
-  on: ((event: 'socket.close', cb: () => void) => this) & ((event: 'socket.error', cb: (err: Error) => void) => this) & ((event: 'socket.write', cb: (err: Error) => void) => this) & ((event: 'socket.end', cb: (err: Error) => void) => this) & ((event: 'error.missing-content-type', cb: (err: FreeSwitchMissingContentTypeError) => void) => this) & ((event: 'error.unhandled-content-type', cb: (err: FreeSwitchUnhandledContentTypeError) => void) => this) & ((event: 'error.invalid-json', cb: (err: Error) => void) => this) & ((event: 'error.missing-e80.67.179.206vent-name', cb: (err: FreeSwitchMissingEventNameError) => void) => this) & ((event: 'cleanup_linger', cb: () => void) => this) & ((event: 'freeswitch_log_data', cb: (data: { headers: StringMap, body: string }) => void) => this) & ((event: 'freeswitch_disconnect_notice', cb: (data: { headers: StringMap, body: string }) => void) => this) & ((event: 'freeswitch_rude_rejection', cb: (data: { headers: StringMap, body: string }) => void) => this) & ((event: EventName, cb: (data: FreeSwitchEventData) => void) => this)
   // May also receive `freeswitch_<content_type>` — these are errors, though,
   // we should support all content-types reported by mod_event_socket at this
   // time.
   // on(event:string, cb:(data:{ headers: StringMap, body: string }) => void) : void;
+
+  'socket.close': () => void
+  'socket.error': (err: Error) => void
+  'socket.write': (err: Error) => void
+  'socket.end': (err: Error) => void
+  'error.missing-content-type': (err: FreeSwitchMissingContentTypeError) => void
+  'error.unhandled-content-type': (err: FreeSwitchUnhandledContentTypeError) => void
+  'error.invalid-json': (err: Error) => void
+  'error.missing-event-name': (err: FreeSwitchMissingEventNameError) => void
+  'cleanup_linger': () => void
+  'freeswitch_log_data': (data: { headers: StringMap, body: string }) => void
+  'freeswitch_disconnect_notice': (data: { headers: StringMap, body: string }) => void
+  'freeswitch_rude_rejection': (data: { headers: StringMap, body: string }) => void
+
+  // FIXME not sure how to use EventName here
+  'CUSTOM': (data: FreeSwitchEventData) => void
+  'CLONE': (data: FreeSwitchEventData) => void
+  'CHANNEL_CREATE': (data: FreeSwitchEventData) => void
+  'CHANNEL_DESTROY': (data: FreeSwitchEventData) => void
+  'CHANNEL_STATE': (data: FreeSwitchEventData) => void
+  'CHANNEL_CALLSTATE': (data: FreeSwitchEventData) => void
+  'CHANNEL_ANSWER': (data: FreeSwitchEventData) => void
+  'CHANNEL_HANGUP': (data: FreeSwitchEventData) => void
+  'CHANNEL_HANGUP_COMPLETE': (data: FreeSwitchEventData) => void
+  'CHANNEL_EXECUTE': (data: FreeSwitchEventData) => void
+  'CHANNEL_EXECUTE_COMPLETE': (data: FreeSwitchEventData) => void
+  'CHANNEL_HOLD': (data: FreeSwitchEventData) => void
+  'CHANNEL_UNHOLD': (data: FreeSwitchEventData) => void
+  'CHANNEL_BRIDGE': (data: FreeSwitchEventData) => void
+  'CHANNEL_UNBRIDGE': (data: FreeSwitchEventData) => void
+  'CHANNEL_PROGRESS': (data: FreeSwitchEventData) => void
+  'CHANNEL_PROGRESS_MEDIA': (data: FreeSwitchEventData) => void
+  'CHANNEL_OUTGOING': (data: FreeSwitchEventData) => void
+  'CHANNEL_PARK': (data: FreeSwitchEventData) => void
+  'CHANNEL_UNPARK': (data: FreeSwitchEventData) => void
+  'CHANNEL_APPLICATION': (data: FreeSwitchEventData) => void
+  'CHANNEL_ORIGINATE': (data: FreeSwitchEventData) => void
+  'CHANNEL_UUID': (data: FreeSwitchEventData) => void
+  'API': (data: FreeSwitchEventData) => void
+  'LOG': (data: FreeSwitchEventData) => void
+  'INBOUND_CHAN': (data: FreeSwitchEventData) => void
+  'OUTBOUND_CHAN': (data: FreeSwitchEventData) => void
+  'STARTUP': (data: FreeSwitchEventData) => void
+  'SHUTDOWN': (data: FreeSwitchEventData) => void
+  'PUBLISH': (data: FreeSwitchEventData) => void
+  'UNPUBLISH': (data: FreeSwitchEventData) => void
+  'TALK': (data: FreeSwitchEventData) => void
+  'NOTALK': (data: FreeSwitchEventData) => void
+  'SESSION_CRASH': (data: FreeSwitchEventData) => void
+  'MODULE_LOAD': (data: FreeSwitchEventData) => void
+  'MODULE_UNLOAD': (data: FreeSwitchEventData) => void
+  'DTMF': (data: FreeSwitchEventData) => void
+  'MESSAGE': (data: FreeSwitchEventData) => void
+  'PRESENCE_IN': (data: FreeSwitchEventData) => void
+  'NOTIFY_IN': (data: FreeSwitchEventData) => void
+  'PRESENCE_OUT': (data: FreeSwitchEventData) => void
+  'PRESENCE_PROBE': (data: FreeSwitchEventData) => void
+  'MESSAGE_WAITING': (data: FreeSwitchEventData) => void
+  'MESSAGE_QUERY': (data: FreeSwitchEventData) => void
+  'ROSTER': (data: FreeSwitchEventData) => void
+  'CODEC': (data: FreeSwitchEventData) => void
+  'BACKGROUND_JOB': (data: FreeSwitchEventData) => void
+  'DETECTED_SPEECH': (data: FreeSwitchEventData) => void
+  'DETECTED_TONE': (data: FreeSwitchEventData) => void
+  'PRIVATE_COMMAND': (data: FreeSwitchEventData) => void
+  'HEARTBEAT': (data: FreeSwitchEventData) => void
+  'TRAP': (data: FreeSwitchEventData) => void
+  'ADD_SCHEDULE': (data: FreeSwitchEventData) => void
+  'DEL_SCHEDULE': (data: FreeSwitchEventData) => void
+  'EXE_SCHEDULE': (data: FreeSwitchEventData) => void
+  'RE_SCHEDULE': (data: FreeSwitchEventData) => void
+  'RELOADXML': (data: FreeSwitchEventData) => void
+  'NOTIFY': (data: FreeSwitchEventData) => void
+  'PHONE_FEATURE': (data: FreeSwitchEventData) => void
+  'PHONE_FEATURE_SUBSCRIBE': (data: FreeSwitchEventData) => void
+  'SEND_MESSAGE': (data: FreeSwitchEventData) => void
+  'RECV_MESSAGE': (data: FreeSwitchEventData) => void
+  'REQUEST_PARAMS': (data: FreeSwitchEventData) => void
+  'CHANNEL_DATA': (data: FreeSwitchEventData) => void
+  'GENERAL': (data: FreeSwitchEventData) => void
+  'COMMAND': (data: FreeSwitchEventData) => void
+  'SESSION_HEARTBEAT': (data: FreeSwitchEventData) => void
+  'CLIENT_DISCONNECTED': (data: FreeSwitchEventData) => void
+  'SERVER_DISCONNECTED': (data: FreeSwitchEventData) => void
+  'SEND_INFO': (data: FreeSwitchEventData) => void
+  'RECV_INFO': (data: FreeSwitchEventData) => void
+  'RECV_RTCP_MESSAGE': (data: FreeSwitchEventData) => void
+  'SEND_RTCP_MESSAGE': (data: FreeSwitchEventData) => void
+  'CALL_SECURE': (data: FreeSwitchEventData) => void
+  'NAT': (data: FreeSwitchEventData) => void
+  'RECORD_START': (data: FreeSwitchEventData) => void
+  'RECORD_STOP': (data: FreeSwitchEventData) => void
+  'PLAYBACK_START': (data: FreeSwitchEventData) => void
+  'PLAYBACK_STOP': (data: FreeSwitchEventData) => void
+  'CALL_UPDATE': (data: FreeSwitchEventData) => void
+  'FAILURE': (data: FreeSwitchEventData) => void
+  'SOCKET_DATA': (data: FreeSwitchEventData) => void
+  'MEDIA_BUG_START': (data: FreeSwitchEventData) => void
+  'MEDIA_BUG_STOP': (data: FreeSwitchEventData) => void
+  'CONFERENCE_DATA_QUERY': (data: FreeSwitchEventData) => void
+  'CONFERENCE_DATA': (data: FreeSwitchEventData) => void
+  'CALL_SETUP_REQ': (data: FreeSwitchEventData) => void
+  'CALL_SETUP_RESULT': (data: FreeSwitchEventData) => void
+  'CALL_DETAIL': (data: FreeSwitchEventData) => void
+  'DEVICE_STATE': (data: FreeSwitchEventData) => void
+  'TEXT': (data: FreeSwitchEventData) => void
+  'SHUTDOWN_REQUESTED': (data: FreeSwitchEventData) => void
+  'ALL': (data: FreeSwitchEventData) => void
+
+  /* private */
+  'freeswitch_auth_request': (data: { headers: StringMap, body: string }) => void
+  'freeswitch_command_reply': (data: FreeSwitchEventData | { headers: StringMap, body: string }) => void
+  'freeswitch_linger': () => void
+  'freeswitch_disconnect': () => void
+  'freeswitch_api_response': (data: { headers: StringMap, body: string }) => void
+  'cleanup_disconnect': () => void
+  [k: `CHANNEL_EXECUTE_COMPLETE ${string}`]: (data: FreeSwitchEventData) => void
+  [k: `BACKGROUND_JOB ${string}`]: (data: FreeSwitchEventData) => void
 }
 
-export class FreeSwitchResponse extends EventEmitter implements FreeSwitchResponseEventEmitter {
+export class FreeSwitchResponse extends EventEmitter<keyof FreeSwitchResponseEvents, FreeSwitchResponseEvents> {
   public closed: boolean = true
 
   private readonly __ref: string = ulid()
@@ -217,8 +431,6 @@ export class FreeSwitchResponse extends EventEmitter implements FreeSwitchRespon
   private readonly logger: FreeSwitchResponseLogger
   private __queue: Promise<null | unknown>
   private readonly __later: Map<string, FreeSwitchEventData>
-
-  private readonly __parser: FreeSwitchParser
 
   // The module provides statistics in the `stats` object if it is initialized. You may use it  to collect your own call-related statistics.
   public stats: {
@@ -249,10 +461,7 @@ export class FreeSwitchResponse extends EventEmitter implements FreeSwitchRespon
 
   // The `FreeSwitchResponse` is bound to a single socket (dual-stream). For outbound (server) mode this would represent a single socket call from FreeSwitch.
   constructor (socket: Socket, logger: FreeSwitchResponseLogger) {
-    super({
-      captureRejections: true
-    })
-    this.setMaxListeners(2000)
+    super()
     socket.setKeepAlive(true)
     socket.setNoDelay(true)
     // Uniquely identify each instance, for tracing purposes.
@@ -279,8 +488,7 @@ export class FreeSwitchResponse extends EventEmitter implements FreeSwitchRespon
 
     // The parser is responsible for de-framing messages coming from FreeSwitch and splitting it into headers and a body.
     // We then process those in order to generate higher-level events.
-    this.__parser = new FreeSwitchParser(this.__socket, (headers: StringMap, body: string) => {
-      void this.__parser
+    FreeSwitchParser(this.__socket, (headers: StringMap, body: string) => {
       this.process(headers, body)
     })
 
@@ -307,7 +515,7 @@ export class FreeSwitchResponse extends EventEmitter implements FreeSwitchRespon
     }
     this.__socket.on('error', socket_on_error)
     // After the socket is closed or errored, this object is no longer usable.
-    const once_socket_star = (reason: string): void => {
+    const once_socket_star = (reason?: string | Error): void => {
       this.logger.debug('FreeSwitchResponse: Terminate', {
         ref: this.__ref,
         reason
@@ -339,7 +547,7 @@ export class FreeSwitchResponse extends EventEmitter implements FreeSwitchRespon
     return this.__ref
   }
 
-  private async error<T>(res: StringMap, data: Record<string, string | StringMap | undefined>): Promise<T> {
+  private async error<T>(res: FreeSwitchEventData | { headers: StringMap, body: string } | undefined, data: Record<string, string | StringMap | undefined>): Promise<T> {
     this.logger.error('FreeSwitchResponse: error: new FreeSwitchError', {
       ref: this.__ref,
       res,
@@ -349,47 +557,26 @@ export class FreeSwitchResponse extends EventEmitter implements FreeSwitchRespon
   }
 
   // onceAsync
-  onceAsync (event:
-  | 'freeswitch_auth_request'
-  | 'freeswitch_api_response',
+  async onceAsync<K extends keyof FreeSwitchResponseEvents>(event: K,
     timeout: number,
     comment: string
-  ): Promise<{ headers: StringMap, body: string }>
-  onceAsync (event:
-  | 'freeswitch_command_reply'
-  | `CHANNEL_EXECUTE_COMPLETE ${string}`
-  | 'freeswitch_auth_request'
-  | `BACKGROUND_JOB ${string}`,
-    timeout: number,
-    comment: string
-  ): Promise<FreeSwitchEventData>
-
-  async onceAsync (event:
-  | 'freeswitch_auth_request'
-  | 'freeswitch_api_response'
-  | 'freeswitch_command_reply'
-  | `CHANNEL_EXECUTE_COMPLETE ${string}`
-  | 'freeswitch_auth_request'
-  | `BACKGROUND_JOB ${string}`,
-  timeout: number,
-  comment: string
-  ): Promise<{ headers: StringMap, body: string } | FreeSwitchEventData> {
+  ): Promise<Parameters<FreeSwitchResponseEvents[K]>[0]> {
     this.logger.debug('FreeSwitchResponse: onceAsync: awaiting', {
       event,
       comment,
       ref: this.__ref,
       timeout
     })
-    const onceAsyncHandler = <T>(resolve: (arg: T) => void, reject: (err: Error) => void): void => {
-      const on_event = (arg: T): void => {
+    const onceAsyncHandler = (resolve: (value: Parameters<FreeSwitchResponseEvents[K]>[0]) => void, reject: (err: Error) => void): void => {
+      const on_event = ((value: Parameters<FreeSwitchResponseEvents[K]>[0]): void => {
         this.logger.debug('FreeSwitchResponse: onceAsync: on_event', {
           event,
           comment,
           ref: this.__ref
         })
         cleanup()
-        resolve(arg)
-      }
+        resolve(value)
+      }) as FreeSwitchResponseEvents[K]
       const on_error = (error: Error): void => {
         this.logger.error('FreeSwitchResponse: onceAsync: on_error', {
           event,
@@ -437,7 +624,28 @@ export class FreeSwitchResponse extends EventEmitter implements FreeSwitchRespon
         this.removeListener('socket.end', on_end)
         clearTimeout(timer)
       }
-      this.once(event, on_event)
+
+      function isChannelExecuteComplete (t: string): t is `CHANNEL_EXECUTE_COMPLETE ${string}` {
+        const s = 'CHANNEL_EXECUTE_COMPLETE '
+        return t.substring(0, s.length) === s
+      }
+      function isBackgroundJob (t: string): t is `BACKGROUND_JOB ${string}` {
+        const s = 'BACKGROUND_JOB '
+        return t.substring(0, s.length) === s
+      }
+      if (event === 'freeswitch_auth_request') {
+        this.once(event, on_event)
+      } else if (event === 'freeswitch_api_response') {
+        this.once(event, on_event)
+      } else if (event === 'freeswitch_command_reply') {
+        this.once(event, on_event)
+      } else if (isChannelExecuteComplete(event)) {
+        this.once(event, on_event)
+      } else if (isBackgroundJob(event)) {
+        this.once(event, on_event)
+      } else {
+        this.once(event, on_event)
+      }
       this.once('socket.error', on_error)
       this.once('socket.close', on_close)
       this.once('socket.write', on_error)
@@ -454,16 +662,16 @@ export class FreeSwitchResponse extends EventEmitter implements FreeSwitchRespon
 
   // Enqueue a function that returns a Promise.
   // The function is only called when all previously enqueued functions-that-return-Promises are completed and their respective Promises fulfilled or rejected.
-  async enqueue<T>(f: () => T): Promise<T> {
+  async enqueue<T>(f: () => Promise<T>): Promise<T> {
     if (this.closed) {
-      return await this.error({}, {
+      return await this.error(undefined, {
         when: 'enqueue on closed socket'
       })
     }
     const q = this.__queue
     const next = (async function () {
       await q
-      return (f())
+      return (await f())
     })()
     this.__queue = next.catch(function () {
       return true
@@ -483,7 +691,7 @@ export class FreeSwitchResponse extends EventEmitter implements FreeSwitchRespon
     const v = this.__later.get(event)
     if (!this.closed && v != null) {
       this.__later.delete(event)
-      return await Promise.resolve(v)
+      return v
     } else {
       return await this.onceAsync(event, timeout, `waitAsync ${comment}`)
     }
@@ -493,7 +701,7 @@ export class FreeSwitchResponse extends EventEmitter implements FreeSwitchRespon
   // ----------
 
   // This is used for events that might trigger before we set the `once` receiver.
-  emit_later (event: string, data: FreeSwitchEventData): boolean {
+  emit_later (event: keyof FreeSwitchResponseEvents, data: FreeSwitchEventData): boolean {
     const handled = this.emit(event, data)
     if (!this.closed && !handled) {
       this.__later.set(event, data)
@@ -512,7 +720,7 @@ export class FreeSwitchResponse extends EventEmitter implements FreeSwitchRespon
   // Send a single command to FreeSwitch; `args` is a hash of headers sent with the command.
   async write (command: string, args: StringMap): Promise<null> {
     if (this.closed) {
-      return await this.error({}, {
+      return await this.error(undefined, {
         when: 'write on closed socket',
         command,
         args
@@ -556,7 +764,11 @@ export class FreeSwitchResponse extends EventEmitter implements FreeSwitchRespon
           error
         })
         // Cancel any pending Promise started with `@onceAsync`, and close the connection.
-        this.emit('socket.write', error)
+        if (error instanceof Error) {
+          this.emit('socket.write', error)
+        } else {
+          this.emit('socket.write', new Error(`${error}`))
+        }
         reject(error)
       }
     }
@@ -569,7 +781,7 @@ export class FreeSwitchResponse extends EventEmitter implements FreeSwitchRespon
   // A generic way of sending commands to FreeSwitch, wrapping `write` into a Promise that waits for FreeSwitch's notification that the command completed.
   async send (command: string, args: StringMap = {}, timeout: number = FreeSwitchResponse.default_send_timeout): SendResult {
     if (this.closed) {
-      return await this.error({}, {
+      return await this.error(undefined, {
         when: 'send on closed socket',
         command,
         args
@@ -581,12 +793,15 @@ export class FreeSwitchResponse extends EventEmitter implements FreeSwitchRespon
       const p = this.onceAsync('freeswitch_command_reply', timeout, msg)
       const q = this.write(command, args)
       const [res] = (await Promise.all([p, q]))
+      const { headers, body } = res
       this.logger.debug('FreeSwitchResponse: send: received reply', {
         ref: this.__ref,
         command,
-        args
+        args,
+        headers,
+        body
       })
-      const reply = res?.headers['Reply-Text']
+      const reply = headers['Reply-Text']
       // The Promise might fail if FreeSwitch's notification indicates an error.
       if (reply == null) {
         this.logger.debug('FreeSwitchResponse: send: no reply', {
@@ -594,12 +809,10 @@ export class FreeSwitchResponse extends EventEmitter implements FreeSwitchRespon
           command,
           args
         })
-        return await this.error({}, {
+        return await this.error(res, {
           when: 'no reply to command',
           command,
-          args,
-          headers: res.headers,
-          body: res.body
+          args
         })
       }
       if (reply.match(/^-/) != null) {
@@ -609,13 +822,11 @@ export class FreeSwitchResponse extends EventEmitter implements FreeSwitchRespon
           command,
           args
         })
-        return await this.error({}, {
+        return await this.error(res, {
           when: 'command reply',
           reply,
           command,
-          args,
-          headers: res.headers,
-          body: res.body
+          args
         })
       }
       // The promise will be fulfilled with the `{headers,body}` object provided by the parser.
@@ -624,9 +835,13 @@ export class FreeSwitchResponse extends EventEmitter implements FreeSwitchRespon
         command,
         args
       })
-      return res
+      if (typeof body === 'string') {
+        return { headers: res.headers, body: { text: body } }
+      } else {
+        return { headers, body }
+      }
     }
-    return (await this.enqueue(async_log(msg, this.ref(), sendHandler, this.logger)))
+    return await this.enqueue(async_log(msg, this.ref(), sendHandler, this.logger))
   }
 
   // end
@@ -637,17 +852,13 @@ export class FreeSwitchResponse extends EventEmitter implements FreeSwitchRespon
     this.logger.debug('FreeSwitchResponse: end', {
       ref: this.__ref
     })
-    this.emit('socket.end', 'Socket close requested by application')
+    this.emit('socket.end', new Error('Socket close requested by application'))
   }
 
   // Process data from the parser
   // ============================
 
   // Rewrite headers as needed to work around some weirdnesses in the protocol; and assign unified event IDs to the Event Socket's Content-Types.
-  /**
-     * @param { { [key:string]: string } } headers
-     * @param { string } body
-     */
   process (headers: StringMap, body: string): void {
     this.logger.debug('FreeSwitchResponse::process', {
       ref: this.__ref,
@@ -666,8 +877,7 @@ export class FreeSwitchResponse extends EventEmitter implements FreeSwitchRespon
       return
     }
     // Notice how all our (internal) event names are lower-cased; FreeSwitch always uses full-upper-case event names.
-    let body_values: StringMap | undefined
-    let event: string | undefined
+    const msg = { headers, body }
     switch (content_type) {
       // auth/request
       // ------------
@@ -676,8 +886,8 @@ export class FreeSwitchResponse extends EventEmitter implements FreeSwitchRespon
       // Normally caught by the client code, there is no need for your code to monitor this event.
       case 'auth/request':
       {
-        event = 'freeswitch_auth_request'
         this.stats.auth_request++
+        this.emit('freeswitch_auth_request', msg)
         break
       }
 
@@ -688,29 +898,31 @@ export class FreeSwitchResponse extends EventEmitter implements FreeSwitchRespon
       // Normally caught by `send`, there is no need for your code to monitor this event.
       case 'command/reply':
       {
-        event = 'freeswitch_command_reply'
+        this.stats.command_reply++
         // Apparently a bug in the response to `connect` causes FreeSwitch to send the headers in the body.
         if (headers['Event-Name'] === 'CHANNEL_DATA') {
-          if (body_values != null && 'Content-Type' in body_values && 'Reply-Text' in body_values &&
-              'Socket-Mode' in body_values && 'Control' in body_values) {
+          if (headers != null && 'Content-Type' in headers && 'Reply-Text' in headers &&
+              'Socket-Mode' in headers && 'Control' in headers) {
             const {
               ['Content-Type' as const]: contentType,
               ['Reply-Text' as const]: replyText,
               ['Socket-Mode' as const]: socketMode,
               ['Control' as const]: control,
               ...bodyValuesWithout
-            } = body_values
-            body_values = bodyValuesWithout
+            } = headers
             headers = {
               'Content-Type': contentType,
               'Reply-Text': replyText,
               'Socket-Mode': socketMode,
               Control: control
             }
+            const msg = { headers, body: bodyValuesWithout }
+            this.emit('freeswitch_command_reply', msg)
+            return
           }
         }
-        this.stats.command_reply++
-        break
+        this.emit('freeswitch_command_reply', msg)
+        return
       }
 
       // text/event-json
@@ -720,6 +932,7 @@ export class FreeSwitchResponse extends EventEmitter implements FreeSwitchRespon
       case 'text/event-json':
       {
         this.stats.events++
+        let body_values: StringMap
         try {
           // Strip control characters that might be emitted by FreeSwitch.
           body = body.replace(/[\x00-\x1F\x7F-\x9F]/g, '')
@@ -732,23 +945,27 @@ export class FreeSwitchResponse extends EventEmitter implements FreeSwitchRespon
             body
           })
           this.stats.json_parse_errors++
-          this.emit('error.invalid-json', exception)
+          if (exception instanceof Error) {
+            this.emit('error.invalid-json', exception)
+          } else {
+            this.emit('error.invalid-json', new Error(`${exception}`))
+          }
           return
         }
         // Otherwise trigger the proper event.
         const new_event = body_values != null ? body_values['Event-Name'] : undefined
-        if (new_event != null) {
-          event = new_event
+        if (new_event != null && isEventName(new_event)) {
+          const msg = { headers, body: body_values }
+          this.emit(new_event, msg)
         } else {
-          this.logger.error('FreeSwitchResponse: Missing event name', {
+          this.logger.error('FreeSwitchResponse: Missing or unknown event name', {
             ref: this.__ref,
             body
           })
           this.stats.missing_event_name++
-          this.emit('error.missing-event-name', { headers, body })
-          return
+          this.emit('error.missing-event-name', new FreeSwitchMissingEventNameError(headers, body))
         }
-        break
+        return
       }
 
       // text/event-plain
@@ -758,29 +975,29 @@ export class FreeSwitchResponse extends EventEmitter implements FreeSwitchRespon
       case 'text/event-plain':
       {
         this.stats.events++
-        body_values = parse_header_text(body)
+        const body_values = parse_header_text(body)
         const new_event = body_values != null ? body_values['Event-Name'] : undefined
-        if (new_event != null) {
-          event = new_event
+        if (new_event != null && isEventName(new_event)) {
+          const msg = { headers, body: body_values }
+          this.emit(new_event, msg)
         } else {
-          this.logger.error('FreeSwitchResponse: Missing event name', {
+          this.logger.error('FreeSwitchResponse: Missing or unknown event name', {
             ref: this.__ref,
             body
           })
           this.stats.missing_event_name++
-          this.emit('error.missing-event-name', { headers, body })
-          return
+          this.emit('error.missing-event-name', new FreeSwitchMissingEventNameError(headers, body))
         }
-        break
+        return
       }
 
       // log/data
       // --------
       case 'log/data':
       {
-        event = 'freeswitch_log_data'
         this.stats.log_data++
-        break
+        this.emit('freeswitch_log_data', msg)
+        return
       }
 
       // text/disconnect-notice
@@ -790,9 +1007,9 @@ export class FreeSwitchResponse extends EventEmitter implements FreeSwitchRespon
       // You normally do not have to monitor this event; the `autocleanup` methods catches this event and emits either `freeswitch_disconnect` or `freeswitch_linger`, monitor those events instead.
       case 'text/disconnect-notice':
       {
-        event = 'freeswitch_disconnect_notice'
         this.stats.disconnect++
-        break
+        this.emit('freeswitch_disconnect_notice', msg)
+        return
       }
 
       // api/response
@@ -802,16 +1019,16 @@ export class FreeSwitchResponse extends EventEmitter implements FreeSwitchRespon
       // You normally do not have to monitor this event, the `api` methods catches it.
       case 'api/response':
       {
-        event = 'freeswitch_api_response'
         this.stats.api_responses++
-        break
+        this.emit('freeswitch_api_response', msg)
+        return
       }
 
       case 'text/rude-rejection':
       {
-        event = 'freeswitch_rude_rejection'
         this.stats.rude_rejections++
-        break
+        this.emit('freeswitch_rude_rejection', msg)
+        return
       }
 
       default:
@@ -823,26 +1040,10 @@ export class FreeSwitchResponse extends EventEmitter implements FreeSwitchRespon
           ref: this.__ref,
           content_type
         })
-        event = `freeswitch_${content_type.replace(/[^a-z]/, '_')}`
-        this.emit('error.unhandled-content-type', new FreeSwitchUnhandledContentTypeError(content_type))
         this.stats.unhandled++
-        break
+        this.emit('error.unhandled-content-type', new FreeSwitchUnhandledContentTypeError(content_type))
       }
     }
-    // Event content
-    // -------------
-
-    // The messages sent at the server- or client-level only contain the headers and the body, possibly modified by the above code.
-    const msg = {
-      headers,
-      body: body_values ?? body
-    }
-    this.logger.debug('FreeSwitchResponse::process emit', {
-      ref: this.__ref,
-      event,
-      msg
-    })
-    this.emit(event, msg)
   }
 
   // Channel-level commands
@@ -858,13 +1059,13 @@ export class FreeSwitchResponse extends EventEmitter implements FreeSwitchRespon
      * @throws {FreeSwitchError}
      */
   async api (command: string, timeout: number =
-  FreeSwitchResponse.default_command_timeout): Promise<{ headers: StringMap, body: string, uuid?: string }> {
+  FreeSwitchResponse.default_event_timeout): Promise<{ headers: StringMap, body: string, uuid?: string }> {
     this.logger.debug('FreeSwitchResponse: api', {
       ref: this.__ref,
       command
     })
     if (this.closed) {
-      return await this.error({}, {
+      return await this.error(undefined, {
         when: 'api on closed socket',
         command
       })
@@ -885,11 +1086,9 @@ export class FreeSwitchResponse extends EventEmitter implements FreeSwitchRespon
           ref: this.__ref,
           command
         })
-        return await this.error({}, {
+        return await this.error(res, {
           when: 'no reply to api',
-          command,
-          headers: res.headers,
-          body: res.body
+          command
         })
       }
       if (reply.match(/^-/) != null) {
@@ -898,18 +1097,16 @@ export class FreeSwitchResponse extends EventEmitter implements FreeSwitchRespon
           reply,
           command
         })
-        return await this.error({}, {
+        return await this.error(res, {
           when: 'api response',
           reply,
-          command,
-          headers: res.headers,
-          body: res.body
+          command
         })
       }
       // The Promise that will be fulfilled with `{headers,body,uuid}` from the parser; uuid is the API UUID if one is provided by FreeSwitch.
       return { headers: res.headers, body: res.body, uuid: (reply.match(/^\+OK (\S+)/) ?? [])[1] }
     }
-    return (await this.enqueue(async_log(msg, this.ref(), apiHandler, this.logger)))
+    return await this.enqueue(async_log(msg, this.ref(), apiHandler, this.logger))
   }
 
   // bgapi
@@ -923,18 +1120,16 @@ export class FreeSwitchResponse extends EventEmitter implements FreeSwitchRespon
       timeout
     })
     if (this.closed) {
-      return await this.error({}, {
+      return await this.error(undefined, {
         when: 'bgapi on closed socket',
         command
       })
     }
     const res = await this.send(`bgapi ${command}`)
     const error = async (): Promise<never> => {
-      return await this.error({}, {
+      return await this.error(res, {
         when: 'bgapi did not provide a Job-UUID',
-        command,
-        headers: res.headers,
-        body: res.body
+        command
       })
     }
     if (res == null) {
@@ -1092,7 +1287,7 @@ export class FreeSwitchResponse extends EventEmitter implements FreeSwitchRespon
     } else if (this.__uuid != null) {
       execute_text = `sendmsg ${this.__uuid}`
     }
-    const res = this.send(execute_text, options)
+    const res = await this.send(execute_text, options)
     this.logger.debug('FreeSwitchResponse: sendmsg_uuid', {
       ref: this.__ref,
       uuid,
@@ -1100,7 +1295,7 @@ export class FreeSwitchResponse extends EventEmitter implements FreeSwitchRespon
       args,
       res
     })
-    return await res
+    return res
   }
 
   // sendmsg
@@ -1131,7 +1326,7 @@ export class FreeSwitchResponse extends EventEmitter implements FreeSwitchRespon
     if (event_uuid != null) {
       options['Event-UUID'] = event_uuid
     }
-    const res = this.sendmsg_uuid(uuid, 'execute', options)
+    const res = await this.sendmsg_uuid(uuid, 'execute', options)
     this.logger.debug('FreeSwitchResponse: execute_uuid', {
       ref: this.__ref,
       uuid,
@@ -1141,7 +1336,7 @@ export class FreeSwitchResponse extends EventEmitter implements FreeSwitchRespon
       event_uuid,
       res
     })
-    return await res
+    return res
   }
 
   // TODO: Support the alternate format (with no `execute-app-arg` header but instead a `text/plain` body containing the argument).
@@ -1150,7 +1345,7 @@ export class FreeSwitchResponse extends EventEmitter implements FreeSwitchRespon
   // ------------
 
   // Execute an application synchronously. Return a Promise.
-  async command_uuid (uuid: string | undefined, app_name: string, app_arg: string, timeout: number = FreeSwitchResponse.default_command_timeout): SendResult {
+  async command_uuid (uuid: string | undefined, app_name: string, app_arg?: string, timeout: number = FreeSwitchResponse.default_command_timeout): SendResult {
     if (app_arg == null) {
       app_arg = ''
     }
@@ -1227,7 +1422,7 @@ export class FreeSwitchResponse extends EventEmitter implements FreeSwitchRespon
 
   // command
   // -------
-  async command (app_name: string, app_arg: string, timeout: number = FreeSwitchResponse.default_command_timeout): SendResult {
+  async command (app_name: string, app_arg?: string, timeout: number = FreeSwitchResponse.default_command_timeout): SendResult {
     return await this.command_uuid(undefined, app_name, app_arg, timeout)
   }
 
