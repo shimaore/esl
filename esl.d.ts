@@ -226,7 +226,7 @@ declare module "esl" {
 
   class FreeSwitchClient {
     constructor(options?: {
-      host?: string, port: number, password?: string
+      host?: string, port: number, password?: string, logger?: { debug: Logger, info: Logger, error: Logger }, // default console
     });
     connect(): void;
     end(): Promise<void>;
