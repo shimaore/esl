@@ -1,6 +1,6 @@
 {
   "name": "esl",
-  "version": "11.0.4",
+  "version": "11.1.0",
   "description": "Client and Server for FreeSwitch Event System",
   "keywords": [
     "freeswitch",
@@ -43,7 +43,7 @@
   "files": [
     "esl.cjs",
     "esl.mjs",
-    "./types/src/esl.d.ts"
+    "./types/src/*.d.ts*"
   ],
   "exports": {
     "require": "./esl.cjs",
