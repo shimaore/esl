@@ -2,7 +2,7 @@
 // but using Map, Set, adding `once` and an async version
 // `typed-emitter` no longer works properly.
 
-export class EventEmitter<E extends string, T extends Record<E, (...args: any[]) => void>> {
+export class FreeSwitchEventEmitter<E extends string, T extends Record<E, (...args: any[]) => void>> {
   private __on: { [eventName in keyof T]?: Set<T[eventName]> }
   private __once: { [eventName in keyof T]?: Set<T[eventName]> }
 
@@ -59,4 +59,4 @@ export const once = async <
     E extends string,
     T extends Record<string, (...args: any[]) => void>,
     K extends keyof T
-    >(emitter: EventEmitter<E, T>, event: K): Promise<Parameters<T[K]>> => await emitter.__onceAsync(event)
+    >(emitter: FreeSwitchEventEmitter<E, T>, event: K): Promise<Parameters<T[K]>> => await emitter.__onceAsync(event)

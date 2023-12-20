@@ -14,7 +14,7 @@ import {
 
 import {
   once,
-  EventEmitter
+  FreeSwitchEventEmitter
 } from 'esl'
 
 import { second, sleep, clientLogger, serverLogger, DoCatch } from './tools.js'
@@ -31,7 +31,7 @@ let server: FreeSwitchServer | null = null
 
 const client_port = 8024
 
-const ev = new EventEmitter()
+const ev = new FreeSwitchEventEmitter()
 
 test.before('14-base-server: start service', async function (t) {
   const service = async function (call: FreeSwitchResponse, { data }: { data: StringMap }): Promise<void> {

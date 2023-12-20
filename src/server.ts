@@ -19,7 +19,7 @@
 
 import net from 'node:net'
 
-import { EventEmitter } from './event-emitter.js'
+import { FreeSwitchEventEmitter } from './event-emitter.js'
 
 import {
   FreeSwitchResponse
@@ -46,7 +46,7 @@ interface FreeSwitchServerEvents {
   connection: (call: FreeSwitchResponse, data: { uuid?: string, headers: StringMap, body: StringMap, data: StringMap }) => void
 }
 
-export class FreeSwitchServer extends EventEmitter<keyof FreeSwitchServerEvents, FreeSwitchServerEvents> {
+export class FreeSwitchServer extends FreeSwitchEventEmitter<keyof FreeSwitchServerEvents, FreeSwitchServerEvents> {
   public stats: {
     error: bigint
     drop: bigint

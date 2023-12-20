@@ -7,7 +7,7 @@ import {
   FreeSwitchServer,
   type StringMap,
   once,
-  EventEmitter
+  FreeSwitchEventEmitter
 } from 'esl'
 
 import {
@@ -57,7 +57,7 @@ const server2 = {
 let db: PouchDB.Database<{ _id: string, comment: string, target: string }>
 
 // We implement a small LCR database using PouchDB.
-const ev = new EventEmitter()
+const ev = new FreeSwitchEventEmitter()
 
 test.before(async function (t) {
   const DB = PouchDB.plugin(PouchDBAdapterMemory).defaults({

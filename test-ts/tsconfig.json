@@ -4,6 +4,7 @@
     "target":"es2021",
     "strict": true,
     "moduleResolution": "nodenext",
-    "module": "nodenext"
+    "module": "nodenext",
+    "skipLibCheck": true
   }
 }

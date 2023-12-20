@@ -6,7 +6,7 @@
 
 import { Socket } from 'node:net'
 
-import { EventEmitter } from './event-emitter.js'
+import { FreeSwitchEventEmitter } from './event-emitter.js'
 
 import {
   FreeSwitchResponse
@@ -31,7 +31,7 @@ interface FreeSwitchClientEvents {
   end: () => void
 }
 
-export class FreeSwitchClient extends EventEmitter<keyof FreeSwitchClientEvents, FreeSwitchClientEvents> {
+export class FreeSwitchClient extends FreeSwitchEventEmitter<keyof FreeSwitchClientEvents, FreeSwitchClientEvents> {
   private readonly options: {
     host: string
     port: number

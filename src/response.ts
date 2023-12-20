@@ -1,6 +1,6 @@
 // Response and associated API
 // ===========================
-import { EventEmitter } from './event-emitter.js'
+import { FreeSwitchEventEmitter } from './event-emitter.js'
 
 import {
   ulid
@@ -422,7 +422,7 @@ interface FreeSwitchResponseEvents {
   [k: `BACKGROUND_JOB ${string}`]: (data: FreeSwitchEventData) => void
 }
 
-export class FreeSwitchResponse extends EventEmitter<keyof FreeSwitchResponseEvents, FreeSwitchResponseEvents> {
+export class FreeSwitchResponse extends FreeSwitchEventEmitter<keyof FreeSwitchResponseEvents, FreeSwitchResponseEvents> {
   public closed: boolean = true
 
   private readonly __ref: string = ulid()
