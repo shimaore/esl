@@ -52,8 +52,6 @@
   },
   "devDependencies": {
     "@types/node": "20.10.5",
-    "@types/pouchdb-adapter-memory": "6.1.6",
-    "@types/pouchdb-core": "7.0.14",
     "@types/uuid": "9.0.7",
     "@typescript-eslint/eslint-plugin": "6.15.0",
     "@typescript-eslint/parser": "6.15.0",
@@ -66,8 +64,6 @@
     "eslint-plugin-promise": "6.1.1",
     "memdown": "6.1.1",
     "nyc": "15.1.0",
-    "pouchdb-adapter-memory": "8.0.1",
-    "pouchdb-core": "8.0.1",
     "typescript": "5.3.3",
     "ulidx": "2.2.1",
     "uuid": "9.0.1"
@@ -77,7 +73,7 @@
     "prepublishOnly": "yarn install && yarn build && yarn syntax",
     "prelint": "yarn syntax",
     "lint": "eslint --fix src/*.ts test/*.ts",
-    "pretest": "yarn install && yarn prepublishOnly && tsc --emitDeclarationOnly false",
+    "pretest": "yarn install && yarn prepublishOnly && yarn syntax:test",
     "test": "nyc ava -c 1",
     "syntax": "tsc",
     "test:live": "podman  build --ulimit nofile=1048576:1048576 -f test/Dockerfile ."

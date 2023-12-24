@@ -15,10 +15,6 @@ import {
   stop
 } from './utils.js'
 
-import PouchDB from 'pouchdb-core'
-
-import PouchDBAdapterMemory from 'pouchdb-adapter-memory'
-
 import { second, sleep, clientLogger as logger, clientLogger, DoCatch } from './tools.js'
 
 const domain = '127.0.0.1:5062'
@@ -54,33 +50,32 @@ const server2 = {
   }
 }
 
-let db: PouchDB.Database<{ _id: string, comment: string, target: string }>
-
 // We implement a small LCR database using PouchDB.
 const ev = new FreeSwitchEventEmitter()
 
 test.before(async function (t) {
-  const DB = PouchDB.plugin(PouchDBAdapterMemory).defaults({
-    adapter: 'memory'
-  })
-  db = new DB('routes')
-  await db.bulkDocs([
+  const db = new Map<string, { _id: string, comment: string, target: string }>()
+  db.set('route:',
     {
       _id: 'route:',
       comment: 'default',
       target: '324343'
-    },
+    }
+  )
+  db.set('route:1',
     {
       _id: 'route:1',
       comment: 'NANPA',
       target: '37382'
-    },
+    }
+  )
+  db.set('route:1435',
     {
       _id: 'route:1435',
       comment: 'some state',
       target: '738829'
     }
-  ])
+  )
   const service = async function (call: FreeSwitchResponse, { data }: { data: StringMap }): Promise<void> {
     const destination = data.variable_sip_req_user as string
     if (destination.match(/^lcr7010-\d+$/) != null) {
@@ -101,18 +96,15 @@ test.before(async function (t) {
         return results
       })()).reverse()
       // and these are retrieved from the database.
-      const { rows } = (await db.allDocs({
-        keys: ids,
-        include_docs: true
-      }))
+      const rows = ids.map(k => db.get(k))
       // The first successful route is selected.
       const doc = ((function () {
         const results = []
         const len = rows.length
         for (let j = 0; j < len; j++) {
           const row = rows[j]
-          if ('doc' in row && row.doc != null) {
-            results.push(row.doc)
+          if (row != null) {
+            results.push(row)
           }
         }
         return results

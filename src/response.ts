@@ -429,7 +429,7 @@ export class FreeSwitchResponse extends FreeSwitchEventEmitter<keyof FreeSwitchR
   private __uuid: string | undefined = undefined
   private readonly __socket: Socket
   private readonly logger: FreeSwitchResponseLogger
-  private __queue: Promise<null | unknown>
+  private __queue: Promise<true>
   private readonly __later: Map<string, FreeSwitchEventData>
 
   // The module provides statistics in the `stats` object if it is initialized. You may use it  to collect your own call-related statistics.
@@ -493,7 +493,7 @@ export class FreeSwitchResponse extends FreeSwitchEventEmitter<keyof FreeSwitchR
     })
 
     // The object also provides a queue for operations which need to be submitted one after another on a given socket because FreeSwitch does not provide ways to map event socket requests and responses in the general case.
-    this.__queue = Promise.resolve(null)
+    this.__queue = Promise.resolve(true)
     // The object also provides a mechanism to report events that might already have been triggered.
     this.__later = new Map()
     // We also must track connection close in order to prevent writing to a closed socket.
@@ -526,7 +526,7 @@ export class FreeSwitchResponse extends FreeSwitchEventEmitter<keyof FreeSwitchR
         this.__socket.end()
       }
       this.removeAllListeners()
-      this.__queue = Promise.resolve(null)
+      this.__queue = Promise.resolve(true)
       this.__later.clear()
     }
     this.once('socket.error', once_socket_star)
@@ -673,9 +673,7 @@ export class FreeSwitchResponse extends FreeSwitchEventEmitter<keyof FreeSwitchR
       await q
       return (await f())
     })()
-    this.__queue = next.catch(function () {
-      return true
-    })
+    this.__queue = next.then(() => true, () => true)
     return await next
   }
 
@@ -789,7 +787,7 @@ export class FreeSwitchResponse extends FreeSwitchEventEmitter<keyof FreeSwitchR
     }
     // Typically `command/reply` will contain the status in the `Reply-Text` header while `api/response` will contain the status in the body.
     const msg = `send ${command} ${JSON.stringify(args)}`
-    const sendHandler = async (): Promise<never | FreeSwitchEventData> => {
+    const sendHandler = async (): Promise<FreeSwitchEventData> => {
       const p = this.onceAsync('freeswitch_command_reply', timeout, msg)
       const q = this.write(command, args)
       const [res] = (await Promise.all([p, q]))
@@ -1071,7 +1069,7 @@ export class FreeSwitchResponse extends FreeSwitchEventEmitter<keyof FreeSwitchR
       })
     }
     const msg = `api ${command}`
-    const apiHandler = async (): Promise<never | { headers: StringMap, body: string, uuid?: string }> => {
+    const apiHandler = async (): Promise<{ headers: StringMap, body: string, uuid?: string }> => {
       const p = this.onceAsync('freeswitch_api_response', timeout, msg)
       const q = this.write(msg, {})
       const [res] = (await Promise.all([p, q]))
