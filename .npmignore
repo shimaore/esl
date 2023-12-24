@@ -10,5 +10,7 @@ test-ts/
 .gitignore
 .npmignore
 .eslintrc.json
+.yarn/
+.yarnrc.yml
 build.mjs
 build/
