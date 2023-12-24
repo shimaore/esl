@@ -14,3 +14,11 @@ esl.mjs
 .nyc_output/
 test/*.mjs
 !test/readme.mjs
+
+.yarn/*
+!.yarn/cache
+!.yarn/patches
+!.yarn/plugins
+!.yarn/releases
+!.yarn/sdks
+!.yarn/versions
