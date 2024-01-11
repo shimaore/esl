@@ -1496,14 +1496,15 @@ export class FreeSwitchResponse extends FreeSwitchEventEmitter<keyof FreeSwitchR
         this.logger.debug(`FreeSwitchResponse: auto_cleanup/linger: exit() in ${linger_delay}ms`, {
           ref: this.__ref
         })
-        setTimeout(() => {
+        const once_freeswitch_linger_timeout = () => {
           this.logger.debug('FreeSwitchResponse: auto_cleanup/linger: exit()', {
             ref: this.__ref
           })
           this.exit().catch(function () {
             return true
           })
-        }, linger_delay)
+        }
+        setTimeout(once_freeswitch_linger_timeout, linger_delay)
       }
     }
     this.once('freeswitch_linger', once_freeswitch_linger)
@@ -1521,12 +1522,13 @@ export class FreeSwitchResponse extends FreeSwitchEventEmitter<keyof FreeSwitchR
           ref: this.__ref
         })
       } else {
-        setTimeout(() => {
+        const once_freeswitch_disconnect_timeout = () => {
           this.logger.debug('FreeSwitchResponse: auto_cleanup/disconnect: end()', {
             ref: this.__ref
           })
           this.end()
-        }, 100)
+        }
+        setTimeout(once_freeswitch_disconnect_timeout, 100)
       }
     }
     this.once('freeswitch_disconnect', once_freeswitch_disconnect)
