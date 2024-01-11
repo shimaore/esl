@@ -14,9 +14,10 @@ import {
 
 import {
   start_server,
-  stop
+  stop,
+  clientLogger, serverLogger
 } from './utils.js'
-import { clientLogger, serverLogger, second, sleep } from './tools.js'
+import { second, sleep } from './tools.js'
 
 // Using UUID (in client mode)
 // ---------------------------

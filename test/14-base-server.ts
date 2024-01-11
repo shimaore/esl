@@ -9,7 +9,7 @@ import {
 
 import {
   start,
-  stop
+  stop, clientLogger, serverLogger, DoCatch
 } from './utils.js'
 
 import {
@@ -17,7 +17,7 @@ import {
   FreeSwitchEventEmitter
 } from 'esl'
 
-import { second, sleep, clientLogger, serverLogger, DoCatch } from './tools.js'
+import { second, sleep } from './tools.js'
 
 const domain = '127.0.0.1:5062'
 

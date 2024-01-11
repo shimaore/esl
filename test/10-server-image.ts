@@ -9,10 +9,10 @@ import {
 } from 'esl'
 
 import {
+  clientLogger,
   start_server,
   stop
 } from './utils.js'
-import { clientLogger } from './tools.js'
 
 const server_port = 8022
 

@@ -10,7 +10,8 @@ import {
   createServer
 } from 'node:net'
 
-import { clientLogger, sleep } from './tools.js'
+import { sleep } from './tools.js'
+import { clientLogger } from './utils.js'
 
 const client_port = 5621
 

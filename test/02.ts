@@ -6,13 +6,10 @@ import {
 } from 'esl'
 
 import {
+  clientLogger,
   start,
   stop
 } from './utils.js'
-
-import {
-  clientLogger
-} from './tools.js'
 
 const client_port = 8024
 

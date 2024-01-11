@@ -10,7 +10,7 @@ import {
 } from 'esl'
 
 import {
-  start,
+  clientLogger as logger, start,
   stop
 } from './utils.js'
 
@@ -18,7 +18,7 @@ import {
   v4 as uuidv4
 } from 'uuid'
 
-import { second, sleep, timer, clientLogger as logger, options_text } from './tools.js'
+import { second, sleep, timer, options_text } from './tools.js'
 
 const client_port = 8024
 

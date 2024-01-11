@@ -9,10 +9,11 @@ import {
 } from 'esl'
 
 import {
+  clientLogger,
   start,
   stop
 } from './utils.js'
-import { clientLogger, sleep } from './tools.js'
+import { sleep } from './tools.js'
 
 // We start two FreeSwitch docker.io instances, one is used as the "client" (and is basically our SIP test runner), while the other one is the "server" (and is used to test the `server` side of the package).
 const client_port = 8024

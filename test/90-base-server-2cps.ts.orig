@@ -12,10 +12,10 @@ import {
 
 import {
   start,
-  stop, clientLogger as logger, clientLogger, DoCatch
+  stop
 } from './utils.js'
 
-import { second, sleep } from './tools.js'
+import { second, sleep, clientLogger as logger, clientLogger, DoCatch } from './tools.js'
 
 const domain = '127.0.0.1:5062'
 
@@ -117,7 +117,7 @@ test.before(async function (t) {
       }
       return
     }
-    if (destination?.match(/^answer-wait-3000-\d+$/) != null) {
+    if (destination.match(/^answer-wait-3000-\d+$/) != null) {
       await call.command('hangup', `200 destination ${destination}`)
       return
     }

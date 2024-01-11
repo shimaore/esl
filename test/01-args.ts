@@ -4,7 +4,7 @@ import {
   FreeSwitchResponse
 } from 'esl'
 import { type Socket } from 'net'
-import { responseLogger as logger } from './tools.js'
+import { responseLogger as logger } from './utils.js'
 
 const socket = {
   once: function () { },

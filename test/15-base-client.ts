@@ -11,7 +11,10 @@ import {
 
 import {
   start,
-  stop
+  stop,
+  clientLogger as logger,
+  clientLogger,
+  DoCatch
 } from './utils.js'
 
 import {
@@ -26,10 +29,7 @@ import {
   second,
   sleep,
   timer,
-  clientLogger as logger,
-  options_text,
-  clientLogger,
-  DoCatch
+  options_text
 } from './tools.js'
 
 const domain = '127.0.0.1:5062'
