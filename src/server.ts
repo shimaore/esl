@@ -24,8 +24,8 @@ import { FreeSwitchEventEmitter } from './event-emitter.js'
 import {
   FreeSwitchResponse
 } from './response.js'
+import { type StringMap } from './parser.js'
 
-type StringMap = Record<string, string | undefined>
 type Logger = (msg: string, data?: unknown) => void
 
 export interface FreeSwitchServerLogger {
@@ -138,6 +138,7 @@ export class FreeSwitchServer extends FreeSwitchEventEmitter<keyof FreeSwitchSer
           if (error instanceof Error) {
             this.emit('error', error)
           } else {
+            // eslint-disable-next-line @typescript-eslint/restrict-template-expressions
             this.emit('error', new Error(`${error}`))
           }
         }

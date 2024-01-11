@@ -79,6 +79,7 @@ export class FreeSwitchClient extends FreeSwitchEventEmitter<keyof FreeSwitchCli
     // Create a new socket connection
     const socket = new Socket()
     this.current_call = new FreeSwitchResponse(socket, this.logger)
+    const reconnect = this.connect.bind(this)
     socket.once('connect', () => {
       void (async (): Promise<void> => {
         try {
@@ -106,18 +107,14 @@ export class FreeSwitchClient extends FreeSwitchEventEmitter<keyof FreeSwitchCli
       this.logger.error('FreeSwitchClient::connect: client received `error` event', { attempt: this.attempt, retry: this.retry, error, code })
       if (this.running) {
         this.emit('reconnecting', this.retry)
-        setTimeout(() => {
-          this.connect()
-        }, this.retry)
+        setTimeout(reconnect, this.retry)
       }
     })
     socket.once('end', () => {
       this.logger.debug('FreeSwitchClient::connect: client received `end` event (remote end sent a FIN packet)', { attempt: this.attempt, retry: this.retry })
       if (this.running) {
         this.emit('reconnecting', this.retry)
-        setTimeout(() => {
-          this.connect()
-        }, this.retry)
+        setTimeout(reconnect, this.retry)
       }
     })
     socket.on('warning', (data: FreeSwitchParserError) => {

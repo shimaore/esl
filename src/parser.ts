@@ -17,7 +17,7 @@ export class FreeSwitchParserError extends Error {
 
 type Processor = (headers: StringMap, body: string) => void
 
-export const FreeSwitchParser = (socket: Socket, process: Processor): void => {
+export const FreeSwitchParser = (socket: Socket, processMessage: Processor): void => {
   let body_length: number = 0
   let buffer: Buffer = Buffer.alloc(0)
   let buffer_length: number = 0
@@ -52,11 +52,11 @@ export const FreeSwitchParser = (socket: Socket, process: Processor): void => {
     }
     // Consume the body once it has been fully received.
     const body = buffer.toString('utf8', 0, body_length)
-    buffer = buffer.slice(body_length)
+    buffer = buffer.subarray(body_length)
     buffer_length -= body_length
     body_length = 0
     // Process the content at each step.
-    process(headers, body)
+    processMessage(headers, body)
     headers = {}
     // Re-parse whatever data was left after the body was fully consumed.
     capture_headers(Buffer.alloc(0))
@@ -74,7 +74,7 @@ export const FreeSwitchParser = (socket: Socket, process: Processor): void => {
     }
     // Consume the headers
     const header_text = buffer.toString('utf8', 0, header_end)
-    buffer = buffer.slice(header_end + 2)
+    buffer = buffer.subarray(header_end + 2)
     buffer_length -= header_end + 2
     // Parse the header lines
     headers = parse_header_text(header_text)
@@ -86,7 +86,7 @@ export const FreeSwitchParser = (socket: Socket, process: Processor): void => {
       capture_body(Buffer.alloc(0))
     } else {
       // Process the (header-only) content
-      process(headers, '')
+      processMessage(headers, '')
       headers = {}
       // Re-parse whatever data was left after these headers were fully consumed.
       capture_headers(Buffer.alloc(0))
@@ -102,8 +102,7 @@ export const FreeSwitchParser = (socket: Socket, process: Processor): void => {
 export const parse_header_text = function (header_text: string): StringMap {
   const header_lines = header_text.split('\n')
   const headers: StringMap = {}
-  for (let i = 0, len = header_lines.length; i < len; i++) {
-    const line = header_lines[i]
+  for (const line of header_lines) {
     const [name, value] = line.split(/: /, 2)
     headers[name] = value
   }

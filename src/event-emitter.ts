@@ -1,7 +1,8 @@
 // Inspired by https://danilafe.com/blog/typescript_typesafe_events/
-// but using Map, Set, adding `once` and an async version
+// but using Map, Set, adding `once` and an async version.
 // `typed-emitter` no longer works properly.
 
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
 export class FreeSwitchEventEmitter<E extends string, T extends Record<E, (...args: any[]) => void>> {
   private __on: { [eventName in keyof T]?: Set<T[eventName]> }
   private __once: { [eventName in keyof T]?: Set<T[eventName]> }
@@ -14,7 +15,7 @@ export class FreeSwitchEventEmitter<E extends string, T extends Record<E, (...ar
   emit<K extends keyof T>(event: K, ...args: Parameters<T[K]>): boolean {
     const __on = this.__on[event]
     const __once = this.__once[event]
-    delete this.__once[event]
+    this.__once[event] = undefined
     const count: number = (__on?.size ?? 0) + (__once?.size ?? 0)
     __on?.forEach(h => { h(...args) })
     __once?.forEach(h => { h(...args) })
@@ -57,6 +58,7 @@ export class FreeSwitchEventEmitter<E extends string, T extends Record<E, (...ar
 
 export const once = async <
     E extends string,
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
     T extends Record<string, (...args: any[]) => void>,
     K extends keyof T
     >(emitter: FreeSwitchEventEmitter<E, T>, event: K): Promise<Parameters<T[K]>> => await emitter.__onceAsync(event)

@@ -17,7 +17,7 @@
     "noImplicitAny": true,
     "declaration": true,
     "declarationDir": "./types",
-    "emitDeclarationOnly": true,
+    "emitDeclarationOnly": false,
     "skipLibCheck": true
   },
   "exclude": [

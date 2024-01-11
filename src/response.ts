@@ -8,12 +8,11 @@ import {
 
 import {
   FreeSwitchParser,
+  type StringMap,
   parse_header_text
 } from './parser.js'
 
 import { type Socket } from 'node:net'
-
-type StringMap = Record<string, string | undefined>
 
 type ResponseLogger = (msg: string, data: { ref: string, [key: string]: unknown }) => void
 
@@ -26,6 +25,7 @@ export interface FreeSwitchResponseLogger {
 const async_log = function<T>(msg: string, ref: string, af: () => Promise<T>, logger: FreeSwitchResponseLogger): () => Promise<T> {
   return async function () {
     return await af().catch(function (error) {
+      // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
       logger.error(`FreeSwitchResponse::async_log: ${msg}`, { error, ref })
       throw error
     })
@@ -765,6 +765,7 @@ export class FreeSwitchResponse extends FreeSwitchEventEmitter<keyof FreeSwitchR
         if (error instanceof Error) {
           this.emit('socket.write', error)
         } else {
+          // eslint-disable-next-line @typescript-eslint/restrict-template-expressions
           this.emit('socket.write', new Error(`${error}`))
         }
         reject(error)
@@ -935,6 +936,7 @@ export class FreeSwitchResponse extends FreeSwitchEventEmitter<keyof FreeSwitchR
           // Strip control characters that might be emitted by FreeSwitch.
           body = body.replace(/[\x00-\x1F\x7F-\x9F]/g, '')
           // Parse the JSON body.
+          // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
           body_values = JSON.parse(body)
         } catch (exception) {
           // In case of error report it as an error.
@@ -946,6 +948,7 @@ export class FreeSwitchResponse extends FreeSwitchEventEmitter<keyof FreeSwitchR
           if (exception instanceof Error) {
             this.emit('error.invalid-json', exception)
           } else {
+          // eslint-disable-next-line @typescript-eslint/restrict-template-expressions
             this.emit('error.invalid-json', new Error(`${exception}`))
           }
           return

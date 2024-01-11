@@ -38,7 +38,6 @@ const fs_command = async (cmd) => {
   await client.connect()
   const [ call ] = await p
   const res = await call.api(cmd)
-  // res.body.should.match(/\+OK/);
   await call.exit();
   await client.end();
 }
