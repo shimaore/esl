@@ -887,7 +887,7 @@ export class FreeSwitchResponse extends FreeSwitchEventEmitter<keyof FreeSwitchR
       {
         this.stats.auth_request++
         this.emit('freeswitch_auth_request', msg)
-        break
+        return
       }
 
       // command/reply
