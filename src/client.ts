@@ -52,7 +52,7 @@ export class FreeSwitchClient extends FreeSwitchEventEmitter<keyof FreeSwitchCli
    */
   constructor (options?: {
     host?: string
-    port: number
+    port?: number
     password?: string
     logger?: FreeSwitchClientLogger
   }) {
