@@ -558,7 +558,7 @@ export class FreeSwitchResponse extends FreeSwitchEventEmitter<keyof FreeSwitchR
 
   // onceAsync
   async onceAsync<K extends keyof FreeSwitchResponseEvents>(event: K,
-    timeout: number,
+    timeout: number | undefined,
     comment: string
   ): Promise<Parameters<FreeSwitchResponseEvents[K]>[0]> {
     this.logger.debug('FreeSwitchResponse: onceAsync: awaiting', {
@@ -605,16 +605,6 @@ export class FreeSwitchResponse extends FreeSwitchEventEmitter<keyof FreeSwitchR
         cleanup()
         reject(new Error(`end() called (${this.__ref}) while waiting for ${event} in ${comment}`))
       }
-      const on_timeout = (): void => {
-        this.logger.error('FreeSwitchResponse: onceAsync: on_timeout', {
-          event,
-          comment,
-          ref: this.__ref,
-          timeout
-        })
-        cleanup()
-        reject(new FreeSwitchTimeout(timeout, `(${this.__ref}) event ${event} in ${comment}`))
-      }
       let timer: ReturnType<typeof setTimeout> | undefined
       const cleanup = (): void => {
         this.removeListener(event, on_event)
@@ -651,6 +641,16 @@ export class FreeSwitchResponse extends FreeSwitchEventEmitter<keyof FreeSwitchR
       this.once('socket.write', on_error)
       this.once('socket.end', on_end)
       if (timeout != null) {
+        const on_timeout = (): void => {
+          this.logger.error('FreeSwitchResponse: onceAsync: on_timeout', {
+            event,
+            comment,
+            ref: this.__ref,
+            timeout
+          })
+          cleanup()
+          reject(new FreeSwitchTimeout(timeout, `(${this.__ref}) event ${event} in ${comment}`))
+        }
         timer = setTimeout(on_timeout, timeout)
       }
     }
@@ -685,7 +685,7 @@ export class FreeSwitchResponse extends FreeSwitchEventEmitter<keyof FreeSwitchR
 
   // In some cases the event might have been emitted before we are ready to receive it.
   // In that case we store the data in `@__later` so that we can emit the event when the recipient is ready.
-  async waitAsync (event: `BACKGROUND_JOB ${string}`, timeout: number, comment: string): SendResult {
+  async waitAsync (event: `BACKGROUND_JOB ${string}`, timeout: number | undefined, comment: string): SendResult {
     const v = this.__later.get(event)
     if (!this.closed && v != null) {
       this.__later.delete(event)
@@ -1114,7 +1114,7 @@ export class FreeSwitchResponse extends FreeSwitchEventEmitter<keyof FreeSwitchR
   // -----
 
   // Send an API command in the background. Wraps it inside a Promise.
-  async bgapi (command: string, timeout: number = FreeSwitchResponse.default_command_timeout): SendResult {
+  async bgapi (command: string, timeout?: number): SendResult {
     this.logger.debug('FreeSwitchResponse: bgapi', {
       ref: this.__ref,
       command,
