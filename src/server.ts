@@ -118,6 +118,7 @@ export class FreeSwitchServer extends FreeSwitchEventEmitter<keyof FreeSwitchSer
             if (myEvents) {
               // Restricting events using `filter` is required so that `event_json` will only obtain our events.
               await call.filter(Unique_ID, uuid)
+              await call.filter("Job-Owner-UUID", uuid)
             }
           }
           call.auto_cleanup()
