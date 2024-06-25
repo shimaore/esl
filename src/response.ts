@@ -100,6 +100,18 @@ export class FreeSwitchTimeout extends Error {
   }
 }
 
+export class FreeSwitchDisconnect extends Error {
+  public readonly text: string
+  constructor (text: string) {
+    super()
+    this.text = text
+  }
+
+  toString (): string {
+    return `FreeSwitchDisconnect: Disconnected while waiting for ${this.text}`
+  }
+}
+
   // List from https://github.com/signalwire/freeswitch/blob/master/src/switch_event.c#L137
   type EventName =
     | 'CUSTOM'
@@ -605,6 +617,15 @@ export class FreeSwitchResponse extends FreeSwitchEventEmitter<keyof FreeSwitchR
         cleanup()
         reject(new Error(`end() called (${this.__ref}) while waiting for ${event} in ${comment}`))
       }
+      const on_disconnect = (): void => {
+        this.logger.error('FreeSwitchResponse: onceAsync: on_disconnect', {
+          event,
+          comment,
+          ref: this.__ref
+        })
+        cleanup()
+        reject(new FreeSwitchDisconnect(`(${this.__ref}) ${event} in ${comment}`))
+      }
       let timer: ReturnType<typeof setTimeout> | undefined
       const cleanup = (): void => {
         this.removeListener(event, on_event)
@@ -612,6 +633,7 @@ export class FreeSwitchResponse extends FreeSwitchEventEmitter<keyof FreeSwitchR
         this.removeListener('socket.close', on_close)
         this.removeListener('socket.write', on_error)
         this.removeListener('socket.end', on_end)
+        this.removeListener('freeswitch_disconnect', on_disconnect)
         clearTimeout(timer)
       }
 
@@ -640,6 +662,7 @@ export class FreeSwitchResponse extends FreeSwitchEventEmitter<keyof FreeSwitchR
       this.once('socket.close', on_close)
       this.once('socket.write', on_error)
       this.once('socket.end', on_end)
+      this.once('freeswitch_disconnect', on_disconnect)
       if (timeout != null) {
         const on_timeout = (): void => {
           this.logger.error('FreeSwitchResponse: onceAsync: on_timeout', {
