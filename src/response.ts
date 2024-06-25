@@ -1346,7 +1346,7 @@ export class FreeSwitchResponse extends FreeSwitchEventEmitter<keyof FreeSwitchR
   // ------------
 
   // Execute an application synchronously. Return a Promise.
-  async command_uuid (uuid: string | undefined, app_name: string, app_arg?: string, timeout: number = FreeSwitchResponse.default_command_timeout): SendResult {
+  async command_uuid (uuid: string | undefined, app_name: string, app_arg?: string, timeout?: number): SendResult {
     if (app_arg == null) {
       app_arg = ''
     }
@@ -1423,7 +1423,7 @@ export class FreeSwitchResponse extends FreeSwitchEventEmitter<keyof FreeSwitchR
 
   // command
   // -------
-  async command (app_name: string, app_arg?: string, timeout: number = FreeSwitchResponse.default_command_timeout): SendResult {
+  async command (app_name: string, app_arg?: string, timeout?: number): SendResult {
     return await this.command_uuid(undefined, app_name, app_arg, timeout)
   }
 
@@ -1550,10 +1550,4 @@ export class FreeSwitchResponse extends FreeSwitchEventEmitter<keyof FreeSwitchR
 
   // Formerly `command_timeout`, the timeout for a command sent via `send` when none is specified.
   static default_send_timeout = 10 * 1000 // 10s
-
-  // `default_command_timeout`
-  // -------------------------
-
-  // The timeout awaiting for a response to a `command` call.
-  static default_command_timeout = 1 * 1000 // 1s
 }
